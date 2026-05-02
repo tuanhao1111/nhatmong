@@ -29,9 +29,14 @@ function canEdit() { return isAdmin(); }
 // ── Guard: nếu chưa đăng nhập thì redirect ───────────────────────────────────
 function requireAuth() {
   if (!getCurrentUser()) {
-    // Set flag để login.html biết đây là redirect từ app, không phải fresh visit
-    sessionStorage.setItem('_app_redirect', '1');
-    window.location.href = 'login.html';
+    // Hiện overlay yêu cầu đăng nhập NGAY TRONG TRANG
+    // KHÔNG redirect về login.html để tránh redirect loop
+    document.body.innerHTML = '<div style="position:fixed;inset:0;background:var(--bg-primary);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999">' +
+      '<div style="font-size:48px;margin-bottom:16px">⚔️</div>' +
+      '<div style="font-family:Cinzel,serif;font-size:22px;color:var(--accent-gold);margin-bottom:8px">NGHỊCH THỦY HÀN</div>' +
+      '<div style="color:var(--text-secondary);margin-bottom:24px">Vui lòng đăng nhập để tiếp tục</div>' +
+      '<button onclick="window.location.href=\'login.html\'" style="padding:12px 32px;background:var(--accent-gold);color:#111;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:Cinzel,serif">Đăng Nhập</button>' +
+    '</div>';
   }
 }
 

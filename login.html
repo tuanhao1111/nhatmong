@@ -544,14 +544,13 @@
   if (window.location.hash === '#register') switchTab('register');
   // Auto-redirect nếu đã đăng nhập
   // Dùng flag tránh redirect loop (app.html reload → login.html → app.html...)
-  // Nếu bị redirect từ app (requireAuth) thì KHÔNG auto-redirect lại app
-  const _appRedirect = sessionStorage.getItem('_app_redirect');
-  if (_appRedirect) {
-    sessionStorage.removeItem('_app_redirect'); // xóa flag, ở lại login
+  const _fromReload = sessionStorage.getItem('_from_reload');
+  if (_fromReload) {
+    // Xóa flag, ở lại login
+    sessionStorage.removeItem('_from_reload');
   } else {
-    // User chủ động vào login page - nếu đã login thì redirect về app
     const existing = sessionStorage.getItem('nth_session') || localStorage.getItem('nth_session');
-    if (existing) { window.location.href = 'app.html'; }
+    // auto-redirect disabled to prevent loop
   }
 </script>
 </body>

@@ -253,6 +253,6 @@ function renderFirebaseConfigUI() {
 setTimeout(fbInit, 800);
 
 const IMG_PREFIX = 'nth_img_';
-function loadImageFromStorage(key) { try { return localStorage.getItem(IMG_PREFIX+key)||''; }catch(e){return '';} }
-function saveImageToStorage(key,b64) { try { localStorage.setItem(IMG_PREFIX+key,b64);return true; }catch(e){return false;} }
-function removeImageFromStorage(key) { try { localStorage.removeItem(IMG_PREFIX+key); }catch(e){} }
+function loadImageFromStorage(key){try{return localStorage.getItem(IMG_PREFIX+key)||'';}catch(e){return '';}}
+function saveImageToStorage(key,b){try{localStorage.setItem(IMG_PREFIX+key,b);return true;}catch(e){return false;}}
+function removeImageFromStorage(key){try{localStorage.removeItem(IMG_PREFIX+key);}catch(e){}}
