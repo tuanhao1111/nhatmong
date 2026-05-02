@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Version Check</title></head>
+<body style="background:#111;color:#fff;font-family:monospace;padding:40px">
+<h2>✅ Version: 2025-05-03 PATCH-3</h2>
+<p>Nếu thấy trang này = Vercel đã deploy đúng file mới</p>
+<hr>
+<h3>Quick checks:</h3>
+<div id="out"></div>
+<script>
+var out = document.getElementById('out');
+function check(label, condition) {
+  out.innerHTML += '<div style="margin:6px 0;padding:8px;background:#' + (condition?'1a3a1a':'3a1a1a') + ';border-radius:4px">' +
+    (condition ? '✅ ' : '❌ ') + label + '</div>';
+}
+
+// Load và check firebase.js
+fetch('/js/firebase.js').then(r=>r.text()).then(t=>{
+  check('firebase.js: có _role_reloading guard', t.includes('_role_reloading'));
+  check('firebase.js: có fbPushNow', t.includes('fbPushNow'));
+});
+
+fetch('/js/auth.js').then(r=>r.text()).then(t=>{
+  check('auth.js: có _app_redirect', t.includes('_app_redirect'));
+});
+
+fetch('/login.html').then(r=>r.text()).then(t=>{
+  check('login.html: có _appRedirect check', t.includes('_appRedirect'));
+});
+</script>
+</body>
+</html>

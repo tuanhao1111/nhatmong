@@ -1,0 +1,190 @@
+/**
+ * auth.js - Hệ thống phân quyền
+ * 
+ * Roles:
+ *   'admin'  - Toàn quyền: xem + sửa + cấp quyền tài khoản khác
+ *   'member' - Chỉ xem, không sửa
+ *   'guest'  - Chỉ xem, không sửa
+ */
+
+const SESSION_KEY = 'nth_session';
+const USERS_KEY   = 'nth_users';
+
+// ── Lấy user đang đăng nhập ──────────────────────────────────────────────────
+function getCurrentUser() {
+  try {
+    const s = sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_KEY);
+    return s ? JSON.parse(s) : null;
+  } catch { return null; }
+}
+
+// ── Kiểm tra quyền ───────────────────────────────────────────────────────────
+function isAdmin() {
+  const u = getCurrentUser();
+  return u && u.role === 'admin';
+}
+
+function canEdit() { return isAdmin(); }
+
+// ── Guard: nếu chưa đăng nhập thì redirect ───────────────────────────────────
+function requireAuth() {
+  if (!getCurrentUser()) {
+    // Set flag để login.html biết đây là redirect từ app, không phải fresh visit
+    sessionStorage.setItem('_app_redirect', '1');
+    window.location.href = 'login.html';
+  }
+}
+
+// ── Đăng xuất ────────────────────────────────────────────────────────────────
+function logout() {
+  sessionStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem(SESSION_KEY);
+  window.location.href = 'login.html';
+}
+
+// ── Quản lý users (admin) ────────────────────────────────────────────────────
+const AuthUsers = {
+  getAll() {
+    try { return JSON.parse(localStorage.getItem(USERS_KEY)) || []; } catch { return []; }
+  },
+  save(users) { localStorage.setItem(USERS_KEY, JSON.stringify(users)); },
+  setRole(userId, role) {
+    const users = this.getAll();
+    const idx = users.findIndex(u => u.id === userId);
+    if (idx === -1) return false;
+    users[idx].role = role;
+    this.save(users);
+    return true;
+  },
+  delete(userId) {
+    const users = this.getAll().filter(u => u.id !== userId);
+    this.save(users);
+  }
+};
+
+// ── Trang quản lý tài khoản (chỉ admin) ──────────────────────────────────────
+function renderAccountsPage() {
+  if (!isAdmin()) {
+    return `<div style="text-align:center;padding:60px;color:var(--text-muted)">
+      🔒 Bạn không có quyền truy cập trang này.
+    </div>`;
+  }
+
+  const users = AuthUsers.getAll();
+  const roleOpts = (cur) => ['admin','member','guest'].map(r =>
+    `<option value="${r}" ${cur===r?'selected':''}>${ROLE_LABELS[r]}</option>`
+  ).join('');
+
+  const rows = users.length === 0
+    ? `<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-muted)">Chưa có tài khoản nào đăng ký</td></tr>`
+    : users.map(u => `
+      <tr>
+        <td style="padding:12px 16px">
+          <div style="font-weight:600">${escHtml(u.name)}</div>
+        </td>
+        <td style="padding:12px 16px;color:var(--text-secondary);font-size:13px">${escHtml(u.email)}</td>
+        <td style="padding:12px 16px">${accountRoleBadge(u.role)}</td>
+        <td style="padding:12px 16px;font-size:12px;color:var(--text-secondary)">${formatDate(u.createdAt)}</td>
+        <td style="padding:12px 16px">
+          <div style="display:flex;gap:8px;align-items:center">
+            <select onchange="setUserRole('${u.id}', this.value)" style="font-size:12px;padding:4px 8px">
+              ${roleOpts(u.role)}
+            </select>
+            <button class="btn btn-danger" style="padding:4px 10px;font-size:12px" onclick="deleteUser('${u.id}','${escHtml(u.name)}')">Xóa</button>
+          </div>
+        </td>
+      </tr>`).join('');
+
+  return `
+    <div class="page-header">
+      <div class="page-title">Quản Lý Tài Khoản</div>
+      <div class="page-subtitle">${users.length} tài khoản đã đăng ký</div>
+    </div>
+
+    <!-- Admin account note -->
+    <div class="card" style="margin-bottom:16px;background:#0f1a0f;border-color:#2a4a2a;padding:14px 18px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px">🔑</span>
+        <div>
+          <div style="font-weight:600;color:var(--accent-green)">Tài khoản Admin mặc định</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">
+            Email: <strong style="color:var(--text-primary)">admin@guild.com</strong> · 
+            Mật khẩu: <strong style="color:var(--text-primary)">admin123</strong> · 
+            Quyền: <strong style="color:var(--accent-gold)">Admin</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Role legend -->
+    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+      <div class="card" style="padding:12px 16px;flex:1;min-width:180px">
+        <div style="color:var(--accent-gold);font-weight:700;margin-bottom:4px">👑 Admin</div>
+        <div style="font-size:12px;color:var(--text-secondary)">Xem + Sửa + Cấp quyền tài khoản khác</div>
+      </div>
+      <div class="card" style="padding:12px 16px;flex:1;min-width:180px">
+        <div style="color:var(--accent-cyan);font-weight:700;margin-bottom:4px">👤 Member</div>
+        <div style="font-size:12px;color:var(--text-secondary)">Chỉ xem, không được chỉnh sửa</div>
+      </div>
+      <div class="card" style="padding:12px 16px;flex:1;min-width:180px">
+        <div style="color:var(--text-muted);font-weight:700;margin-bottom:4px">🚪 Guest</div>
+        <div style="font-size:12px;color:var(--text-secondary)">Chỉ xem, không được chỉnh sửa</div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="card" style="padding:0;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="background:#0f0f1e;border-bottom:1px solid var(--border-color)">
+            <th style="padding:12px 16px;text-align:left;font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px">Tên</th>
+            <th style="padding:12px 16px;text-align:left;font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px">Email</th>
+            <th style="padding:12px 16px;text-align:left;font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px">Quyền</th>
+            <th style="padding:12px 16px;text-align:left;font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px">Ngày đăng ký</th>
+            <th style="padding:12px 16px;text-align:left;font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+const ROLE_LABELS = { admin: 'Admin', member: 'Member', guest: 'Guest' };
+
+function accountRoleBadge(role) {
+  const map = {
+    admin:  { label: '👑 Admin',  color: '#f0c040' },
+    member: { label: '👤 Member', color: '#40c0e0' },
+    guest:  { label: '🚪 Guest',  color: '#606070' }
+  };
+  const r = map[role] || map.guest;
+  return `<span class="badge" style="background:${r.color}22;color:${r.color};border:1px solid ${r.color}44">${r.label}</span>`;
+}
+
+function setUserRole(userId, newRole) {
+  AuthUsers.setRole(userId, newRole);
+  // Push user update lên Firebase để member nhận realtime
+  if (typeof _usersRef !== 'undefined' && _usersRef) {
+    const allUsers = AuthUsers.getAll();
+    const user     = allUsers.find(u => u.id === userId);
+    if (user) {
+      _usersRef.doc(userId).set(user)
+        .then(()  => console.log('[FB] ✅ Role synced:', userId, newRole))
+        .catch(e  => console.error('[FB] Role sync lỗi:', e.message));
+    }
+  }
+  showToast(`Đã cập nhật quyền thành ${ROLE_LABELS[newRole]}!`);
+}
+
+function deleteUser(userId, name) {
+  if (!confirmDelete(`Xóa tài khoản "${name}"?`)) return;
+  AuthUsers.delete(userId);
+  showToast('Đã xóa tài khoản!', 'error');
+  renderPage('accounts');
+}
+
+// ── Helper: hiện thông báo "chỉ xem" khi khách cố sửa ───────────────────────
+function denyEdit() {
+  showToast('🔒 Bạn không có quyền chỉnh sửa. Liên hệ Admin để được cấp quyền.', 'error', 4000);
+}

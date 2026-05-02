@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nhất Mộng - Quản Lý Bang Hội</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Noto+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/variables.css">
+  <style>
+    body {
+      min-height: 100vh;
+      overflow-x: hidden;
+      background: var(--bg-primary);
+    }
+
+    /* ===== HERO ===== */
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Animated background */
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 50% 0%, rgba(240,192,64,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 80% at 100% 50%, rgba(64,192,224,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 50% at 0% 80%, rgba(144,96,224,0.05) 0%, transparent 60%);
+    }
+
+    /* Grid overlay */
+    .hero-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(240,192,64,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(240,192,64,0.04) 1px, transparent 1px);
+      background-size: 60px 60px;
+      mask-image: radial-gradient(ellipse 90% 70% at 50% 30%, black, transparent);
+    }
+
+    /* Floating orbs */
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(60px);
+      animation: orbFloat ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes orbFloat {
+      0%,100% { transform: translate(0,0) scale(1); }
+      33%      { transform: translate(20px,-30px) scale(1.05); }
+      66%      { transform: translate(-15px,15px) scale(0.97); }
+    }
+
+    /* ===== NAVBAR ===== */
+    .navbar {
+      position: relative;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 48px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      backdrop-filter: blur(8px);
+    }
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .nav-logo-icon {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, var(--accent-gold), #a06010);
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 4px 12px rgba(240,192,64,0.3);
+    }
+    .nav-logo-text {
+      font-family: 'Cinzel', serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--accent-gold);
+      letter-spacing: 1px;
+    }
+    .nav-logo-sub {
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+    .nav-badge {
+      background: rgba(240,192,64,0.12);
+      border: 1px solid rgba(240,192,64,0.25);
+      color: var(--accent-gold);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .nav-actions { display: flex; gap: 10px; align-items: center; }
+    .btn-nav-login {
+      padding: 9px 22px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Noto Sans', sans-serif;
+      transition: all 0.2s;
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.15);
+      color: var(--text-primary);
+    }
+    .btn-nav-login:hover { border-color: var(--accent-gold); color: var(--accent-gold); }
+    .btn-nav-register {
+      padding: 9px 22px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: 'Noto Sans', sans-serif;
+      transition: all 0.2s;
+      background: var(--accent-gold);
+      border: none;
+      color: #111;
+      letter-spacing: 0.5px;
+    }
+    .btn-nav-register:hover {
+      background: #ffd060;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(240,192,64,0.35);
+    }
+
+    /* ===== HERO CONTENT ===== */
+    .hero-content {
+      position: relative;
+      z-index: 10;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 60px 24px;
+    }
+
+    .hero-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(240,192,64,0.08);
+      border: 1px solid rgba(240,192,64,0.2);
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 12px;
+      color: var(--accent-gold);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 28px;
+      animation: fadeUp 0.6s ease both;
+    }
+
+    .hero-title {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(36px, 7vw, 72px);
+      font-weight: 900;
+      color: var(--accent-gold);
+      line-height: 1.1;
+      margin-bottom: 16px;
+      animation: fadeUp 0.6s 0.1s ease both;
+      text-shadow: 0 0 40px rgba(240,192,64,0.3);
+      letter-spacing: 2px;
+    }
+
+    .hero-desc {
+      font-size: clamp(14px, 2vw, 17px);
+      color: var(--text-secondary);
+      max-width: 560px;
+      line-height: 1.75;
+      margin-bottom: 40px;
+      animation: fadeUp 0.6s 0.2s ease both;
+    }
+
+    .hero-cta {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      justify-content: center;
+      animation: fadeUp 0.6s 0.3s ease both;
+    }
+
+    .btn-cta-primary {
+      padding: 14px 36px;
+      background: var(--accent-gold);
+      color: #111;
+      font-weight: 800;
+      font-size: 15px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      font-family: 'Cinzel', serif;
+      letter-spacing: 1px;
+      transition: all 0.25s;
+      box-shadow: 0 4px 20px rgba(240,192,64,0.3);
+    }
+    .btn-cta-primary:hover {
+      background: #ffd060;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(240,192,64,0.45);
+    }
+    .btn-cta-secondary {
+      padding: 14px 36px;
+      background: transparent;
+      color: var(--text-primary);
+      font-weight: 600;
+      font-size: 15px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.15);
+      cursor: pointer;
+      font-family: 'Noto Sans', sans-serif;
+      transition: all 0.25s;
+    }
+    .btn-cta-secondary:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+      transform: translateY(-2px);
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ===== FEATURES SECTION ===== */
+    .features {
+      position: relative;
+      z-index: 10;
+      padding: 80px 48px;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .section-label {
+      text-align: center;
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--accent-cyan);
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      text-align: center;
+      font-family: 'Cinzel', serif;
+      font-size: clamp(22px, 4vw, 34px);
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .section-sub {
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-bottom: 52px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+    }
+
+    .feature-card {
+      background: rgba(17,17,32,0.6);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 14px;
+      padding: 28px 24px;
+      transition: all 0.3s;
+      cursor: default;
+    }
+    .feature-card:hover {
+      border-color: rgba(240,192,64,0.25);
+      background: rgba(17,17,32,0.85);
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+    }
+
+    .feature-icon {
+      font-size: 32px;
+      margin-bottom: 14px;
+      display: block;
+    }
+
+    .feature-title {
+      font-family: 'Cinzel', serif;
+      font-size: 15px;
+      color: var(--accent-gold);
+      margin-bottom: 8px;
+      letter-spacing: 0.5px;
+    }
+
+    .feature-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.7;
+    }
+
+    /* ===== HOW IT WORKS ===== */
+    .how-it-works {
+      background: rgba(17,17,32,0.4);
+      border-top: 1px solid rgba(255,255,255,0.05);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      padding: 80px 48px;
+    }
+
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 32px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .step {
+      text-align: center;
+    }
+
+    .step-num {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent-gold), #a06010);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Cinzel', serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: #111;
+      margin: 0 auto 16px;
+      box-shadow: 0 4px 16px rgba(240,192,64,0.3);
+    }
+
+    .step-title {
+      font-family: 'Cinzel', serif;
+      font-size: 14px;
+      color: var(--accent-gold);
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+
+    .step-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.65;
+    }
+
+    /* ===== FOOTER ===== */
+    .footer {
+      padding: 32px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .footer-left {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .footer-left strong {
+      color: var(--accent-gold);
+    }
+
+    .footer-contact {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* Test account hint */
+    .test-hint {
+      background: rgba(64,192,224,0.08);
+      border: 1px solid rgba(64,192,224,0.2);
+      border-radius: 10px;
+      padding: 14px 20px;
+      margin-top: 32px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-secondary);
+      animation: fadeUp 0.6s 0.4s ease both;
+    }
+    .test-hint strong { color: var(--accent-cyan); }
+
+    @media (max-width: 640px) {
+      .navbar { padding: 16px 20px; }
+      .nav-badge { display: none; }
+      .features, .how-it-works { padding: 60px 20px; }
+      .footer { padding: 24px 20px; flex-direction: column; align-items: center; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+
+  <!-- Floating orbs -->
+  <div class="orb" style="width:400px;height:400px;top:-100px;right:-100px;background:rgba(240,192,64,0.04);animation-duration:12s"></div>
+  <div class="orb" style="width:300px;height:300px;bottom:0;left:-80px;background:rgba(64,192,224,0.04);animation-duration:15s;animation-delay:-5s"></div>
+  <div class="orb" style="width:200px;height:200px;top:40%;right:15%;background:rgba(144,96,224,0.05);animation-duration:10s;animation-delay:-3s"></div>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="nav-logo">
+      <div class="nav-logo-icon">⚔</div>
+      <div>
+        <div class="nav-logo-text">NGHỊCH THỦY HÀN</div>
+        <div class="nav-logo-sub">Guild Manager</div>
+      </div>
+    </div>
+    <span class="nav-badge">⚡ SaaS Tool</span>
+    <div class="nav-actions">
+      <button class="btn-nav-login" onclick="window.location.href='login.html'">Đăng nhập</button>
+      <button class="btn-nav-register" onclick="goRegister()">Đăng Ký Bang</button>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <div class="hero-content">
+    <div class="hero-tag">⚔ Công Cụ Quản Lý Bang Hội</div>
+    <h1 class="hero-title">NGHỊCH THỦY HÀN</h1>
+    <p class="hero-desc">
+      Quản lý thành viên, sắp xếp đội hình bang chiến, phân nhóm chiến thuật và theo dõi lịch sử đợt — tất cả trong một công cụ dành riêng cho bang hội của bạn.
+    </p>
+    <div class="hero-cta">
+      <button class="btn-cta-primary" onclick="goRegister()">🗡 Đăng Ký Ngay</button>
+      <button class="btn-cta-secondary" onclick="loginAsGuest()">👤 Xem thử (Khách)</button>
+    </div>
+
+    <div class="test-hint">
+      🔑 Tài khoản demo: <strong>admin@guild.com</strong> / <strong>admin123</strong>
+    </div>
+  </div>
+</div>
+
+<!-- Features -->
+<section class="features">
+  <div class="section-label">Tính năng</div>
+  <h2 class="section-title">Mọi thứ bạn cần để quản lý bang</h2>
+  <p class="section-sub">Được thiết kế đặc biệt cho game Nghịch Thủy Hàn</p>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <span class="feature-icon">👥</span>
+      <div class="feature-title">Quản Lý Thành Viên</div>
+      <div class="feature-desc">Theo dõi toàn bộ thành viên: class, chiến lực, vai trò, nhóm. Bộ lọc tìm kiếm nhanh và chỉnh sửa dễ dàng.</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">⚔</span>
+      <div class="feature-title">Sắp Xếp Đội Hình</div>
+      <div class="feature-desc">Phân chia N team × M slot linh hoạt. Kéo thành viên vào slot, phân nhóm team theo màu sắc chiến thuật.</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">📜</span>
+      <div class="feature-title">Lịch Sử Đợt</div>
+      <div class="feature-desc">Lưu lại toàn bộ lịch sử các đợt bang chiến. Xem lại đội hình và chiến thuật của từng đợt.</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🛡</span>
+      <div class="feature-title">Slot Dự Bị</div>
+      <div class="feature-desc">Quản lý hàng dự bị riêng biệt. Nhanh chóng điều chỉnh khi có thành viên vắng mặt đột xuất.</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">📋</span>
+      <div class="feature-title">Ghi Chú Chiến Thuật</div>
+      <div class="feature-desc">Không gian ghi chép chiến lược riêng cho từng đợt bang chiến. Giữ mọi thứ có tổ chức.</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">💾</span>
+      <div class="feature-title">Backup Dữ Liệu</div>
+      <div class="feature-desc">Xuất/nhập dữ liệu dạng JSON bất cứ lúc nào. Không lo mất dữ liệu, dễ chuyển thiết bị.</div>
+    </div>
+  </div>
+</section>
+
+<!-- How it works -->
+<section class="how-it-works">
+  <div class="section-label">Cách vận hành</div>
+  <h2 class="section-title" style="margin-bottom:8px">3 bước để bắt đầu</h2>
+  <p class="section-sub">Đơn giản, không cần cài đặt</p>
+
+  <div class="steps-grid">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-title">Đăng Ký</div>
+      <div class="step-desc">Tạo tài khoản và thiết lập cấu hình cho bang hội: tên bang, class, số team, slot.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-title">Thêm Thành Viên</div>
+      <div class="step-desc">Nhập danh sách thành viên với thông tin class, chiến lực và nhóm chiến thuật.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-title">Vận Hành Bang</div>
+      <div class="step-desc">Tạo đợt bang chiến, sắp xếp đội hình, ghi chú chiến thuật và lưu lịch sử.</div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="footer-left">
+    <strong>⚔ Nghịch Thủy Hàn</strong> Guild Manager — Công cụ quản lý bang hội
+  </div>
+  <div class="footer-contact">
+    📧 Góp ý & hỗ trợ: liên hệ Bang Chủ
+  </div>
+</footer>
+
+<script src="js/storage.js"></script>
+<script>
+  function goRegister() {
+    window.location.href = 'login.html#register';
+  }
+
+  function loginAsGuest() {
+    sessionStorage.setItem('nth_session', JSON.stringify({ id: 'guest', name: 'Khách', email: '', role: 'guest' }));
+    window.location.href = 'app.html';
+  }
+
+  // If already logged in, show a "Go to app" button in nav
+  const sess = sessionStorage.getItem('nth_session') || localStorage.getItem('nth_session');
+  if (sess) {
+    const u = JSON.parse(sess);
+    document.querySelector('.nav-actions').innerHTML = `
+      <span style="font-size:13px;color:var(--text-secondary)">Xin chào, <strong style="color:var(--accent-gold)">${u.name}</strong></span>
+      <button class="btn-nav-register" onclick="window.location.href='app.html'">Vào App →</button>
+    `;
+  }
+</script>
+</body>
+</html>

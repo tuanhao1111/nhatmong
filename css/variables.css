@@ -1,0 +1,91 @@
+/* ===== CSS VARIABLES & GLOBAL STYLES ===== */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Noto+Sans:wght@300;400;500;600&display=swap');
+
+:root {
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #0f0f1a;
+  --bg-card: #111120;
+  --bg-card-hover: #161628;
+  --bg-sidebar: #0c0c18;
+  --accent-gold: #f0c040;
+  --accent-gold-dim: #a07820;
+  --accent-cyan: #40c0e0;
+  --accent-green: #30d080;
+  --accent-red: #e04040;
+  --accent-purple: #9060e0;
+  --text-primary: #e8e0d0;
+  --text-secondary: #9090a0;
+  --text-muted: #505060;
+  --text-gold: #f0c040;
+  --border-color: #222235;
+  --border-accent: #2a2a45;
+  --sidebar-width: 220px;
+  --topbar-height: 60px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Noto Sans', sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+h1, h2, h3, h4 { font-family: 'Cinzel', serif; }
+a { color: var(--accent-cyan); text-decoration: none; }
+a:hover { color: var(--accent-gold); }
+button { cursor: pointer; font-family: 'Noto Sans', sans-serif; border: none; transition: all 0.2s ease; }
+input, select, textarea {
+  font-family: 'Noto Sans', sans-serif;
+  background: #1a1a2e;
+  border: 1px solid var(--border-accent);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--accent-gold); }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: #333350; border-radius: 3px; }
+
+.btn { padding: 8px 16px; border-radius: 6px; font-weight: 600; font-size: 13px; letter-spacing: 0.5px; }
+.btn-gold { background: var(--accent-gold); color: #111; }
+.btn-gold:hover { background: #ffd060; transform: translateY(-1px); box-shadow: 0 4px 15px rgba(240,192,64,0.3); }
+.btn-outline { background: transparent; border: 1px solid var(--border-accent); color: var(--text-primary); }
+.btn-outline:hover { border-color: var(--accent-gold); color: var(--accent-gold); }
+.btn-danger { background: var(--accent-red); color: white; }
+.btn-danger:hover { background: #ff5555; }
+.btn-cyan { background: var(--accent-cyan); color: #111; }
+.btn-green { background: var(--accent-green); color: #111; }
+
+.badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+.card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 20px; }
+
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000;
+  display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);
+}
+.modal {
+  background: var(--bg-card); border: 1px solid var(--border-accent); border-radius: 12px;
+  padding: 28px; min-width: 400px; max-width: 600px; width: 90%; max-height: 85vh; overflow-y: auto;
+}
+.modal h3 { color: var(--accent-gold); margin-bottom: 20px; font-size: 18px; }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; letter-spacing: 0.5px; text-transform: uppercase; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-color); }
+
+.toast {
+  position: fixed; bottom: 24px; right: 24px; background: var(--bg-card);
+  border: 1px solid var(--accent-gold); border-radius: 8px; padding: 12px 20px;
+  z-index: 9999; font-size: 14px; animation: slideIn 0.3s ease; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+.toast.success { border-color: var(--accent-green); }
+.toast.error { border-color: var(--accent-red); }
+@keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
