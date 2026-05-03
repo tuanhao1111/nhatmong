@@ -22,7 +22,7 @@ const DEFAULT_DATA = {
       { id:'thiet_y',    name:'Thiết Y',   color:'#e6a35c' },
       { id:'huyet_ha',   name:'Huyết Hà',  color:'#a3534a' },
       { id:'than_tuong', name:'Thần Tướng',color:'#5e7faf' },
-      { id:'to_van',     name:'Tố Vân',    color:'#f28e99' },
+      { id:'to_van',     name:'Tố Vấn',    color:'#f28e99' },
       { id:'cuu_linh',   name:'Cửu Linh',  color:'#b36bb3' },
       { id:'long_ngam',  name:'Long Ngâm', color:'#8cb36b' }
     ],
