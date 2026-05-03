@@ -206,14 +206,6 @@ function uploadMapImg(id, input) {
       if (mapIdx >= 0) {
         data.settings.maps[mapIdx].imageData = resizedDataUrl;
         if (typeof window.saveData === 'function') window.saveData(data); else saveData(data);
-        console.log('[uploadMapImg] Saved imageData for', id, '— size:', sizeKB, 'KB');
-
-        // Verify ngay sau save: data có thực sự ở RAM không?
-        setTimeout(function(){
-          const verify = Settings.get();
-          const vMap = (verify.maps || []).find(m => m.id === id);
-          console.log('[uploadMapImg] After save, Settings.get() returns imageData?', !!(vMap && vMap.imageData));
-        }, 100);
       } else {
         console.error('[uploadMapImg] mapId not found in settings.maps:', id);
       }

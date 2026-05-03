@@ -508,9 +508,5 @@ function getMapImage(mapId) {
     }
   } catch(e) {}
   // Fallback localStorage
-  const fb = loadImageFromStorage('map_' + mapId);
-  if (!fb) {
-    console.warn('[getMapImage] No image found for mapId=', mapId, '- check Firebase sync');
-  }
-  return fb;
+  return loadImageFromStorage('map_' + mapId);
 }

@@ -268,38 +268,35 @@ function renderDashboardPage() {
 ═══════════════════════════════════════════════════ */
 function initDashMap() {
   var wrap   = document.getElementById('dash-map-wrap');
-  if (!wrap) { console.warn('[initDashMap] No #dash-map-wrap element found'); return; }
+  if (!wrap) return;
 
   var settings = Settings.get();
   var session  = Sessions.getCurrent();
   var admin    = isAdmin();
   var maps     = settings.maps || [];
-  var mapId    = (session && session.map) || settings.currentMap || (maps[0] && maps[0].id) || '';
-  var mapObj   = maps.find(function(m){ return m.id === mapId; });
-  var mapImg   = mapObj ? getMapImage(mapObj.id) : '';
 
-  // Fallback: nếu map đang chọn không có ảnh, thử map đầu tiên có ảnh
-  if (!mapImg && maps.length > 0) {
-    for (var i = 0; i < maps.length; i++) {
-      var alt = getMapImage(maps[i].id);
-      if (alt) {
-        console.warn('[initDashMap] mapId=', mapId, 'không có ảnh — fallback sang', maps[i].id);
-        mapObj = maps[i];
-        mapId  = maps[i].id;
-        mapImg = alt;
-        break;
-      }
-    }
+  // Resolve map theo thứ tự ưu tiên:
+  //   1. settings.currentMap (đang dùng theo Cấu Hình)
+  //   2. session.map (nếu hợp lệ)
+  //   3. map đầu tiên có ảnh
+  //   4. map đầu tiên
+  var mapId = '';
+  if (settings.currentMap && maps.find(function(m){return m.id === settings.currentMap;})) {
+    mapId = settings.currentMap;
+  } else if (session && session.map && maps.find(function(m){return m.id === session.map;})) {
+    mapId = session.map;
+  } else {
+    var withImg = maps.find(function(m){ return getMapImage(m.id); });
+    mapId = withImg ? withImg.id : (maps[0] && maps[0].id) || '';
   }
 
-  // Debug: full status of map lookup
-  console.log('[initDashMap] mapId=', mapId,
-              '| session.map=', session && session.map,
-              '| settings.currentMap=', settings.currentMap,
-              '| maps.length=', maps.length,
-              '| mapObj=', mapObj ? mapObj.id : null,
-              '| mapObj.imageData?', !!(mapObj && mapObj.imageData),
-              '| mapImg.length=', (mapImg||'').length);
+  // Tự động "chữa" session.map nếu nó stale (admin only, để không spam writes)
+  if (admin && session && session.map !== mapId && mapId) {
+    Sessions.updateCurrent({ map: mapId });
+  }
+
+  var mapObj   = maps.find(function(m){ return m.id === mapId; });
+  var mapImg   = mapObj ? getMapImage(mapObj.id) : '';
 
   // Render bản đồ
   if (mapImg) {

@@ -342,11 +342,6 @@ window.saveData = function(data) {
   delete dataNoMembers.members;
   dataNoMembers.updatedAt = Date.now();
 
-  // Debug: check imageData trước khi push
-  var hasImg = !!(dataNoMembers.settings && Array.isArray(dataNoMembers.settings.maps) && dataNoMembers.settings.maps.some(function(m){return !!m.imageData;}));
-  var docSize = JSON.stringify(dataNoMembers).length;
-  console.log('[saveData] hasImg=', hasImg, 'docSize=', Math.round(docSize/1024), 'KB', 'isAdmin=', _isAdmin(), 'fbOk=', _fbOk, 'synced=', _guildSynced);
-
   // Cache local cho reload — strip imageData để không bị quota
   try {
     var slim = (typeof _stripBigData === 'function') ? _stripBigData(data) : data;
@@ -357,14 +352,13 @@ window.saveData = function(data) {
   }
 
   if (!_fbOk || !_guildRef || !_isAdmin()) {
-    console.warn('[saveData] ⚠ Skipped Firebase push. _fbOk=', _fbOk, '_guildRef=', !!_guildRef, '_isAdmin=', _isAdmin());
-    return true;
+    return true;  // Không phải admin hoặc Firebase chưa kết nối — chỉ ghi local
   }
 
   // ⭐ NẾU CHƯA SYNC LẦN NÀO TỪ FIREBASE → KHÔNG GHI ĐÈ
   // (RAM hiện tại có thể là DEFAULT_DATA hoặc localStorage stale)
   if (!_guildSynced) {
-    console.warn('[saveData] ⚠ BLOCKED — chưa sync với Firebase lần nào. Đợi listener fire trước.');
+    console.warn('[saveData] ⚠ BLOCKED — chưa sync với Firebase lần nào.');
     if (typeof showToast === 'function') {
       showToast('⏳ Đang đồng bộ với Firebase, hãy thử lại sau 1-2 giây', 'info', 3000);
     }
@@ -376,7 +370,6 @@ window.saveData = function(data) {
     .then(function(){
       _isSyncingGuild = false;
       _badge(true, _t(dataNoMembers.updatedAt));
-      console.log('[saveData] ✅ Firebase write OK');
     })
     .catch(function(e){
       _isSyncingGuild = false;
