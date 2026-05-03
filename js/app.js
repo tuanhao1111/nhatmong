@@ -62,19 +62,12 @@ function initApp() {
     var pending = JSON.parse(localStorage.getItem('nth_pending_members') || '[]');
     if (pending.length > 0 && typeof Members !== 'undefined') {
       pending.forEach(function(pm) {
-        var existing = Members.getAll().find(function(m) { return m.id === pm.id || m.inGameName === pm.inGameName; });
-        if (!existing) {
-          Members.add(pm);
-          console.log('[App] Added pending member:', pm.name);
-        }
+        var ex = Members.getAll().find(function(m){ return m.id===pm.id || m.inGameName===pm.inGameName; });
+        if (!ex) Members.add(pm);
       });
       localStorage.removeItem('nth_pending_members');
-      // Push lên Firebase
-      if (typeof fbPushNow === 'function' && typeof _fbOk !== 'undefined' && _fbOk) {
-        setTimeout(fbPushNow, 2000);
-      }
     }
-  } catch(e) { console.error('[App] Pending members error:', e); }
+  } catch(e) {}
   requireAuth();
   const hash      = window.location.hash.replace('#','') || 'dashboard';
   const startPage = PAGES[hash] ? hash : 'dashboard';

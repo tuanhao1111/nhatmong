@@ -45,15 +45,14 @@ function _listenGuild() {
   if (_unsubGuild) _unsubGuild();
   _unsubGuild = _guildRef.onSnapshot(function(snap) {
     if (!snap.exists) return;
-    if (_isSyncing) return; // đang push local lên, bỏ qua update từ server
+    if (_isSyncing) return; // skip khi đang push local lên
     var remote = snap.data();
     var localTs = 0;
     try { localTs = (JSON.parse(localStorage.getItem(DB_KEY))||{}).updatedAt||0; } catch(e){}
-    var remoteTs = remote.updatedAt || 0;
-    if (remoteTs > localTs) {
+    if ((remote.updatedAt||0) > localTs) {
       try { localStorage.setItem(DB_KEY, JSON.stringify(remote)); } catch(e){}
-      _badge(true, _t(remoteTs));
-      console.log('[FB] ⬇ Data mới từ server:', _t(remoteTs), '>', _t(localTs));
+      _badge(true, _t(remote.updatedAt));
+      console.log('[FB] Guild data updated from server');
       if (window.currentPage && typeof renderPage === 'function' && !document.querySelector('.modal-overlay')) {
         setTimeout(function(){ renderPage(window.currentPage); }, 200);
       }
@@ -138,8 +137,6 @@ function _updateRoleUI(newRole) {
 }
 
 window.saveData = function(data) {
-  // QUAN TRỌNG: luôn set updatedAt trước khi lưu
-  // để _listenGuild không override bằng data cũ từ Firebase
   var ts = Date.now();
   var dataWithTs = Object.assign({}, data, { updatedAt: ts });
   var ok = false;
@@ -147,14 +144,8 @@ window.saveData = function(data) {
   if (_fbOk && _guildRef && _isAdmin()) {
     _isSyncing = true;
     _guildRef.set(dataWithTs)
-      .then(function(){
-        _isSyncing = false;
-        _badge(true, _t(ts));
-      })
-      .catch(function(e){
-        _isSyncing = false;
-        console.error('[FB] Save error:', e);
-      });
+      .then(function(){ _isSyncing = false; _badge(true, _t(ts)); })
+      .catch(function(e){ _isSyncing = false; console.error('[FB] Save error:', e); });
   }
   return ok;
 };

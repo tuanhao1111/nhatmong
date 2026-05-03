@@ -23,12 +23,10 @@ function isAdmin() {
   const u = getCurrentUser();
   return u && u.role === 'admin';
 }
-
 function isMember() {
   const u = getCurrentUser();
   return u && (u.role === 'member' || u.role === 'admin');
 }
-
 function isGuest() {
   const u = getCurrentUser();
   return !u || u.role === 'guest';
