@@ -57,17 +57,9 @@ function buildSidebar() {
 function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
 
 function initApp() {
-  // Xử lý pending members từ đăng ký
-  try {
-    var pending = JSON.parse(localStorage.getItem('nth_pending_members') || '[]');
-    if (pending.length > 0 && typeof Members !== 'undefined') {
-      pending.forEach(function(pm) {
-        var ex = Members.getAll().find(function(m){ return m.id===pm.id || m.inGameName===pm.inGameName; });
-        if (!ex) Members.add(pm);
-      });
-      localStorage.removeItem('nth_pending_members');
-    }
-  } catch(e) {}
+  // Member mới được ghi trực tiếp vào /guilds/guild_main/members khi đăng ký,
+  // không cần xử lý pending nữa. Dọn dẹp legacy key nếu có.
+  try { localStorage.removeItem('nth_pending_members'); } catch(e) {}
   requireAuth();
   const hash      = window.location.hash.replace('#','') || 'dashboard';
   const startPage = PAGES[hash] ? hash : 'dashboard';

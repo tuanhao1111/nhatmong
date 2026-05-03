@@ -1,10 +1,11 @@
 /**
  * auth.js - Hệ thống phân quyền
- * 
- * Roles:
- *   'admin'  - Toàn quyền: xem + sửa + cấp quyền tài khoản khác
- *   'member' - Chỉ xem, không sửa
- *   'guest'  - Chỉ xem, không sửa
+ *
+ * THAY ĐỔI:
+ *   - AuthUsers KHÔNG còn ghi localStorage làm source of truth.
+ *     Đọc từ cache 'nth_users' (do firebase.js _listenUsers cập nhật).
+ *     Ghi (setRole, delete) qua UsersFB → Firestore.
+ *   - logout() gọi cả fbLogout() để signOut Firebase Auth.
  */
 
 const SESSION_KEY = 'nth_session';
@@ -34,6 +35,14 @@ function isGuest() {
 
 function canEdit() { return isAdmin(); }
 
+// Member có thể tự sửa info bản thân không?
+function canEditOwnMember(memberId) {
+  const u = getCurrentUser();
+  if (!u) return false;
+  if (u.role === 'admin') return true;
+  return u.role === 'member' && u.id === memberId;
+}
+
 // ── Guard: nếu chưa đăng nhập thì redirect ───────────────────────────────────
 function requireAuth() {
   if (!getCurrentUser()) {
@@ -55,30 +64,21 @@ function requireAuth() {
 function logout() {
   sessionStorage.removeItem(SESSION_KEY);
   localStorage.removeItem(SESSION_KEY);
-  window.location.href = 'login.html';
+  // SignOut Firebase Auth nếu đang đăng nhập
+  if (typeof fbLogout === 'function') {
+    fbLogout().catch(function(){}).finally(function(){
+      window.location.href = 'login.html';
+    });
+  } else {
+    window.location.href = 'login.html';
+  }
 }
 
-// ── Quản lý users (admin) ────────────────────────────────────────────────────
+// ── Quản lý users (admin) - bây giờ chỉ READ từ cache, WRITE qua UsersFB ────
 const AuthUsers = {
+  /** Đọc từ cache nth_users (đã được sync bởi firebase.js _listenUsers) */
   getAll() {
     try { return JSON.parse(localStorage.getItem(USERS_KEY)) || []; } catch { return []; }
-  },
-  save(users) {
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    if (typeof _usersRef !== 'undefined' && _usersRef)
-      users.forEach(function(u){ if(u&&u.id) _usersRef.doc(u.id).set(u).catch(function(){}); });
-  },
-  setRole(userId, role) {
-    const users = this.getAll();
-    const idx = users.findIndex(u => u.id === userId);
-    if (idx === -1) return false;
-    users[idx].role = role;
-    this.save(users);
-    return true;
-  },
-  delete(userId) {
-    const users = this.getAll().filter(u => u.id !== userId);
-    this.save(users);
   }
 };
 
@@ -100,9 +100,9 @@ function renderAccountsPage() {
     : users.map(u => `
       <tr>
         <td style="padding:12px 16px">
-          <div style="font-weight:600">${escHtml(u.name)}</div>
+          <div style="font-weight:600">${escHtml(u.name||u.username||'')}</div>
         </td>
-        <td style="padding:12px 16px;color:var(--text-secondary);font-size:13px">${escHtml(u.email)}</td>
+        <td style="padding:12px 16px;color:var(--text-secondary);font-size:13px">${escHtml(u.username||u.email||'')}</td>
         <td style="padding:12px 16px">${accountRoleBadge(u.role)}</td>
         <td style="padding:12px 16px;font-size:12px;color:var(--text-secondary)">${formatDate(u.createdAt)}</td>
         <td style="padding:12px 16px">
@@ -110,7 +110,7 @@ function renderAccountsPage() {
             <select onchange="setUserRole('${u.id}', this.value)" style="font-size:12px;padding:4px 8px">
               ${roleOpts(u.role)}
             </select>
-            <button class="btn btn-danger" style="padding:4px 10px;font-size:12px" onclick="deleteUser('${u.id}','${escHtml(u.name)}')">Xóa</button>
+            <button class="btn btn-danger" style="padding:4px 10px;font-size:12px" onclick="deleteUser('${u.id}','${escHtml(u.name||u.username||'')}')">Xóa</button>
           </div>
         </td>
       </tr>`).join('');
@@ -121,22 +121,23 @@ function renderAccountsPage() {
       <div class="page-subtitle">${users.length} tài khoản đã đăng ký</div>
     </div>
 
-    <!-- Admin account note -->
     <div class="card" style="margin-bottom:16px;background:#0f1a0f;border-color:#2a4a2a;padding:14px 18px">
       <div style="display:flex;align-items:center;gap:10px">
         <span style="font-size:20px">🔑</span>
         <div>
           <div style="font-weight:600;color:var(--accent-green)">Tài khoản Admin mặc định</div>
           <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">
-            Email: <strong style="color:var(--text-primary)">admin@guild.com</strong> · 
-            Mật khẩu: <strong style="color:var(--text-primary)">admin123</strong> · 
+            Username: <strong style="color:var(--text-primary)">admin</strong> ·
+            Mật khẩu: <strong style="color:var(--text-primary)">admin123</strong> ·
             Quyền: <strong style="color:var(--accent-gold)">Admin</strong>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
+            (Lần đầu setup: admin đăng ký tài khoản này tại trang Đăng ký, rồi vào Firebase Console set role='admin' cho doc /users/{uid})
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Role legend -->
     <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
       <div class="card" style="padding:12px 16px;flex:1;min-width:180px">
         <div style="color:var(--accent-gold);font-weight:700;margin-bottom:4px">👑 Admin</div>
@@ -144,7 +145,7 @@ function renderAccountsPage() {
       </div>
       <div class="card" style="padding:12px 16px;flex:1;min-width:180px">
         <div style="color:var(--accent-cyan);font-weight:700;margin-bottom:4px">👤 Member</div>
-        <div style="font-size:12px;color:var(--text-secondary)">Chỉ xem, không được chỉnh sửa</div>
+        <div style="font-size:12px;color:var(--text-secondary)">Xem + tự sửa info bản thân</div>
       </div>
       <div class="card" style="padding:12px 16px;flex:1;min-width:180px">
         <div style="color:var(--text-muted);font-weight:700;margin-bottom:4px">🚪 Guest</div>
@@ -152,13 +153,12 @@ function renderAccountsPage() {
       </div>
     </div>
 
-    <!-- Table -->
     <div class="card" style="padding:0;overflow:hidden">
       <table style="width:100%;border-collapse:collapse">
         <thead>
           <tr style="background:#0f0f1e;border-bottom:1px solid var(--border-color)">
             <th style="padding:12px 16px;text-align:left;font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px">Tên</th>
-            <th style="padding:12px 16px;text-align:left;font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px">Email</th>
+            <th style="padding:12px 16px;text-align:left;font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px">Username</th>
             <th style="padding:12px 16px;text-align:left;font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px">Quyền</th>
             <th style="padding:12px 16px;text-align:left;font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px">Ngày đăng ký</th>
             <th style="padding:12px 16px;text-align:left;font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px">Thao tác</th>
@@ -183,30 +183,34 @@ function accountRoleBadge(role) {
 }
 
 function setUserRole(userId, newRole) {
-  AuthUsers.setRole(userId, newRole);
-  // Push user update lên Firebase để member nhận realtime
-  if (typeof _usersRef !== 'undefined' && _usersRef) {
-    const allUsers = AuthUsers.getAll();
-    const user     = allUsers.find(u => u.id === userId);
-    if (user) {
-      _usersRef.doc(userId).set(user)
-        .then(()  => console.log('[FB] ✅ Role synced:', userId, newRole))
-        .catch(e  => console.error('[FB] Role sync lỗi:', e.message));
-    }
-  }
-  showToast(`Đã cập nhật quyền thành ${ROLE_LABELS[newRole]}!`);
+  if (!isAdmin()) { denyEdit(); return; }
+  if (typeof UsersFB === 'undefined') { showToast('Firebase chưa sẵn sàng', 'error'); return; }
+  UsersFB.setRole(userId, newRole)
+    .then(function(){
+      console.log('[Auth] Role set:', userId, newRole);
+      showToast(`Đã cập nhật quyền thành ${ROLE_LABELS[newRole]}!`);
+    })
+    .catch(function(e){
+      console.error('[Auth] setRole error:', e);
+      showToast('❌ Lỗi: ' + (e.code || e.message), 'error', 4000);
+    });
 }
 
 function deleteUser(userId, name) {
-  if (!confirmDelete(`Xóa tài khoản "${name}"?`)) return;
-  AuthUsers.delete(userId);
-  if (typeof _usersRef !== 'undefined' && _usersRef)
-    _usersRef.doc(userId).delete().catch(function(){});
-  showToast('Đã xóa tài khoản!', 'error');
-  renderPage('accounts');
+  if (!isAdmin()) { denyEdit(); return; }
+  if (!confirmDelete(`Xóa tài khoản "${name}"?\n(Lưu ý: chỉ xóa data trong Firestore, Auth account vẫn còn — admin cần xóa thêm trong Firebase Console nếu muốn user không login lại được)`)) return;
+  if (typeof UsersFB === 'undefined') { showToast('Firebase chưa sẵn sàng', 'error'); return; }
+  UsersFB.delete(userId)
+    .then(function(){
+      showToast('Đã xóa tài khoản!', 'error');
+      renderPage('accounts');
+    })
+    .catch(function(e){
+      console.error('[Auth] delete error:', e);
+      showToast('❌ Lỗi: ' + (e.code || e.message), 'error', 4000);
+    });
 }
 
-// ── Helper: hiện thông báo "chỉ xem" khi khách cố sửa ───────────────────────
 function denyEdit() {
   showToast('🔒 Bạn không có quyền chỉnh sửa. Liên hệ Admin để được cấp quyền.', 'error', 4000);
 }

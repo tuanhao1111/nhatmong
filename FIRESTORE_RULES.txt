@@ -1,14 +1,117 @@
-Copy toàn bộ đoạn dưới vào Firebase Console → Firestore Database → Rules → Publish:
+═══════════════════════════════════════════════════════════════════════════
+  FIRESTORE SECURITY RULES - NGHỊCH THỦY HÀN
+═══════════════════════════════════════════════════════════════════════════
 
-════════════════════════════════════════
+Copy toàn bộ đoạn dưới vào Firebase Console → Firestore Database → Rules
+→ Publish.
+
+QUAN TRỌNG: Phải bật Firebase Authentication (Email/Password) trước:
+  Firebase Console → Authentication → Sign-in method → Email/Password → Enable
+
+═══════════════════════════════════════════════════════════════════════════
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Helper: lấy role của user hiện tại từ /users/{uid}
+    function userRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return isSignedIn() && userRole() == 'admin';
+    }
+    function isMember() {
+      return isSignedIn() && (userRole() == 'admin' || userRole() == 'member');
+    }
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ─── /users/{uid} ────────────────────────────────────────────────────
+    // Đọc: chỉ user đã đăng nhập (member hoặc admin) đọc được
+    // Tạo: user tự tạo doc của mình lúc đăng ký, role BẮT BUỘC là 'member'
+    // Update: admin update bất kỳ; user chỉ update name của mình (không tự thăng chức!)
+    // Delete: chỉ admin
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(uid)
+                    && request.resource.data.role == 'member'
+                    && request.resource.data.id == uid;
+      allow update: if isAdmin()
+                    || (isOwner(uid)
+                        && request.resource.data.role == resource.data.role
+                        && request.resource.data.id == resource.data.id);
+      allow delete: if isAdmin();
+    }
+
+    // ─── /guilds/guild_main ──────────────────────────────────────────────
+    // Settings, sessions, currentSession - chỉ admin được ghi
+    match /guilds/guild_main {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ─── /guilds/guild_main/members/{uid} ────────────────────────────────
+    // Mỗi member 1 doc, document ID == auth UID
+    // Đọc: cả bang đọc
+    // Tạo: user tự tạo record của mình lúc đăng ký
+    // Update: admin update bất kỳ; member chỉ update record của chính mình
+    //         và KHÔNG được tự đổi group / combatRole (admin xếp)
+    // Delete: chỉ admin
+    match /guilds/guild_main/members/{memberId} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(memberId)
+                    && request.resource.data.id == memberId;
+      allow update: if isAdmin()
+                    || (isOwner(memberId)
+                        && request.resource.data.id == resource.data.id
+                        && request.resource.data.group == resource.data.group
+                        && request.resource.data.combatRole == resource.data.combatRole
+                        && request.resource.data.role == resource.data.role);
+      allow delete: if isAdmin();
+    }
+
+    // Mặc định: từ chối tất cả document khác
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }
-════════════════════════════════════════
 
-Sau khi Publish xong, mọi trình duyệt đều đọc/ghi được.
+═══════════════════════════════════════════════════════════════════════════
+  HƯỚNG DẪN SETUP LẦN ĐẦU
+═══════════════════════════════════════════════════════════════════════════
+
+1. Bật Firebase Authentication:
+   Firebase Console → Authentication → Get started → chọn Email/Password
+   → bật "Email/Password" (KHÔNG cần bật Email link)
+
+2. Publish rules ở trên.
+
+3. Tạo tài khoản admin lần đầu:
+   - Vào trang web → Đăng ký với username "admin", password "admin123"
+     (hoặc bất kỳ username nào bạn muốn làm Bang Chủ)
+   - Sau khi đăng ký, account này sẽ có role='member' mặc định
+   - Vào Firebase Console → Firestore → /users/{uid của admin}
+   - Sửa field "role" từ "member" → "admin", Save
+   - Refresh trang web, account đó giờ là Admin
+
+4. Member khác đăng ký bình thường - sẽ tự động hiện trong danh sách
+   thành viên và trang Quản lý Tài khoản (nhờ realtime onSnapshot).
+
+═══════════════════════════════════════════════════════════════════════════
+  GIẢI THÍCH NGẮN
+═══════════════════════════════════════════════════════════════════════════
+
+- Member KHÔNG thể tự thăng mình thành admin (rules chặn ở /users role).
+- Member KHÔNG thể tự đổi nhóm/vai trò chiến đấu của mình (rules chặn ở
+  /guilds/guild_main/members group + combatRole).
+- Member sửa được: name, inGameName, inGameId, discordId, class, power,
+  skill, tasks, note của chính mình.
+- Member CHỈ tạo doc users/{uid} và members/{uid} với UID = uid của họ
+  (không thể tạo cho người khác).
+- Người chưa đăng ký KHÔNG đọc được gì (kể cả users) → chống scrape.

@@ -387,64 +387,57 @@
   <div class="back-home"><a href="index.html">← Về trang chủ</a></div>
 </div>
 
+
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="js/storage.js"></script>
 
 <script>
-  /* ── Firebase user sync cho login.html ── */
-  var _fbDb = null, _fbUsersRef = null, _fbReady = false;
+  // ── Firebase init cho login.html ───────────────────────────────────────────
   var FB_CFG = {
-    apiKey:"AIzaSyBszK09g8sHvufGNrFwDDgcw6rolV37KSA",
-    authDomain:"nhatmongdata.firebaseapp.com",
-    projectId:"nhatmongdata",
-    storageBucket:"nhatmongdata.firebasestorage.app",
-    messagingSenderId:"814787062547",
-    appId:"1:814787062547:web:c4ca571227c5a5555688e6"
+    apiKey:            "AIzaSyBszK09g8sHvufGNrFwDDgcw6rolV37KSA",
+    authDomain:        "nhatmongdata.firebaseapp.com",
+    projectId:         "nhatmongdata",
+    storageBucket:     "nhatmongdata.firebasestorage.app",
+    messagingSenderId: "814787062547",
+    appId:             "1:814787062547:web:c4ca571227c5a5555688e6"
   };
+  var FAKE_EMAIL_DOMAIN = '@nhatmong.local';
+
+  var _fbApp = null, _fbAuth = null, _fbDb = null, _fbUsersRef = null, _fbMembersRef = null;
+  var _fbReady = false;
 
   function fbLoginInit() {
     if (typeof firebase === 'undefined') { setTimeout(fbLoginInit, 500); return; }
     try {
-      var app = firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(FB_CFG);
-      _fbDb       = firebase.firestore(app);
-      _fbUsersRef = _fbDb.collection('users');
-      _fbReady    = true;
-      // Kéo users từ Firebase về localStorage ngay khi load
-      _fbUsersRef.get().then(function(snap) {
-        var users = [];
-        snap.forEach(function(d){ users.push(d.data()); });
-        if (users.length > 0) {
-          localStorage.setItem('nth_users', JSON.stringify(users));
-          console.log('[FB-Login] Đã kéo', users.length, 'users từ Firebase');
-        }
-      }).catch(function(e){ console.warn('[FB-Login] Không lấy được users:', e.message); });
-    } catch(e) { console.warn('[FB-Login] Init lỗi:', e.message); }
+      _fbApp        = firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(FB_CFG);
+      _fbAuth       = firebase.auth(_fbApp);
+      _fbDb         = firebase.firestore(_fbApp);
+      _fbUsersRef   = _fbDb.collection('users');
+      _fbMembersRef = _fbDb.collection('guilds').doc('guild_main').collection('members');
+      _fbReady      = true;
+      console.log('[FB-Login] Ready');
+    } catch(e) { console.error('[FB-Login] Init lỗi:', e.message); }
+  }
+  setTimeout(fbLoginInit, 200);
+
+  function usernameToEmail(username) {
+    var u = String(username || '').trim().toLowerCase();
+    u = u.replace(/[^a-z0-9._-]/g, '_');
+    if (!u) throw new Error('Username không hợp lệ');
+    return u + FAKE_EMAIL_DOMAIN;
   }
 
-  // Push user mới lên Firebase sau khi đăng ký
-  function fbPushNewUser(user) {
-    if (!_fbReady || !_fbUsersRef) return;
-    _fbUsersRef.doc(user.id).set(user)
-      .then(function(){ console.log('[FB-Login] ✅ User mới đã lên Firebase:', user.email); })
-      .catch(function(e){ console.error('[FB-Login] ❌ Push user lỗi:', e.message); });
-  }
-
-  setTimeout(fbLoginInit, 300);
-</script>
-
-<script>
-  // ===== Tab switch =====
+  // ── Tab switch ─────────────────────────────────────────────────────────────
   function switchTab(tab) {
-    document.getElementById('form-login').style.display = tab === 'login' ? '' : 'none';
+    document.getElementById('form-login').style.display    = tab === 'login'    ? '' : 'none';
     document.getElementById('form-register').style.display = tab === 'register' ? '' : 'none';
-    document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+    document.getElementById('tab-login').classList.toggle('active',    tab === 'login');
     document.getElementById('tab-register').classList.toggle('active', tab === 'register');
     hideError();
   }
 
-  // ===== Error =====
   function showError(msg) {
     const el = document.getElementById('error-msg');
     el.textContent = msg;
@@ -454,7 +447,6 @@
     document.getElementById('error-msg').classList.remove('show');
   }
 
-  // ===== Password toggle =====
   function togglePwd(inputId, btn) {
     const inp = document.getElementById(inputId);
     const show = inp.type === 'password';
@@ -462,134 +454,145 @@
     btn.textContent = show ? '🙈' : '👁';
   }
 
-  // ===== Auth logic (localStorage) =====
-  const USERS_KEY = 'nth_users';
   const SESSION_KEY = 'nth_session';
 
-  function getUsers() {
-    try { return JSON.parse(localStorage.getItem(USERS_KEY)) || []; } catch { return []; }
-  }
-  function saveUsers(u) { localStorage.setItem(USERS_KEY, JSON.stringify(u)); }
   function saveSession(user) {
     const remember = document.getElementById('remember-me')?.checked;
     const store = remember ? localStorage : sessionStorage;
-    store.setItem(SESSION_KEY, JSON.stringify({ id: user.id, name: user.name, email: user.email, role: user.role }));
+    store.setItem(SESSION_KEY, JSON.stringify({
+      id: user.id,
+      name: user.name || user.username,
+      username: user.username,
+      role: user.role
+    }));
   }
 
+  // ── Login bằng Firebase Auth ───────────────────────────────────────────────
   function submitLogin() {
     hideError();
-    const email = document.getElementById('login-email').value.trim();
-    const pass  = document.getElementById('login-pass').value;
-    if (!email || !pass) { showError('Vui lòng nhập đầy đủ thông tin!'); return; }
+    const username = document.getElementById('login-email').value.trim();
+    const pass     = document.getElementById('login-pass').value;
+    if (!username || !pass) { showError('Vui lòng nhập đầy đủ thông tin!'); return; }
 
-    // Tài khoản admin cứng
-    if (email === 'admin@guild.com' && pass === 'admin123') {
-      saveSession({ id: 'admin', name: 'Bang Chủ', email, role: 'admin' });
-      window.location.href = 'app.html';
-      return;
-    }
+    if (!_fbReady) { showError('Firebase chưa kết nối, vui lòng đợi...'); return; }
 
-    // Thử đăng nhập với users đã có trong localStorage (có thể đã sync từ Firebase)
-    function tryLogin() {
-      const users = getUsers();
-      const user  = users.find(u => u.email === email && u.pass === btoa(pass));
-      if (user) {
+    const submitBtn = document.querySelector('#form-login .btn-submit');
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Đang đăng nhập...'; }
+    function reset() { if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Đăng nhập'; } }
+
+    let email;
+    try { email = usernameToEmail(username); }
+    catch(e) { reset(); showError('Tên đăng nhập không hợp lệ!'); return; }
+
+    _fbAuth.signInWithEmailAndPassword(email, pass)
+      .then(cred => _fbUsersRef.doc(cred.user.uid).get())
+      .then(snap => {
+        if (!snap.exists) throw new Error('user-doc-missing');
+        const user = snap.data();
         saveSession(user);
         window.location.href = 'app.html';
-        return true;
-      }
-      return false;
-    }
-
-    // Nếu Firebase sẵn sàng, kéo users mới nhất từ Firebase rồi mới login
-    if (_fbReady && _fbUsersRef) {
-      _fbUsersRef.get().then(function(snap) {
-        var users = [];
-        snap.forEach(function(d){ users.push(d.data()); });
-        if (users.length > 0) localStorage.setItem('nth_users', JSON.stringify(users));
-        if (!tryLogin()) showError('Email hoặc mật khẩu không đúng!');
-      }).catch(function() {
-        if (!tryLogin()) showError('Email hoặc mật khẩu không đúng!');
+      })
+      .catch(err => {
+        reset();
+        console.error('[Login] error:', err);
+        const msg = mapAuthError(err);
+        showError(msg);
       });
-    } else {
-      if (!tryLogin()) showError('Email hoặc mật khẩu không đúng!');
-    }
   }
 
+  function mapAuthError(err) {
+    const c = err && err.code;
+    if (c === 'auth/wrong-password' || c === 'auth/user-not-found' || c === 'auth/invalid-credential' || c === 'auth/invalid-login-credentials')
+      return 'Tên đăng nhập hoặc mật khẩu không đúng!';
+    if (c === 'auth/too-many-requests') return 'Quá nhiều lần thử sai. Vui lòng đợi vài phút.';
+    if (c === 'auth/network-request-failed') return 'Không kết nối được mạng!';
+    if (c === 'auth/email-already-in-use') return 'Tên đăng nhập này đã có người sử dụng!';
+    if (c === 'auth/weak-password') return 'Mật khẩu quá yếu (ít nhất 6 ký tự)!';
+    if (err.message === 'user-doc-missing') return 'Tài khoản chưa được setup hoàn chỉnh, liên hệ Bang Chủ!';
+    return 'Lỗi: ' + (err.message || c);
+  }
+
+  // ── Register bằng Firebase Auth ────────────────────────────────────────────
   function submitRegister() {
     hideError();
-    const username   = (document.getElementById('reg-email')||{value:''}).value.trim();
-    const name       = (document.getElementById('reg-name')||{value:''}).value.trim();
-    const ingameName = (document.getElementById('reg-ingame-name')||{value:''}).value.trim();
-    const ingameId   = (document.getElementById('reg-ingame-id')||{value:''}).value.trim();
-    const discordId  = (document.getElementById('reg-discord-id')||{value:''}).value.trim();
-    const classId    = (document.getElementById('reg-class')||{value:''}).value;
-    const pass       = (document.getElementById('reg-pass')||{value:''}).value;
-    const pass2      = (document.getElementById('reg-pass2')||{value:''}).value;
+    const username   = (document.getElementById('reg-email')        || {value:''}).value.trim();
+    const name       = (document.getElementById('reg-name')         || {value:''}).value.trim();
+    const ingameName = (document.getElementById('reg-ingame-name')  || {value:''}).value.trim();
+    const ingameId   = (document.getElementById('reg-ingame-id')    || {value:''}).value.trim();
+    const discordId  = (document.getElementById('reg-discord-id')   || {value:''}).value.trim();
+    const classId    = (document.getElementById('reg-class')        || {value:''}).value;
+    const pass       = (document.getElementById('reg-pass')         || {value:''}).value;
+    const pass2      = (document.getElementById('reg-pass2')        || {value:''}).value;
 
     if (!username)       { showError('Vui lòng nhập tên đăng nhập!'); return; }
+    if (!/^[a-zA-Z0-9._-]{3,}$/.test(username)) {
+      showError('Tên đăng nhập chỉ chứa chữ, số, dấu chấm/gạch (>= 3 ký tự)!'); return;
+    }
     if (!name)           { showError('Vui lòng nhập tên hiển thị!'); return; }
     if (!ingameName)     { showError('Vui lòng nhập tên Ingame!'); return; }
     if (!classId)        { showError('Vui lòng chọn hệ phái!'); return; }
     if (pass.length < 6) { showError('Mật khẩu ít nhất 6 ký tự!'); return; }
     if (pass !== pass2)  { showError('Mật khẩu xác nhận không khớp!'); return; }
 
-    function doRegister(existingUsers) {
-      if (existingUsers.find(u => u.email === username)) {
-        showError('Tên đăng nhập này đã tồn tại!'); return;
-      }
-      const uid = Date.now().toString(36);
-      const newUser = {
-        id: uid, name, email: username,
-        inGameName: ingameName, inGameId: ingameId, discordId,
-        class: classId, pass: btoa(pass), role: 'member',
-        createdAt: new Date().toISOString()
-      };
-      existingUsers.push(newUser);
-      saveUsers(existingUsers);
-      // Lưu pending member vào localStorage để app.html thêm vào Members
-      var pendingMember = {
-        id: uid, name: name, inGameName: ingameName,
-        inGameId: ingameId, discordId: discordId,
-        class: classId, role: 'member',
-        joinDate: new Date().toISOString().split('T')[0]
-      };
-      try {
-        var pending = JSON.parse(localStorage.getItem('nth_pending_members') || '[]');
-        pending.push(pendingMember);
-        localStorage.setItem('nth_pending_members', JSON.stringify(pending));
-      } catch(e) {}
-      // Push Firebase
-      if (typeof fbPushNewUser === 'function') fbPushNewUser(newUser);
-      if (typeof _fbUsersRef !== 'undefined' && _fbUsersRef) {
-        _fbUsersRef.doc(uid).set(newUser).catch(()=>{});
-      }
-      saveSession(newUser);
-      window.location.href = 'app.html';
-    }
+    if (!_fbReady) { showError('Firebase chưa kết nối, vui lòng đợi...'); return; }
 
-    if (typeof _fbUsersRef !== 'undefined' && _fbUsersRef) {
-      _fbUsersRef.get().then(snap => {
-        const users = [];
-        snap.forEach(d => users.push(d.data()));
-        if (users.length) localStorage.setItem('nth_users', JSON.stringify(users));
-        doRegister(users.length ? users : getUsers());
-      }).catch(() => doRegister(getUsers()));
-    } else {
-      doRegister(getUsers());
-    }
+    const submitBtn = document.querySelector('#form-register .btn-submit');
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Đang tạo...'; }
+    function reset() { if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Tạo tài khoản'; } }
+
+    let email;
+    try { email = usernameToEmail(username); }
+    catch(e) { reset(); showError('Tên đăng nhập không hợp lệ!'); return; }
+
+    _fbAuth.createUserWithEmailAndPassword(email, pass)
+      .then(cred => {
+        const uid = cred.user.uid;
+        const userDoc = {
+          id: uid,
+          username: username,
+          name: name,
+          role: 'member',
+          createdAt: new Date().toISOString()
+        };
+        const memberDoc = {
+          id: uid,
+          name: name,
+          inGameName: ingameName,
+          inGameId:   ingameId,
+          discordId:  discordId,
+          class:      classId,
+          power: 0, combatRole: '', skill: '', tasks: [], group: '', note: '',
+          role: 'member',
+          joinDate: new Date().toISOString().split('T')[0]
+        };
+        return Promise.all([
+          _fbUsersRef.doc(uid).set(userDoc),
+          _fbMembersRef.doc(uid).set(memberDoc)
+        ]).then(() => userDoc);
+      })
+      .then(userDoc => {
+        saveSession(userDoc);
+        window.location.href = 'app.html';
+      })
+      .catch(err => {
+        reset();
+        console.error('[Register] error:', err);
+        showError(mapAuthError(err));
+      });
   }
 
   function loginAsGuest() {
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ id: 'guest', name: 'Khách', email: '', role: 'guest' }));
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+      id: 'guest', name: 'Khách', username: '', role: 'guest'
+    }));
     window.location.href = 'app.html';
   }
 
   function showForgot() {
-    alert('Vui lòng liên hệ Bang Chủ để reset mật khẩu.\nEmail: admin@guild.com');
+    alert('Vui lòng liên hệ Bang Chủ để reset mật khẩu.');
   }
 
-  // ===== Particles =====
+  // ── Particles ──────────────────────────────────────────────────────────────
   function spawnParticles() {
     const container = document.getElementById('particles');
     const colors = ['#f0c040', '#40c0e0', '#9060e0', '#30d080'];
@@ -611,18 +614,7 @@
   }
   spawnParticles();
 
-  // Handle hash
   if (window.location.hash === '#register') switchTab('register');
-  // Auto-redirect nếu đã đăng nhập
-  // Dùng flag tránh redirect loop (app.html reload → login.html → app.html...)
-  const _fromReload = sessionStorage.getItem('_from_reload');
-  if (_fromReload) {
-    // Xóa flag, ở lại login
-    sessionStorage.removeItem('_from_reload');
-  } else {
-    const existing = sessionStorage.getItem('nth_session') || localStorage.getItem('nth_session');
-    // auto-redirect disabled to prevent loop
-  }
 </script>
 </body>
 </html>

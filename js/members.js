@@ -64,15 +64,28 @@ function renderMembersPage() {
     </div>`;
   }).join('');
 
-  const actionTh = admin ? `<th class="th">Thao tác</th>` : '';
+  const me = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
+  const myId = me ? me.id : null;
+
+  const actionTh = (admin || myId) ? `<th class="th">Thao tác</th>` : '';
   const rows = filtered.map(m => {
-    const actionTd = admin ? `
+    let actionTd = '';
+    if (admin) {
+      actionTd = `
       <td style="padding:10px 16px">
         <div style="display:flex;gap:6px">
           <button class="btn btn-outline" style="padding:5px 10px;font-size:12px" onclick="openEditMember('${m.id}')">Sửa</button>
           <button class="btn btn-danger"  style="padding:5px 10px;font-size:12px" onclick="deleteMember('${m.id}')">Xóa</button>
         </div>
-      </td>` : '';
+      </td>`;
+    } else if (myId && m.id === myId) {
+      actionTd = `
+      <td style="padding:10px 16px">
+        <button class="btn btn-outline" style="padding:5px 10px;font-size:12px" onclick="openEditMember('${m.id}')">✏ Sửa info của tôi</button>
+      </td>`;
+    } else if (myId) {
+      actionTd = `<td style="padding:10px 16px"></td>`;
+    }
     return `
       <tr style="border-bottom:1px solid var(--border-color)">
         <td style="padding:10px 16px">
@@ -118,7 +131,7 @@ function renderMembersPage() {
           <th class="th">Vai trò</th><th class="th">Skill</th><th class="th">Nhóm</th>
           <th class="th">Ngày vào</th>${actionTh}
         </tr></thead>
-        <tbody>${filtered.length===0?`<tr><td colspan="${admin?8:7}" style="text-align:center;padding:40px;color:var(--text-muted)">Không có thành viên nào</td></tr>`:rows}</tbody>
+        <tbody>${filtered.length===0?`<tr><td colspan="${(admin||myId)?8:7}" style="text-align:center;padding:40px;color:var(--text-muted)">Không có thành viên nào</td></tr>`:rows}</tbody>
       </table>
     </div>
     <style>.th{padding:12px 16px;text-align:left;font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px}</style>
@@ -132,7 +145,7 @@ function memberFilter(key, value) {
 }
 
 /* ══════════════════════════════════════════════════════════ FORM */
-function buildMemberForm(m={}) {
+function buildMemberForm(m={}, selfEdit=false) {
   const settings   = Settings.get();
   const classOpts  = settings.classes.map(c=>`<option value="${c.id}" ${m.class===c.id?'selected':''}>${c.name}</option>`).join('');
   const groupOpts  = settings.groups.map(g=>`<option value="${g.id}" ${m.group===g.id?'selected':''}>${g.name}</option>`).join('');
@@ -197,13 +210,17 @@ function buildMemberForm(m={}) {
     </div>
     <div class="form-row">
       <div class="form-group"><label>Class</label><select id="mf-class"><option value="">-- Chọn class --</option>${classOpts}</select></div>
-      <div class="form-group"><label>Nhóm</label><select id="mf-group"><option value="">-- Chọn nhóm --</option>${groupOpts}</select></div>
+      ${selfEdit
+        ? `<div class="form-group"><label>Nhóm</label><div style="padding:8px 12px;color:var(--text-muted);font-size:12px;font-style:italic">${m.group ? getGroupName(m.group) : '—'} <span style="font-size:10px">(do Admin xếp)</span></div></div>`
+        : `<div class="form-group"><label>Nhóm</label><select id="mf-group"><option value="">-- Chọn nhóm --</option>${groupOpts}</select></div>`}
     </div>
 
-    <div class="form-group">
-      <label>⚔ Vai Trò Chiến Đấu</label>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">${combatOpts}</div>
-    </div>
+    ${selfEdit
+      ? `<div class="form-group"><label>⚔ Vai Trò Chiến Đấu</label><div style="padding:8px 12px;color:var(--text-muted);font-size:12px;font-style:italic">${m.combatRole ? combatRoleBadge(m.combatRole) : '—'} <span style="font-size:10px">(do Admin xếp)</span></div></div>`
+      : `<div class="form-group">
+          <label>⚔ Vai Trò Chiến Đấu</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">${combatOpts}</div>
+        </div>`}
 
     <div class="form-group">
       <label>✨ Skill</label>
@@ -296,16 +313,20 @@ function openAddMember() {
 function submitAddMember(ov) {
   const v = getMemberFormValues();
   if (!v.name&&!v.inGameName){showToast('Vui lòng nhập tên!','error');return;}
-  Members.add({...v,name:v.name||v.inGameName}); ov.remove(); showToast('Đã thêm thành viên!'); renderPage('members');
+  Members.add({...v,name:v.name||v.inGameName})
+    .then(function(){ ov.remove(); showToast('Đã thêm thành viên!'); /* listener sẽ re-render */ })
+    .catch(function(){ /* showToast đã chạy trong storage.js */ });
 }
 
 /* ══════════════════════════════════════════════════════════ EDIT */
 function openEditMember(id) {
-  if (!isAdmin()) { denyEdit(); return; }
+  // Admin sửa được tất cả; member chỉ sửa được record của chính mình
+  if (!canEditOwnMember(id)) { denyEdit(); return; }
   const m = Members.getById(id); if(!m) return;
+  const isSelfEdit = !isAdmin();
   openModal(`
-    <h3 style="margin-bottom:16px">✏ Chỉnh Sửa Thành Viên</h3>
-    ${buildMemberForm(m)}
+    <h3 style="margin-bottom:16px">✏ ${isSelfEdit ? 'Sửa Thông Tin Của Tôi' : 'Chỉnh Sửa Thành Viên'}</h3>
+    ${buildMemberForm(m, isSelfEdit)}
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Hủy</button>
       <button class="btn btn-gold" onclick="submitEditMember('${id}',this.closest('.modal-overlay'))">Lưu</button>
@@ -313,8 +334,16 @@ function openEditMember(id) {
   setTimeout(initFormPickers, 60);
 }
 function submitEditMember(id, ov) {
+  if (!canEditOwnMember(id)) { denyEdit(); return; }
   const v = getMemberFormValues();
-  Members.update(id,{...v,name:v.name||v.inGameName}); ov.remove(); showToast('Đã cập nhật!'); renderPage('members');
+  // Member tự sửa: KHÔNG cho thay đổi group/combatRole (admin-only fields)
+  if (!isAdmin()) {
+    delete v.group;
+    delete v.combatRole;
+  }
+  Members.update(id,{...v,name:v.name||v.inGameName})
+    .then(function(){ ov.remove(); showToast('Đã cập nhật!'); })
+    .catch(function(){});
 }
 
 /* ══════════════════════════════════════════════════════════ DELETE */
@@ -322,5 +351,7 @@ function deleteMember(id) {
   if (!isAdmin()) { denyEdit(); return; }
   const m = Members.getById(id); if(!m) return;
   if (!confirmDelete(`Xóa "${m.inGameName||m.name}"?`)) return;
-  Members.delete(id); showToast('Đã xóa!','error'); renderPage('members');
+  Members.delete(id)
+    .then(function(){ showToast('Đã xóa!','error'); })
+    .catch(function(){});
 }
