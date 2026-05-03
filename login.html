@@ -542,16 +542,7 @@
 
   // Handle hash
   if (window.location.hash === '#register') switchTab('register');
-  // Auto-redirect nếu đã đăng nhập
-  // Dùng flag tránh redirect loop (app.html reload → login.html → app.html...)
-  const _fromReload = sessionStorage.getItem('_from_reload');
-  if (_fromReload) {
-    // Xóa flag, ở lại login
-    sessionStorage.removeItem('_from_reload');
-  } else {
-    const existing = sessionStorage.getItem('nth_session') || localStorage.getItem('nth_session');
-    // auto-redirect disabled to prevent loop
-  }
+  // Auto-redirect ĐÃ BỊ XÓA - không redirect tự động để tránh loop
 </script>
 </body>
 </html>

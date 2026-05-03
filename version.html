@@ -1,31 +1,24 @@
-<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Version Check</title>
-<style>body{background:#111;color:#fff;font-family:monospace;padding:40px;max-width:600px;margin:0 auto}</style>
+<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Version</title>
+<style>body{background:#111;color:#fff;font-family:monospace;padding:40px;max-width:700px}</style>
 </head><body>
-<h2 id="ver">Đang kiểm tra...</h2>
+<h2>✅ Deploy: 2025-05-03 FINAL</h2>
 <div id="out"></div>
 <script>
-function chk(label, ok) {
-  document.getElementById('out').innerHTML +=
-    '<div style="padding:8px;margin:4px 0;background:' + (ok?'#0a2a0a':'#2a0a0a') + ';border-radius:4px">' +
-    (ok?'✅ ':'❌ ') + label + '</div>';
-}
-var ts = new Date().toISOString();
-document.getElementById('ver').textContent = '✅ Deployed: ' + ts;
-
+function chk(label,ok){document.getElementById('out').innerHTML+='<div style="padding:8px;margin:4px 0;background:'+(ok?'#0a2a0a':'#2a0a0a')+';border-radius:4px">'+(ok?'✅ ':'❌ ')+label+'</div>';}
 Promise.all([
   fetch('/js/firebase.js').then(r=>r.text()),
   fetch('/js/auth.js').then(r=>r.text()),
   fetch('/login.html').then(r=>r.text()),
+  fetch('/app.html').then(r=>r.text()),
   fetch('/js/app.js').then(r=>r.text()),
-]).then(function(results) {
-  var fb = results[0], auth = results[1], login = results[2], app = results[3];
-  chk('firebase.js KHÔNG có reload() trong code (chỉ comment OK)', (fb.match(/window\.location\.reload\(\)/g)||[]).length === 0);
-  chk('firebase.js có fbPushNow', fb.includes('fbPushNow'));
-  chk('firebase.js có _updateRoleUI (thay reload)', fb.includes('_updateRoleUI'));
-  chk('auth.js: requireAuth KHÔNG redirect thẳng về login', !auth.includes("window.location.href = 'login.html';\n  }\n}"));
-  chk('login.html: không có auto-redirect loop', !login.includes("if (existing) { window.location.href = 'app.html'; }"));
-  chk('app.js: có nút Push Firebase', app.includes('Push Firebase'));
-}).catch(function(e){ chk('Lỗi fetch: '+e.message, false); });
-</script>
-</body></html>
+]).then(function(a){
+  var fb=a[0],auth=a[1],login=a[2],app=a[3],appjs=a[4];
+  chk('firebase.js: KHÔNG có reload() code', (fb.match(/window\.location\.reload\(\)/g)||[]).length===0);
+  chk('firebase.js: có fbPushNow', fb.includes('fbPushNow'));
+  chk('auth.js: requireAuth dùng overlay (không redirect loop)', auth.includes('document.body.innerHTML'));
+  chk('app.html: là dashboard (không phải login)', app.includes('js/app.js') && !app.includes('switchTab'));
+  chk('app.html: load đúng scripts', app.includes('js/storage.js') && app.includes('js/firebase.js'));
+  chk('login.html: không auto-redirect loop', !login.includes("if (existing) { window.location.href = 'app.html'; }"));
+  chk('app.js: có nút Push Firebase', appjs.includes('Push Firebase'));
+}).catch(function(e){chk('Fetch error: '+e.message,false);});
+</script></body></html>

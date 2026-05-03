@@ -550,7 +550,7 @@
     sessionStorage.removeItem('_from_reload');
   } else {
     const existing = sessionStorage.getItem('nth_session') || localStorage.getItem('nth_session');
-    if (existing) { window.location.href = 'app.html'; }
+    // auto-redirect disabled to prevent loop
   }
 </script>
 </body>

@@ -1,6 +1,6 @@
 /**
  * firebase.js - nhatmongdata
- * Fix: fbPushNow hoạt động, role sync realtime
+ * KHÔNG dùng window.location.reload() - tránh redirect loop
  */
 
 var FIREBASE_CONFIG = {
@@ -12,247 +12,228 @@ var FIREBASE_CONFIG = {
   appId:             "1:814787062547:web:c4ca571227c5a5555688e6"
 };
 
-var _db         = null;
-var _guildRef   = null;
-var _usersRef   = null;
-var _unsubGuild = null;
-var _unsubUsers = null;
-var _fbOk       = false;
+var _db = null, _guildRef = null, _usersRef = null;
+var _unsubGuild = null, _unsubUsers = null;
+var _fbOk = false;
 
-/* ── Init ── */
 function fbInit() {
-  if (typeof firebase === 'undefined') {
-    setTimeout(fbInit, 1000);
-    return;
-  }
+  if (typeof firebase === 'undefined') { setTimeout(fbInit, 800); return; }
   try {
-    var app   = firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(FIREBASE_CONFIG);
+    var app = firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(FIREBASE_CONFIG);
     _db       = firebase.firestore(app);
     _guildRef = _db.collection('guilds').doc('guild_main');
     _usersRef = _db.collection('users');
     _fbOk     = true;
-    _badge(true, 'Kết nối OK');
-    console.log('[FB] ✅ Connected. Role:', _getRole());
+    _badge(true, 'OK');
+    console.log('[FB] Connected. Role=' + _getRole());
     _listenGuild();
     _listenUsers();
-    // Admin: push data local lên nếu Firebase trống
     if (_isAdmin()) {
-      _guildRef.get().then(function(snap) {
-        if (!snap.exists) {
-          console.log('[FB] Firebase trống → auto push');
-          _doPush();
-        }
+      _guildRef.get().then(function(s) {
+        if (!s.exists) { console.log('[FB] Empty - auto push'); _rawPush(); }
       });
     }
   } catch(e) {
     _fbOk = false;
-    _badge(false, 'Lỗi: ' + e.message);
-    console.error('[FB] Init lỗi:', e);
+    _badge(false, e.message);
+    console.error('[FB] Init error:', e);
   }
 }
 
-/* ── Listen guild data ── */
 function _listenGuild() {
   if (_unsubGuild) _unsubGuild();
   _unsubGuild = _guildRef.onSnapshot(function(snap) {
     if (!snap.exists) return;
-    var remote  = snap.data();
+    var remote = snap.data();
     var localTs = 0;
-    try { localTs = (JSON.parse(localStorage.getItem(DB_KEY)) || {}).updatedAt || 0; } catch(e) {}
-    if ((remote.updatedAt || 0) > localTs) {
-      try { localStorage.setItem(DB_KEY, JSON.stringify(remote)); } catch(e) {}
-      _badge(true, 'Sync ' + _t(remote.updatedAt));
-      console.log('[FB] ⬇ Data mới từ server');
-      if (window.currentPage && !document.querySelector('.modal-overlay'))
-        setTimeout(function() { renderPage(window.currentPage); }, 150);
+    try { localTs = (JSON.parse(localStorage.getItem(DB_KEY))||{}).updatedAt||0; } catch(e){}
+    if ((remote.updatedAt||0) > localTs) {
+      try { localStorage.setItem(DB_KEY, JSON.stringify(remote)); } catch(e){}
+      _badge(true, _t(remote.updatedAt));
+      console.log('[FB] Guild data updated from server');
+      if (window.currentPage && typeof renderPage === 'function' && !document.querySelector('.modal-overlay')) {
+        setTimeout(function(){ renderPage(window.currentPage); }, 200);
+      }
     } else {
-      _badge(true, 'Đã sync');
+      _badge(true, 'Synced');
     }
-  }, function(e) { _badge(false, 'Lỗi đọc'); console.error('[FB] Listen lỗi:', e); });
+  }, function(e){ _badge(false, 'Error'); console.error('[FB] Guild listen error:', e); });
 }
 
-/* ── Listen users → detect role change ── */
 function _listenUsers() {
   if (_unsubUsers) _unsubUsers();
   _unsubUsers = _usersRef.onSnapshot(function(snap) {
-    var remote = [];
-    snap.forEach(function(d) { remote.push(d.data()); });
-    if (!remote.length) return;
-    try { localStorage.setItem('nth_users', JSON.stringify(remote)); } catch(e) {}
-    console.log('[FB] 👥 Users:', remote.length);
+    var users = [];
+    snap.forEach(function(d){ users.push(d.data()); });
+    if (!users.length) return;
 
-    // Check nếu role hiện tại bị thay đổi
+    try { localStorage.setItem('nth_users', JSON.stringify(users)); } catch(e){}
+    console.log('[FB] Users synced:', users.length);
+
+    // Check role change - KHÔNG reload, chỉ cập nhật session + re-render sidebar
     var sessRaw = sessionStorage.getItem('nth_session') || localStorage.getItem('nth_session');
     if (!sessRaw) return;
     try {
       var sess = JSON.parse(sessRaw);
-      if (sess.id === 'admin' || sess.id === 'guest') return; // tài khoản cứng, bỏ qua
-      var me = remote.find(function(u) { return u.id === sess.id; });
+      if (sess.id === 'admin' || sess.id === 'guest') return;
+      var me = users.find(function(u){ return u.id === sess.id; });
       if (me && me.role !== sess.role) {
-        console.log('[FB] 🔄 Role:', sess.role, '→', me.role);
+        console.log('[FB] Role changed:', sess.role, '->', me.role);
+        // Cập nhật session với role mới
         var newSess = Object.assign({}, sess, { role: me.role });
         if (sessionStorage.getItem('nth_session'))
           sessionStorage.setItem('nth_session', JSON.stringify(newSess));
         else
           localStorage.setItem('nth_session', JSON.stringify(newSess));
-        if (typeof showToast === 'function')
-          showToast('🔄 Quyền cập nhật: ' + me.role + ' — Đang tải lại...');
-        setTimeout(function() { window.location.reload(); }, 1500);
+
+        // Cập nhật UI mà KHÔNG reload trang - tránh redirect loop
+        _updateRoleUI(me.role);
       }
-    } catch(e) { console.error('[FB] Session check lỗi:', e); }
-  }, function(e) { console.error('[FB] Listen users lỗi:', e); });
+    } catch(e){ console.error('[FB] Session update error:', e); }
+  }, function(e){ console.error('[FB] Users listen error:', e); });
 }
 
-/* ── Patch saveData ── */
-var _origSave = window.saveData;
+// Cập nhật UI khi role thay đổi - KHÔNG reload trang
+function _updateRoleUI(newRole) {
+  // Hiện thông báo
+  if (typeof showToast === 'function')
+    showToast('Quyền đã cập nhật: ' + newRole);
+
+  // Cập nhật badge role trong sidebar footer
+  var roleEl = document.querySelector('.user-role');
+  if (roleEl) {
+    var RLABELS = { admin:'👑 Admin', member:'👤 Member', guest:'🚪 Khách' };
+    var rColors  = { admin:'var(--accent-gold)', member:'var(--accent-cyan)', guest:'var(--text-muted)' };
+    roleEl.textContent = RLABELS[newRole] || newRole;
+    roleEl.style.color = rColors[newRole] || 'var(--text-secondary)';
+  }
+
+  // Rebuild sidebar để hiện/ẩn menu admin
+  if (typeof buildSidebar === 'function' && typeof initApp === 'function') {
+    var sidebarEl = document.getElementById('sidebar');
+    if (sidebarEl) {
+      // Re-render chỉ phần sidebar nav
+      var nav = sidebarEl.querySelector('.sidebar-nav');
+      if (nav && typeof PAGES !== 'undefined') {
+        var admin = newRole === 'admin';
+        nav.innerHTML = Object.entries(PAGES)
+          .filter(function(e){ return !e[1].adminOnly || admin; })
+          .map(function(e){ 
+            return '<a class="nav-item" data-page="'+e[0]+'" href="#" onclick="renderPage(\''+e[0]+'\');return false;"><span class="nav-icon">'+e[1].icon+'</span><span>'+e[1].label+'</span></a>';
+          }).join('');
+        // Re-highlight active page
+        nav.querySelectorAll('.nav-item').forEach(function(el){
+          el.classList.toggle('active', el.dataset.page === window.currentPage);
+        });
+      }
+    }
+  }
+
+  // Re-render trang hiện tại để áp dụng permission mới
+  if (window.currentPage && typeof renderPage === 'function')
+    setTimeout(function(){ renderPage(window.currentPage); }, 300);
+}
+
 window.saveData = function(data) {
   var ok = false;
-  try { localStorage.setItem(DB_KEY, JSON.stringify(data)); ok = true; } catch(e) {}
+  try { localStorage.setItem(DB_KEY, JSON.stringify(data)); ok = true; } catch(e){}
   if (_fbOk && _guildRef && _isAdmin()) {
     _guildRef.set(Object.assign({}, data, { updatedAt: Date.now() }))
-      .then(function() { _badge(true, 'Lưu ' + _t(Date.now())); })
-      .catch(function(e) { console.error('[FB] Save lỗi:', e); });
+      .then(function(){ _badge(true, _t(Date.now())); })
+      .catch(function(e){ console.error('[FB] Save error:', e); });
   }
   return ok;
 };
 
-/* ── Patch localStorage để sync users ── */
-(function() {
+(function(){
   var orig = localStorage.setItem.bind(localStorage);
   localStorage.setItem = function(key, value) {
     orig(key, value);
     if (key === 'nth_users' && _fbOk && _usersRef) {
       try {
-        JSON.parse(value).forEach(function(u) {
-          if (u && u.id) _usersRef.doc(u.id).set(u).catch(function() {});
+        JSON.parse(value).forEach(function(u){
+          if (u && u.id) _usersRef.doc(u.id).set(u).catch(function(){});
         });
-      } catch(e) {}
+      } catch(e){}
     }
   };
 })();
 
-/* ── fbPushNow: nút bấm trên topbar ── */
+function _rawPush(cb) {
+  if (!_guildRef) { if(cb) cb(new Error('no ref')); return; }
+  var data = loadData();
+  _guildRef.set(Object.assign({}, data, { updatedAt: Date.now() }))
+    .then(function(){ if(cb) cb(null); })
+    .catch(function(e){ if(cb) cb(e); });
+}
+
 window.fbPushNow = function() {
   var btn = document.querySelector('button[onclick="fbPushNow()"]');
+  function setBtn(t,d){ if(btn){btn.textContent=t;btn.disabled=d;} }
+  function done(msg, ok){ setBtn('🔥 Push Firebase',false); if(typeof showToast==='function') showToast(msg, ok?'success':'error', 5000); }
 
-  function setBtnState(text, disabled) {
-    if (btn) { btn.textContent = text; btn.disabled = disabled; }
-  }
-
-  function done(msg, ok) {
-    setBtnState('🔥 Push Firebase', false);
-    if (typeof showToast === 'function')
-      showToast(msg, ok ? 'success' : 'error', 5000);
-  }
-
-  function doPush() {
-    if (!_fbOk || !_guildRef) {
-      done('❌ Firebase chưa kết nối! Kiểm tra F12 Console', false);
-      return;
-    }
-    setBtnState('⏳ Đang push...', true);
-    _doPush(function(err) {
+  function go() {
+    if (!_fbOk || !_guildRef) { done('❌ Firebase chưa kết nối — mở F12 xem Console',false); return; }
+    setBtn('⏳ Đang push...',true);
+    _rawPush(function(err){
       if (err) {
-        if (err.code === 'permission-denied')
-          done('❌ Firestore Rules chặn ghi! Kiểm tra Rules trong Firebase Console', false);
-        else
-          done('❌ Lỗi: ' + err.message, false);
+        done(err.code==='permission-denied'
+          ? '❌ Firestore Rules chặn ghi! Vào Firebase Console → Rules → sửa'
+          : '❌ Lỗi: '+err.message, false);
       } else {
-        var data = loadData();
-        var mc   = data.members ? data.members.length : 0;
-        done('✅ Đã push ' + mc + ' thành viên lên Firebase!', true);
         // Push users
-        _pushUsers();
+        var users=[];
+        try{users=JSON.parse(localStorage.getItem('nth_users'))||[];}catch(e){}
+        users.forEach(function(u){ if(u&&u.id) _usersRef.doc(u.id).set(u).catch(function(){}); });
+        done('✅ Đã push '+(loadData().members||[]).length+' thành viên lên Firebase!', true);
       }
     });
   }
 
-  // Chờ Firebase init nếu chưa xong (tối đa 5s)
   if (!_fbOk) {
-    setBtnState('⏳ Chờ Firebase...', true);
-    var waited = 0;
-    var w = setInterval(function() {
-      waited += 300;
-      if (_fbOk || waited >= 5000) { clearInterval(w); doPush(); }
-    }, 300);
-  } else {
-    doPush();
-  }
+    setBtn('⏳ Chờ Firebase...',true);
+    var w=0, iv=setInterval(function(){ w+=300; if(_fbOk||w>=6000){clearInterval(iv);go();} },300);
+  } else { go(); }
 };
 
-function _doPush(cb) {
-  if (!_guildRef) { if (cb) cb(new Error('no ref')); return; }
-  var data    = loadData();
-  var payload = Object.assign({}, data, { updatedAt: Date.now() });
-  _guildRef.set(payload)
-    .then(function() { console.log('[FB] ⬆ Push OK'); if (cb) cb(null); })
-    .catch(function(e) { console.error('[FB] Push lỗi:', e); if (cb) cb(e); });
-}
-
-function _pushUsers() {
-  if (!_usersRef) return;
-  var users = [];
-  try { users = JSON.parse(localStorage.getItem('nth_users')) || []; } catch(e) {}
-  users.forEach(function(u) {
-    if (u && u.id) _usersRef.doc(u.id).set(u).catch(function() {});
-  });
-  console.log('[FB] 👥 Pushed', users.length, 'users');
-}
-
-/* ── Helpers ── */
 function _isAdmin() {
-  try {
-    var s = sessionStorage.getItem('nth_session') || localStorage.getItem('nth_session');
-    return s && JSON.parse(s).role === 'admin';
-  } catch(e) { return false; }
+  try { var s=sessionStorage.getItem('nth_session')||localStorage.getItem('nth_session'); return !!(s&&JSON.parse(s).role==='admin'); } catch(e){return false;}
 }
 function _getRole() {
-  try {
-    var s = sessionStorage.getItem('nth_session') || localStorage.getItem('nth_session');
-    return s ? JSON.parse(s).role : '?';
-  } catch(e) { return '?'; }
+  try { var s=sessionStorage.getItem('nth_session')||localStorage.getItem('nth_session'); return s?JSON.parse(s).role:'?'; } catch(e){return '?';}
 }
-function _t(ts) {
-  return ts ? new Date(ts).toLocaleTimeString('vi-VN', { hour:'2-digit', minute:'2-digit' }) : '';
-}
+function _t(ts){ return ts?new Date(ts).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}):''; }
 
-/* ── Badge ── */
 function _badge(ok, msg) {
-  setTimeout(function() {
-    var el = document.getElementById('fb-badge');
+  setTimeout(function(){
+    var el=document.getElementById('fb-badge');
     if (!el) {
-      el = document.createElement('div');
-      el.id = 'fb-badge';
-      el.style.cssText = 'font-size:11px;padding:3px 10px;border-radius:12px;cursor:pointer;white-space:nowrap';
-      el.onclick = function() {
-        if (!_fbOk) { showToast('Firebase chưa kết nối'); return; }
-        _guildRef.get().then(function(s) {
-          showToast(s.exists ? '✅ Firebase OK — data: ' + _t(s.data().updatedAt) : '⚠️ Firebase trống — bấm Push Firebase');
-        });
-      };
-      var bar = document.querySelector('.topbar-actions');
-      if (bar) bar.insertBefore(el, bar.firstChild);
+      el=document.createElement('div');
+      el.id='fb-badge';
+      el.style.cssText='font-size:11px;padding:3px 10px;border-radius:12px;cursor:pointer;white-space:nowrap';
+      el.onclick=function(){ if(_fbOk&&_guildRef) _guildRef.get().then(function(s){ if(typeof showToast==='function') showToast(s.exists?'✅ Firebase OK — '+_t(s.data().updatedAt):'⚠️ Chưa có data — bấm Push Firebase'); }); };
+      var bar=document.querySelector('.topbar-actions');
+      if(bar) bar.insertBefore(el,bar.firstChild);
     }
-    el.style.background = ok ? '#052e16' : '#1c1400';
-    el.style.border     = '1px solid ' + (ok ? '#16a34a' : '#d97706');
-    el.style.color      = ok ? '#4ade80' : '#fbbf24';
-    el.textContent      = ok ? '🔥 Firebase' : '🟡 ' + (msg || 'Local');
-  }, 400);
+    el.style.background=ok?'#052e16':'#1c1400';
+    el.style.border='1px solid '+(ok?'#16a34a':'#d97706');
+    el.style.color=ok?'#4ade80':'#fbbf24';
+    el.textContent=ok?'🔥 Firebase':'🟡 '+(msg||'Local');
+  },400);
 }
 
 function renderFirebaseConfigUI() {
-  return '<div class="cfg-section" style="border-color:' + (_fbOk?'#16a34a44':'#dc262644') + '">' +
+  return '<div class="cfg-section" style="border-color:'+(_fbOk?'#16a34a44':'#dc262644')+'">' +
     '<div class="section-header"><span class="section-title">🔥 Firebase</span>' +
-    '<span style="font-size:12px;padding:3px 12px;border-radius:20px;' +
-    (_fbOk?'background:#052e16;border:1px solid #16a34a;color:#4ade80':'background:#1c1400;border:1px solid #d97706;color:#fbbf24') + '">' +
-    (_fbOk?'🔥 Kết nối — nhatmongdata':'🟡 Chưa kết nối') + '</span></div>' +
-    '<p style="color:var(--text-secondary);font-size:13px">Project: nhatmongdata | Role: ' + _getRole() + '</p>' +
+    '<span style="font-size:12px;padding:3px 12px;border-radius:20px;'+(_fbOk?'background:#052e16;border:1px solid #16a34a;color:#4ade80':'background:#1c1400;border:1px solid #d97706;color:#fbbf24')+'">' +
+    (_fbOk?'🔥 nhatmongdata':'🟡 Chưa kết nối')+'</span></div>' +
+    '<div style="color:var(--text-secondary);font-size:13px;margin-top:8px">Role hiện tại: <strong>'+_getRole()+'</strong></div>' +
     '</div>';
 }
 
 setTimeout(fbInit, 800);
 
 const IMG_PREFIX = 'nth_img_';
-function loadImageFromStorage(key){try{return localStorage.getItem(IMG_PREFIX+key)||'';}catch(e){return '';}}
-function saveImageToStorage(key,b){try{localStorage.setItem(IMG_PREFIX+key,b);return true;}catch(e){return false;}}
-function removeImageFromStorage(key){try{localStorage.removeItem(IMG_PREFIX+key);}catch(e){}}
+function loadImageFromStorage(k){try{return localStorage.getItem(IMG_PREFIX+k)||'';}catch(e){return '';}}
+function saveImageToStorage(k,v){try{localStorage.setItem(IMG_PREFIX+k,v);return true;}catch(e){return false;}}
+function removeImageFromStorage(k){try{localStorage.removeItem(IMG_PREFIX+k);}catch(e){}}

@@ -29,14 +29,17 @@ function canEdit() { return isAdmin(); }
 // ── Guard: nếu chưa đăng nhập thì redirect ───────────────────────────────────
 function requireAuth() {
   if (!getCurrentUser()) {
-    // Hiện overlay yêu cầu đăng nhập NGAY TRONG TRANG
-    // KHÔNG redirect về login.html để tránh redirect loop
-    document.body.innerHTML = '<div style="position:fixed;inset:0;background:var(--bg-primary);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999">' +
-      '<div style="font-size:48px;margin-bottom:16px">⚔️</div>' +
-      '<div style="font-family:Cinzel,serif;font-size:22px;color:var(--accent-gold);margin-bottom:8px">NGHỊCH THỦY HÀN</div>' +
-      '<div style="color:var(--text-secondary);margin-bottom:24px">Vui lòng đăng nhập để tiếp tục</div>' +
-      '<button onclick="window.location.href=\'login.html\'" style="padding:12px 32px;background:var(--accent-gold);color:#111;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:Cinzel,serif">Đăng Nhập</button>' +
-    '</div>';
+    document.body.style.margin = '0';
+    document.body.innerHTML =
+      '<div style="position:fixed;inset:0;background:#0a0a0f;display:flex;flex-direction:column;' +
+      'align-items:center;justify-content:center;font-family:sans-serif">' +
+        '<div style="font-size:52px;margin-bottom:16px">⚔️</div>' +
+        '<div style="font-size:24px;color:#f0c040;letter-spacing:2px;margin-bottom:8px;font-family:Cinzel,serif">NGHỊCH THỦY HÀN</div>' +
+        '<div style="color:#808090;margin-bottom:28px">Vui lòng đăng nhập để tiếp tục</div>' +
+        '<button onclick="window.location.href=\'login.html\'" ' +
+          'style="padding:12px 32px;background:#f0c040;color:#111;border:none;border-radius:8px;' +
+          'font-size:15px;font-weight:700;cursor:pointer">Đăng Nhập</button>' +
+      '</div>';
   }
 }
 

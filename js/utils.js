@@ -1,543 +1,468 @@
 /**
- * dashboard.js - Chiến lượt / Đội hình bang chiến
- * 
- * Cải tiến hiển thị:
- * - Thẻ thành viên lớn hơn, rõ tên + vai trò + class
- * - Màu viền theo vai trò chiến đấu (Lương/Công/Thủ/Trợ)
- * - Số slot hiện rõ bên góc
- * - Admin: click để assign/gỡ | Viewer: chỉ xem
+ * settings.js - Cấu hình (chỉ Admin)
+ * Layout theo hình mẫu: Đội hình / Class / Skill / Task / Nhóm / Bản đồ chiến thuật
  */
 
-function renderDashboardPage() {
-  const session   = Sessions.getCurrent();
-  const guild     = Guild.get();
-  const settings  = Settings.get();
-  const admin     = isAdmin();
+function renderSettingsPage() {
+  if (!isAdmin()) return `<div style="text-align:center;padding:80px;color:var(--text-muted)">🔒 Chỉ Admin mới có thể truy cập trang cấu hình.</div>`;
 
-  if (!session) {
-    return `
-      <div style="text-align:center;padding:80px 20px">
-        <div style="font-size:52px;margin-bottom:16px">⚔</div>
-        <div class="page-title" style="margin-bottom:10px">Chưa có đợt bang chiến</div>
-        <div style="color:var(--text-secondary);margin-bottom:24px">
-          ${admin ? 'Tạo đợt mới để bắt đầu sắp xếp đội hình' : 'Chờ Admin tạo đợt mới'}
-        </div>
-        ${admin ? `<button class="btn btn-gold" style="font-size:15px;padding:12px 28px" onclick="createNewSession()">🗡 Tạo Đợt Mới</button>` : ''}
-      </div>`;
-  }
+  const s     = Settings.get();
+  const guild = Guild.get();
 
-  // ── Thống kê ──────────────────────────────────────────────────────────────
-  let filledMain = 0;
-  session.teams.forEach(t => t.slots.forEach(s => { if (s) filledMain++; }));
-  const filledReserve = session.reserve.filter(Boolean).length;
-  const totalMain = session.teams.reduce((a, t) => a + t.slots.length, 0);
+  /* ── Đội hình ── */
+  const formationHtml = `
+    <div class="cfg-section">
+      <div class="section-header"><span class="section-title">⚔ Đội Hình</span></div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:600px">
+        <div class="form-group"><label>SỐ TEAM</label><input type="number" id="cfg-teams" value="${s.numTeams}" min="1" max="20"></div>
+        <div class="form-group"><label>SLOT MỖI TEAM</label><input type="number" id="cfg-slots" value="${s.slotsPerTeam}" min="1" max="12"></div>
+        <div class="form-group"><label>DỰ BỊ</label><input type="number" id="cfg-reserve" value="${s.reserveSlots}" min="0" max="100"></div>
+      </div>
+      <button class="btn btn-gold" style="margin-top:8px" onclick="saveFormation()">Lưu đội hình</button>
+    </div>`;
 
-  // class counts
-  const classCounts = {};
-  settings.classes.forEach(c => { classCounts[c.id] = 0; });
-  [...session.teams.flatMap(t => t.slots), ...session.reserve]
-    .filter(Boolean)
-    .forEach(s => { if (s.class && classCounts[s.class] !== undefined) classCounts[s.class]++; });
-
-  // combat role counts
-  const roleCounts = { luong:0, cong:0, thu:0, tro:0 };
-  [...session.teams.flatMap(t => t.slots), ...session.reserve]
-    .filter(Boolean)
-    .forEach(s => { if (s.combatRole && roleCounts[s.combatRole] !== undefined) roleCounts[s.combatRole]++; });
-
-  const classStatsHtml = settings.classes.map(c => `
-    <div class="stat-item">
-      <div class="stat-label" style="color:${c.color}">${c.name}</div>
-      <div class="stat-value" style="color:${c.color};font-size:18px">${classCounts[c.id]||0}</div>
+  /* ── Classes ── */
+  const classRows = s.classes.map(c => `
+    <div class="cfg-row">
+      <input class="cfg-input-id" type="text" value="${escHtml(c.id)}" readonly>
+      <input class="cfg-input-name" type="text" value="${escHtml(c.name)}" onchange="cfgUpdateClass('${c.id}','name',this.value)">
+      <input type="color" value="${c.color}" onchange="cfgUpdateClass('${c.id}','color',this.value)"
+             style="width:44px;height:36px;padding:2px;cursor:pointer;border-radius:4px;border:1px solid #2a2a45;background:#1a1a2e">
+      <div style="width:20px;height:20px;border-radius:50%;background:${c.color}"></div>
+      <button class="btn btn-danger cfg-btn-sm" onclick="cfgDeleteClass('${c.id}')">Xóa</button>
     </div>`).join('');
 
-  // ── Header ────────────────────────────────────────────────────────────────
-  const headerHtml = `
-    <div style="text-align:center;margin-bottom:20px">
-      ${admin ? '<div class="admin-badge" style="margin-bottom:8px">⚙ ADMIN MODE</div>' : '<div class="badge" style="background:rgba(64,192,224,0.1);color:var(--accent-cyan);border:1px solid rgba(64,192,224,0.3);padding:4px 14px;margin-bottom:8px">👁 CHẾ ĐỘ XEM</div>'}
-      <div style="color:var(--text-secondary);font-size:11px;letter-spacing:3px">${escHtml(session.name.toUpperCase())}</div>
-      <div class="page-title" style="font-size:24px;margin:6px 0">${escHtml(guild.name.toUpperCase())}</div>
-      ${admin ? `<button class="btn btn-gold" style="margin-top:4px" onclick="createNewSession()">📋 Tạo Đợt Mới</button>` : ''}
-    </div>`;
-
-  // ── Role summary bar ──────────────────────────────────────────────────────
-  const ROLE_META = { luong:{icon:'🌾',color:'#f0c040',name:'Lương'}, cong:{icon:'⚔',color:'#e05050',name:'Công'}, thu:{icon:'🛡',color:'#5090e0',name:'Thủ'}, tro:{icon:'💠',color:'#50d0a0',name:'Trợ'} };
-  const roleSummaryHtml = `
-    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-      ${Object.entries(ROLE_META).map(([k,r]) => `
-        <div style="display:flex;align-items:center;gap:6px;padding:6px 14px;background:${r.color}11;border:1px solid ${r.color}33;border-radius:20px">
-          <span>${r.icon}</span>
-          <span style="font-weight:700;color:${r.color}">${r.name}</span>
-          <span style="color:var(--text-primary);font-weight:700;font-size:16px">${roleCounts[k]}</span>
-        </div>`).join('')}
-      <div style="margin-left:auto;display:flex;align-items:center;gap:6px;padding:6px 16px;background:rgba(240,192,64,0.1);border:1px solid rgba(240,192,64,0.3);border-radius:20px">
-        <span style="color:var(--accent-gold);font-weight:700">Quân số</span>
-        <span style="font-weight:700;font-size:16px;color:var(--accent-gold)">${filledMain+filledReserve}<span style="font-size:12px;color:var(--text-secondary)"> / ${totalMain+session.reserve.length}</span></span>
-      </div>
-    </div>`;
-
-  // ── Teams grid ────────────────────────────────────────────────────────────
-  const teamsHtml = session.teams.map((team, ti) => {
-    const filledCount = team.slots.filter(Boolean).length;
-    const groupColor  = getGroupColor(team.group);
-    const groupName   = getGroupName(team.group);
-
-    const slotsHtml = team.slots.map((slot, si) => {
-      if (slot) {
-        const classColor = getClassColor(slot.class);
-        const roleMeta   = ROLE_META[slot.combatRole] || null;
-        const roleColor  = roleMeta ? roleMeta.color : classColor;
-        const roleIcon   = roleMeta ? roleMeta.icon : '·';
-        const roleName   = roleMeta ? roleMeta.name : '';
-        const clickAttr  = admin ? `onclick="openSlotMenu(${ti}, ${si}, false)"` : `onclick="viewSlotInfo(${JSON.stringify(slot).replace(/"/g,'&quot;')})"`;
-        return `
-          <div class="slot filled" ${clickAttr} style="border-left:4px solid ${roleColor}">
-            <div class="slot-top">
-              <span class="slot-role-icon" style="color:${roleColor}">${roleIcon}</span>
-              <span class="slot-num" style="color:var(--text-muted)">#${si+1}</span>
-            </div>
-            <div class="slot-name">${escHtml(slot.inGameName || slot.name)}</div>
-            <div class="slot-meta">
-              <span style="color:${classColor};font-size:10px">${getClassName(slot.class)}</span>
-              ${roleName ? `<span style="color:${roleColor};font-size:10px">${roleName}</span>` : ''}
-            </div>
-          </div>`;
-      }
-      // Empty slot
-      const clickAttr = admin ? `onclick="openAssignModal(${ti}, ${si}, false)"` : '';
-      return `<div class="slot empty" ${clickAttr} style="${admin?'cursor:pointer':'cursor:default'}">
-        <span style="font-size:10px;color:var(--text-muted)">SLOT ${si+1}</span>
-        ${admin ? `<span class="slot-plus">+</span>` : ''}
-      </div>`;
-    }).join('');
-
-    // Group select (admin only)
-    const groupControl = admin
-      ? `<select class="team-group-select" onchange="setTeamGroup(${ti}, this.value)">
-           <option value="">Chưa nhóm</option>
-           ${settings.groups.map(g => `<option value="${g.id}" ${team.group===g.id?'selected':''}>${g.name}</option>`).join('')}
-         </select>`
-      : (groupName ? `<span style="font-size:11px;color:${groupColor};font-weight:600">${groupName}</span>` : '');
-
+  /* ── Skills ── */
+  const skillRows = s.skills.map(sk => {
+    const imgSrc = loadImageFromStorage('skill_' + sk.id);
+    const thumb  = imgSrc
+      ? `<img src="${imgSrc}" style="width:36px;height:36px;border-radius:6px;object-fit:cover;border:1px solid #333">`
+      : `<div style="width:36px;height:36px;border-radius:6px;background:#1a1a2e;border:1px dashed #444;display:flex;align-items:center;justify-content:center;font-size:16px">🎯</div>`;
     return `
-      <div class="team-card" style="${team.group?`border-top:3px solid ${groupColor}`:''}">
-        <div class="team-header">
-          <div class="team-label" style="${team.group?`color:${groupColor}`:''}">
-            <span style="font-family:'Cinzel',serif;font-weight:700">T${ti+1}</span>
-          </div>
-          ${groupControl}
-          <span class="team-count" style="color:var(--text-muted);font-size:11px;margin-left:auto">${filledCount}/${team.slots.length}</span>
-        </div>
-        <div class="slots-list">${slotsHtml}</div>
-      </div>`;
-  }).join('');
-
-  // ── Reserve ───────────────────────────────────────────────────────────────
-  const reserveHtml = session.reserve.map((slot, si) => {
-    if (slot) {
-      const classColor = getClassColor(slot.class);
-      const roleMeta   = ROLE_META[slot.combatRole] || null;
-      const roleColor  = roleMeta ? roleMeta.color : classColor;
-      const clickAttr  = admin ? `onclick="openSlotMenu(-1, ${si}, true)"` : '';
-      return `
-        <div class="reserve-slot filled" ${clickAttr} style="border-left:3px solid ${roleColor}">
-          <div style="display:flex;align-items:center;gap:6px">
-            ${roleMeta ? `<span style="color:${roleColor}">${roleMeta.icon}</span>` : ''}
-            <span style="font-weight:600;font-size:12px">${escHtml(slot.inGameName||slot.name)}</span>
-          </div>
-          <div style="display:flex;gap:6px;margin-top:2px">
-            <span style="color:${classColor};font-size:10px">${getClassName(slot.class)}</span>
-          </div>
-        </div>`;
-    }
-    const clickAttr = admin ? `onclick="openAssignModal(-1, ${si}, true)"` : '';
-    return `<div class="reserve-slot empty" ${clickAttr} style="${admin?'cursor:pointer':'cursor:default'}">
-      <span style="font-size:10px">DỰ BỊ ${si+1}</span>
-      ${admin ? `<span style="font-size:14px;color:var(--text-muted)">+</span>` : ''}
+    <div class="cfg-row" id="skill-row-${sk.id}">
+      <input class="cfg-input-id" type="text" value="${escHtml(sk.id)}" readonly>
+      <input class="cfg-input-name" type="text" value="${escHtml(sk.name)}" onchange="cfgUpdateSkill('${sk.id}','name',this.value)">
+      <input type="color" value="${sk.color}" onchange="cfgUpdateSkill('${sk.id}','color',this.value)"
+             style="width:44px;height:36px;padding:2px;cursor:pointer;border-radius:4px;border:1px solid #2a2a45;background:#1a1a2e">
+      <div style="width:20px;height:20px;border-radius:4px;background:${sk.color}"></div>
+      ${thumb}
+      <label class="btn btn-outline cfg-btn-sm" style="cursor:pointer">
+        Upload ảnh
+        <input type="file" accept="image/*" style="display:none" onchange="uploadSkillImg('${sk.id}',this)">
+      </label>
+      <button class="btn btn-danger cfg-btn-sm" onclick="cfgDeleteSkill('${sk.id}')">Xóa</button>
     </div>`;
   }).join('');
 
-  // ── Legend ────────────────────────────────────────────────────────────────
-  const legendHtml = `
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:8px;font-size:12px">
-      <span style="color:var(--text-secondary);font-weight:600">Màu viền:</span>
-      ${Object.values(ROLE_META).map(r => `<span style="color:${r.color}">${r.icon} ${r.name}</span>`).join(' · ')}
+  /* ── Tasks ── */
+  const taskRows = s.tasks.map(t => {
+    const imgSrc = loadImageFromStorage('task_' + t.id);
+    const thumb  = imgSrc
+      ? `<img src="${imgSrc}" style="width:36px;height:36px;border-radius:6px;object-fit:cover;border:1px solid #333">`
+      : `<div style="width:36px;height:36px;border-radius:6px;background:#1a1a2e;border:1px dashed #444;display:flex;align-items:center;justify-content:center;font-size:16px">📦</div>`;
+    return `
+    <div class="cfg-row">
+      <input class="cfg-input-id" type="text" value="${escHtml(t.id)}" readonly>
+      <input class="cfg-input-name" type="text" value="${escHtml(t.name)}" onchange="cfgUpdateTask('${t.id}','name',this.value)">
+      <input type="color" value="${t.color}" onchange="cfgUpdateTask('${t.id}','color',this.value)"
+             style="width:44px;height:36px;padding:2px;cursor:pointer;border-radius:4px;border:1px solid #2a2a45;background:#1a1a2e">
+      <div style="width:20px;height:20px;border-radius:4px;background:${t.color}"></div>
+      <input type="number" value="${t.count||1}" min="1" max="99" style="width:60px;text-align:center"
+             onchange="cfgUpdateTask('${t.id}','count',+this.value)">
+      <input type="checkbox" ${t.required?'checked':''} title="Bắt buộc"
+             onchange="cfgUpdateTask('${t.id}','required',this.checked)"
+             style="width:16px;height:16px;accent-color:var(--accent-gold);cursor:pointer">
+      ${thumb}
+      <label class="btn btn-outline cfg-btn-sm" style="cursor:pointer">
+        Upload ảnh
+        <input type="file" accept="image/*" style="display:none" onchange="uploadTaskImg('${t.id}',this)">
+      </label>
+      <button class="btn btn-danger cfg-btn-sm" onclick="cfgDeleteTask('${t.id}')">Xóa</button>
     </div>`;
+  }).join('');
+
+  /* ── Groups ── */
+  const groupRows = s.groups.map(g => `
+    <div class="cfg-row">
+      <input class="cfg-input-id" type="text" value="${escHtml(g.id)}" readonly>
+      <input class="cfg-input-name" type="text" value="${escHtml(g.name)}" onchange="cfgUpdateGroup('${g.id}','name',this.value)">
+      <input type="color" value="${g.color}" onchange="cfgUpdateGroup('${g.id}','color',this.value)"
+             style="width:44px;height:36px;padding:2px;cursor:pointer;border-radius:4px;border:1px solid #2a2a45;background:#1a1a2e">
+      <div style="width:20px;height:20px;border-radius:50%;background:${g.color}"></div>
+      <button class="btn btn-danger cfg-btn-sm" onclick="cfgDeleteGroup('${g.id}')">Xóa</button>
+    </div>`).join('');
+
+  /* ── Maps ── */
+  const mapRows = s.maps.map(m => {
+    const imgSrc = loadImageFromStorage('map_' + m.id);
+    const thumb  = imgSrc
+      ? `<img src="${imgSrc}" style="height:40px;border-radius:4px;object-fit:cover;max-width:80px;border:1px solid #444">`
+      : `<div style="height:40px;width:60px;border-radius:4px;background:#1a1a2e;border:1px dashed #444;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:18px">🗺</div>`;
+    const isActive = (s.currentMap === m.id);
+    return `
+    <div class="cfg-row" style="${isActive?'background:#0a1a0a;border-radius:6px;padding:4px 8px':''}">
+      <input class="cfg-input-id" type="text" value="${escHtml(m.id)}" readonly>
+      <input class="cfg-input-name" type="text" value="${escHtml(m.name)}" onchange="cfgUpdateMap('${m.id}','name',this.value)" style="flex:1">
+      ${thumb}
+      <label class="btn btn-outline cfg-btn-sm" style="cursor:pointer">
+        Upload ảnh
+        <input type="file" accept="image/*" style="display:none" onchange="uploadMapImg('${m.id}',this)">
+      </label>
+      ${isActive
+        ? `<span style="color:var(--accent-green);font-size:12px;font-weight:600;white-space:nowrap">✔ Đang dùng</span>`
+        : `<button class="btn btn-outline cfg-btn-sm" onclick="setActiveMap('${m.id}')">Dùng</button>`}
+      <button class="btn btn-danger cfg-btn-sm" onclick="cfgDeleteMap('${m.id}')">Xóa</button>
+    </div>`;
+  }).join('');
 
   return `
-    ${headerHtml}
-    ${roleSummaryHtml}
+    <!-- Inject settings styles -->
+    <style>
+      .cfg-section { background:var(--bg-card);border:1px solid var(--border-color);border-radius:10px;padding:20px;margin-bottom:20px; }
+      .cfg-row { display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #1a1a2e;flex-wrap:wrap; }
+      .cfg-row:last-child { border-bottom:none; }
+      .cfg-input-id   { width:150px;font-size:12px;color:var(--text-secondary);flex-shrink:0; }
+      .cfg-input-name { flex:1;min-width:140px; }
+      .cfg-btn-sm { padding:5px 12px;font-size:12px;white-space:nowrap;flex-shrink:0; }
+    </style>
 
-    <!-- Class stats -->
-    <div class="stats-row" style="margin-bottom:16px">${classStatsHtml}</div>
-
-    ${legendHtml}
-
-    <!-- Teams -->
-    <div class="teams-grid">${teamsHtml}</div>
-
-    <!-- Reserve -->
-    <div class="card" style="margin-top:20px">
-      <div class="section-header">
-        <span class="section-title">🛡 Dự Bị</span>
-        <span style="color:var(--text-secondary);font-size:13px">${filledReserve} / ${session.reserve.length}</span>
-      </div>
-      <div class="reserve-grid">${reserveHtml}</div>
+    <div class="page-header">
+      <div class="page-title">Cấu Hình</div>
+      <div class="page-subtitle">Quản lý cấu hình: đội hình, class, skill, task, nhóm, bản đồ</div>
     </div>
 
-    <!-- Chiến thuật tích hợp -->
-    <div class="card" style="margin-top:20px">
-      <div class="section-header">
-        <span class="section-title">🗺 Chỉ Đạo Chiến Thuật</span>
-        ${admin ? `<div id="dash-marker-toolbar" style="display:flex;gap:6px;flex-wrap:wrap"></div>` : ''}
+    <!-- Guild -->
+    <div class="cfg-section">
+      <div class="section-header"><span class="section-title">🏰 Thông Tin Bang</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:600px">
+        <div class="form-group"><label>Tên Bang</label><input type="text" id="cfg-guild-name" value="${escHtml(guild.name)}"></div>
+        <div class="form-group"><label>Giới thiệu</label><input type="text" id="cfg-guild-desc" value="${escHtml(guild.description)}"></div>
       </div>
-      <div id="dash-map-wrap" style="position:relative;border-radius:8px;overflow:visible;border:1px solid var(--border-color);background:#1a1510;min-height:80px"></div>
-      ${admin
-        ? `<textarea id="tactics-notes" rows="3" style="width:100%;background:#0f0f1e;resize:vertical;margin-top:8px;border-radius:6px;padding:10px;font-size:14px"
-             placeholder="Ghi chép chiến thuật..." onblur="saveTacticsNotes()">${escHtml(session.tactics?.notes||'')}</textarea>`
-        : `<div style="background:#0f0f1e;border-radius:6px;padding:12px;margin-top:8px;white-space:pre-wrap;min-height:40px;font-size:14px;line-height:1.7;color:var(--text-secondary)">
-             ${escHtml(session.tactics?.notes||'') || '<em style="color:var(--text-muted)">Chưa có ghi chú chiến thuật</em>'}
-           </div>`}
+      <button class="btn btn-gold" onclick="saveGuildInfo()">Lưu</button>
+    </div>
+
+    ${formationHtml}
+
+    <!-- Classes -->
+    <div class="cfg-section">
+      <div class="section-header">
+        <span class="section-title">🎭 Danh Sách Class</span>
+        <button class="btn btn-cyan" style="padding:6px 14px;font-size:12px" onclick="cfgOpenAddClass()">+ Thêm class</button>
+      </div>
+      <div>${classRows || '<div style="color:var(--text-muted);padding:12px">Chưa có class nào</div>'}</div>
+    </div>
+
+    <!-- Skills -->
+    <div class="cfg-section">
+      <div class="section-header">
+        <span class="section-title">✨ Danh Sách Skill</span>
+        <button class="btn btn-cyan" style="padding:6px 14px;font-size:12px" onclick="cfgOpenAddSkill()">+ Thêm skill</button>
+      </div>
+      <div>${skillRows || '<div style="color:var(--text-muted);padding:12px">Chưa có skill nào</div>'}</div>
+    </div>
+
+    <!-- Tasks -->
+    <div class="cfg-section">
+      <div class="section-header">
+        <span class="section-title">📦 Danh Sách Task</span>
+        <button class="btn btn-cyan" style="padding:6px 14px;font-size:12px" onclick="cfgOpenAddTask()">+ Thêm task</button>
+      </div>
+      <div>${taskRows || '<div style="color:var(--text-muted);padding:12px">Chưa có task nào</div>'}</div>
+    </div>
+
+    <!-- Groups -->
+    <div class="cfg-section">
+      <div class="section-header">
+        <span class="section-title">👥 Nhóm Chiến</span>
+        <button class="btn btn-cyan" style="padding:6px 14px;font-size:12px" onclick="cfgOpenAddGroup()">+ Thêm nhóm</button>
+      </div>
+      <div>${groupRows || '<div style="color:var(--text-muted);padding:12px">Chưa có nhóm nào</div>'}</div>
+    </div>
+
+    <!-- Maps -->
+    <div class="cfg-section">
+      <div class="section-header">
+        <span class="section-title">🗺 Bản Đồ Chiến Thuật</span>
+        <button class="btn btn-cyan" style="padding:6px 14px;font-size:12px" onclick="cfgOpenAddMap()">+ Thêm bản đồ</button>
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:11px;color:var(--text-secondary);letter-spacing:1px;text-transform:uppercase">MAP HIỆN TẠI</label>
+        <select onchange="setActiveMap(this.value)" style="width:100%;margin-top:6px;max-width:400px">
+          ${s.maps.map(m => `<option value="${m.id}" ${s.currentMap===m.id?'selected':''}>${m.name}</option>`).join('')}
+        </select>
+      </div>
+      <div>${mapRows || '<div style="color:var(--text-muted);padding:12px">Chưa có bản đồ nào</div>'}</div>
+    </div>
+
+    <!-- Danger zone -->
+    <div class="cfg-section" style="border-color:#e0404044">
+      <div class="section-title" style="color:var(--accent-red);margin-bottom:12px">⚠ Vùng Nguy Hiểm</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-danger" onclick="clearAllMembers()">Xóa toàn bộ thành viên</button>
+        <button class="btn btn-danger" onclick="resetAllData()">Reset toàn bộ dữ liệu</button>
+        <button class="btn btn-outline" onclick="exportData()">📤 Xuất JSON</button>
+        <label class="btn btn-outline" style="cursor:pointer">📥 Nhập JSON<input type="file" accept=".json" style="display:none" onchange="importData(this)"></label>
+      </div>
     </div>
   `;
 }
 
-// ── Actions (admin only) ──────────────────────────────────────────────────────
-function createNewSession() {
-  if (!isAdmin()) { denyEdit(); return; }
-  const name = prompt('Tên đợt bang chiến:', `Tuần ${getWeekNumber(new Date())} - ${new Date().getFullYear()}`);
-  if (name === null) return;
-  Sessions.createNew({ name: name || undefined });
-  showToast('Đã tạo đợt mới!');
-  renderPage('dashboard');
+/* ══════════════════════════════════════════════════════════ GUILD / FORMATION */
+function saveGuildInfo() {
+  Guild.update({ name: document.getElementById('cfg-guild-name').value.trim(), description: document.getElementById('cfg-guild-desc').value.trim() });
+  const el = document.getElementById('sidebar-guild-name');
+  if (el) el.textContent = Guild.get().name;
+  showToast('Đã lưu thông tin bang!');
 }
-
-function getWeekNumber(d) {
-  d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-}
-
-function setTeamGroup(teamIndex, groupId) {
-  if (!isAdmin()) { denyEdit(); return; }
-  const data = loadData();
-  if (!data.currentSession) return;
-  data.currentSession.teams[teamIndex].group = groupId;
-  saveData(data);
-}
-
-function saveTacticsNotes() {
-  if (!isAdmin()) return;
-  const notes = document.getElementById('tactics-notes')?.value;
-  if (notes === undefined) return;
-  Sessions.updateCurrent({ tactics: { ...Sessions.getCurrent()?.tactics, notes } });
-}
-
-// ── View slot (non-admin) ─────────────────────────────────────────────────────
-function viewSlotInfo(slot) {
-  const ROLE_META = { luong:{icon:'🌾',color:'#f0c040',name:'Lương'}, cong:{icon:'⚔',color:'#e05050',name:'Công'}, thu:{icon:'🛡',color:'#5090e0',name:'Thủ'}, tro:{icon:'💠',color:'#50d0a0',name:'Trợ'} };
-  const rm = ROLE_META[slot.combatRole];
-  const cc = getClassColor(slot.class);
-  openModal(`
-    <h3 style="margin-bottom:16px">${escHtml(slot.inGameName||slot.name)}</h3>
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#0f0f1e;border-radius:8px">
-        <span style="font-size:20px">${rm?rm.icon:'·'}</span>
-        <div>
-          <div style="font-size:11px;color:var(--text-secondary)">Vai trò</div>
-          <div style="font-weight:700;color:${rm?rm.color:'var(--text-muted)'}">${rm?rm.name:'Chưa xác định'}</div>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#0f0f1e;border-radius:8px">
-        <div style="width:14px;height:14px;border-radius:3px;background:${cc}"></div>
-        <div>
-          <div style="font-size:11px;color:var(--text-secondary)">Class</div>
-          <div style="font-weight:700;color:${cc}">${getClassName(slot.class)}</div>
-        </div>
-      </div>
-    </div>
-    <div class="modal-actions"><button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Đóng</button></div>
-  `);
-}
-
-// ── Assign / remove (admin) ───────────────────────────────────────────────────
-function openAssignModal(teamIndex, slotIndex, isReserve) {
-  if (!isAdmin()) { denyEdit(); return; }
-  const members = Members.getAll();
-  const session = Sessions.getCurrent();
-  const assigned = new Set();
-  if (session) {
-    session.teams.forEach(t => t.slots.forEach(s => { if(s) assigned.add(s.id); }));
-    session.reserve.forEach(s => { if(s) assigned.add(s.id); });
-  }
-  const available = members.filter(m => !assigned.has(m.id));
-  const ROLE_META = { luong:{icon:'🌾',color:'#f0c040'}, cong:{icon:'⚔',color:'#e05050'}, thu:{icon:'🛡',color:'#5090e0'}, tro:{icon:'💠',color:'#50d0a0'} };
-
-  const listHtml = available.length === 0
-    ? '<div style="color:var(--text-muted);text-align:center;padding:24px">Không còn thành viên trống</div>'
-    : available.map(m => {
-        const cc = getClassColor(m.class);
-        const rm = ROLE_META[m.combatRole];
-        return `<div class="member-pick-item" onclick="assignMember('${m.id}', ${teamIndex}, ${slotIndex}, ${isReserve}, this.closest('.modal-overlay'))">
-          <div style="display:flex;align-items:center;gap:10px">
-            <div style="width:4px;height:40px;border-radius:2px;background:${rm?rm.color:cc};flex-shrink:0"></div>
-            <div style="flex:1;min-width:0">
-              <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(m.inGameName||m.name)}</div>
-              <div style="display:flex;gap:6px;margin-top:3px;flex-wrap:wrap">
-                ${classBadge(m.class)}
-                ${rm ? `<span class="badge" style="background:${rm.color}22;color:${rm.color}">${rm.icon} ${['Lương','Công','Thủ','Trợ'][['luong','cong','thu','tro'].indexOf(m.combatRole)]}</span>` : ''}
-                <span style="color:var(--accent-gold);font-size:11px">${formatNumber(m.power)}</span>
-              </div>
-            </div>
-          </div>
-        </div>`;
-      }).join('');
-
-  openModal(`
-    <h3>⚔ Chọn Thành Viên</h3>
-    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap" id="pick-filter-roles">
-      <button class="btn btn-outline pick-role-filter active" style="padding:4px 10px;font-size:12px" onclick="filterPickByRole('',this)">Tất cả</button>
-      ${Object.entries(ROLE_META).map(([k,r]) => `<button class="btn btn-outline pick-role-filter" style="padding:4px 10px;font-size:12px;border-color:${r.color}44;color:${r.color}" onclick="filterPickByRole('${k}',this)">${r.icon}</button>`).join('')}
-    </div>
-    <input type="text" placeholder="🔍 Tìm nhanh..." style="width:100%;margin-bottom:10px" oninput="filterMemberPick(this.value)">
-    <div id="member-pick-list" style="max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:6px">${listHtml}</div>
-    <div class="modal-actions"><button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Hủy</button></div>
-  `);
-}
-
-function filterPickByRole(roleId, btn) {
-  document.querySelectorAll('.pick-role-filter').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  document.querySelectorAll('.member-pick-item').forEach(item => {
-    if (!roleId) { item.style.display = ''; return; }
-    // check badge text for role icon
-    const hasRole = item.textContent.includes(roleId === 'luong' ? '🌾' : roleId === 'cong' ? '⚔' : roleId === 'thu' ? '🛡' : '💠');
-    item.style.display = hasRole ? '' : 'none';
+function saveFormation() {
+  Settings.update({
+    numTeams:     +document.getElementById('cfg-teams').value   || 10,
+    slotsPerTeam: +document.getElementById('cfg-slots').value   || 6,
+    reserveSlots: +document.getElementById('cfg-reserve').value || 30
   });
+  showToast('Đã lưu đội hình!');
 }
 
-function filterMemberPick(q) {
-  document.querySelectorAll('.member-pick-item').forEach(item => {
-    item.style.display = item.textContent.toLowerCase().includes(q.toLowerCase()) ? '' : 'none';
-  });
+/* ══════════════════════════════════════════════════════════ CLASS */
+function cfgUpdateClass(id, field, value) { Settings.updateClass(id, { [field]: value }); }
+function cfgDeleteClass(id) {
+  if (!confirmDelete('Xóa class này?')) return;
+  Settings.deleteClass(id); showToast('Đã xóa!','error'); renderPage('settings');
+}
+function cfgOpenAddClass() {
+  openModal(`
+    <h3>+ Thêm Class</h3>
+    <div class="form-group"><label>Mã (không dấu)</label><input type="text" id="nc-id" placeholder="vd: kiem_khach"></div>
+    <div class="form-group"><label>Tên hiển thị</label><input type="text" id="nc-name" placeholder="vd: Kiếm Khách"></div>
+    <div class="form-group"><label>Màu sắc</label><input type="color" id="nc-color" value="#80c7e6" style="width:100%;height:40px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Hủy</button>
+      <button class="btn btn-gold" onclick="cfgSubmitAddClass(this.closest('.modal-overlay'))">Thêm</button>
+    </div>`);
+}
+function cfgSubmitAddClass(ov) {
+  const id=document.getElementById('nc-id').value.trim().replace(/\s+/g,'_').toLowerCase();
+  const name=document.getElementById('nc-name').value.trim();
+  const color=document.getElementById('nc-color').value;
+  if(!id||!name){showToast('Điền đầy đủ!','error');return;}
+  Settings.addClass({id,name,color}); ov.remove(); showToast('Đã thêm class!'); renderPage('settings');
 }
 
-function assignMember(memberId, teamIndex, slotIndex, isReserve, overlay) {
-  if (!isAdmin()) { denyEdit(); return; }
-  // Store combatRole in slot too for display
-  const member = Members.getById(memberId);
-  Sessions.assignMember(teamIndex, slotIndex, memberId, isReserve);
-  // Patch combatRole into slot
-  const data = loadData();
-  if (data.currentSession && member) {
-    if (isReserve) {
-      if (data.currentSession.reserve[slotIndex]) data.currentSession.reserve[slotIndex].combatRole = member.combatRole;
-    } else {
-      if (data.currentSession.teams[teamIndex]?.slots[slotIndex]) {
-        data.currentSession.teams[teamIndex].slots[slotIndex].combatRole = member.combatRole;
+/* ══════════════════════════════════════════════════════════ SKILL */
+function cfgUpdateSkill(id, field, value) { Settings.updateSkill(id, { [field]: value }); }
+function cfgDeleteSkill(id) {
+  if (!confirmDelete('Xóa skill này?')) return;
+  Settings.deleteSkill(id); showToast('Đã xóa!','error'); renderPage('settings');
+}
+function uploadSkillImg(id, input) {
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    saveImageToStorage('skill_' + id, e.target.result);
+    // Update thumb in DOM without re-render
+    const row = document.getElementById('skill-row-' + id);
+    if (row) {
+      const thumbEl = row.querySelector('img,div[style*="dashed"]');
+      if (thumbEl) {
+        const img = document.createElement('img');
+        img.src = e.target.result;
+        img.style.cssText = 'width:36px;height:36px;border-radius:6px;object-fit:cover;border:1px solid #333';
+        thumbEl.replaceWith(img);
       }
     }
-    saveData(data);
-  }
-  overlay.remove();
-  showToast('Đã thêm vào đội hình!');
-  renderPage('dashboard');
+    showToast('Đã upload ảnh skill!');
+  };
+  reader.readAsDataURL(file);
 }
+// Pending image for new skill (set before submit)
+window._pendingSkillImg = null;
 
-function openSlotMenu(teamIndex, slotIndex, isReserve) {
-  if (!isAdmin()) return;
-  const session = Sessions.getCurrent();
-  const slot = isReserve ? session.reserve[slotIndex] : session.teams[teamIndex]?.slots[slotIndex];
-  if (!slot) return;
-  const ROLE_META = { luong:{icon:'🌾',color:'#f0c040',name:'Lương'}, cong:{icon:'⚔',color:'#e05050',name:'Công'}, thu:{icon:'🛡',color:'#5090e0',name:'Thủ'}, tro:{icon:'💠',color:'#50d0a0',name:'Trợ'} };
-  const rm = ROLE_META[slot.combatRole];
-  const cc = getClassColor(slot.class);
+function cfgOpenAddSkill() {
+  window._pendingSkillImg = null;
   openModal(`
-    <h3>${escHtml(slot.inGameName||slot.name)}</h3>
-    <div style="display:flex;gap:10px;margin:14px 0;flex-wrap:wrap">
-      ${rm ? `<span class="badge" style="background:${rm.color}22;color:${rm.color};font-size:13px;padding:5px 12px">${rm.icon} ${rm.name}</span>` : ''}
-      <span class="badge" style="background:${cc}22;color:${cc};font-size:13px;padding:5px 12px">${getClassName(slot.class)}</span>
+    <h3>+ Thêm Skill</h3>
+    <div class="form-group"><label>Mã skill (không dấu, không cách)</label><input type="text" id="ns-id" placeholder="vd: skill_11"></div>
+    <div class="form-group"><label>Tên skill</label><input type="text" id="ns-name" placeholder="vd: Thiên Lôi"></div>
+    <div class="form-group"><label>Màu</label><input type="color" id="ns-color" value="#F59E0B" style="width:100%;height:40px"></div>
+    <div class="form-group">
+      <label>Ảnh skill (tuỳ chọn)</label>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
+        <div id="ns-img-preview" style="width:56px;height:56px;border-radius:8px;background:#1a1a2e;border:2px dashed #444;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">🎯</div>
+        <label class="btn btn-outline" style="cursor:pointer;padding:8px 16px">
+          📁 Chọn ảnh
+          <input type="file" accept="image/*" style="display:none" onchange="previewNewSkillImg(this)">
+        </label>
+        <button class="btn btn-danger" style="padding:6px 10px;font-size:12px" onclick="clearNewSkillImg()">✕</button>
+      </div>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Đóng</button>
-      <button class="btn btn-danger" onclick="removeSlot(${teamIndex},${slotIndex},${isReserve},this.closest('.modal-overlay'))">Gỡ khỏi đội</button>
-    </div>
-  `);
+      <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove();window._pendingSkillImg=null;">Hủy</button>
+      <button class="btn btn-gold" onclick="cfgSubmitAddSkill(this.closest('.modal-overlay'))">Thêm Skill</button>
+    </div>`);
 }
 
-function removeSlot(teamIndex, slotIndex, isReserve, overlay) {
-  if (!isAdmin()) { denyEdit(); return; }
-  Sessions.removeSlot(teamIndex, slotIndex, isReserve);
-  overlay.remove();
-  showToast('Đã gỡ!');
-  renderPage('dashboard');
+function previewNewSkillImg(input) {
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    window._pendingSkillImg = e.target.result;
+    const preview = document.getElementById('ns-img-preview');
+    if (preview) {
+      preview.innerHTML = `<img src="${e.target.result}" style="width:52px;height:52px;border-radius:7px;object-fit:cover">`;
+      preview.style.border = '2px solid var(--accent-gold)';
+    }
+  };
+  reader.readAsDataURL(file);
 }
 
-/* ═══════════════════════════════════════════════════
-   initDashMap — gọi sau khi dashboard render xong
-═══════════════════════════════════════════════════ */
-function initDashMap() {
-  var wrap = document.getElementById('dash-map-wrap');
-  if (!wrap) return;
-
-  var settings = Settings.get();
-  var session  = Sessions.getCurrent();
-  var admin    = isAdmin();
-  var maps     = settings.maps || [];
-  var mapId    = (session && session.map) || settings.currentMap || (maps[0] && maps[0].id) || '';
-  var mapObj   = maps.find(function(m){ return m.id === mapId; });
-  var mapImg   = (typeof loadImageFromStorage === 'function' && mapObj)
-                  ? loadImageFromStorage('map_' + mapObj.id) : '';
-
-  // Render bản đồ
-  if (mapImg) {
-    wrap.innerHTML = '';
-    var img = document.createElement('img');
-    img.src = mapImg;
-    img.style.cssText = 'display:block;width:100%;height:auto;border-radius:7px;pointer-events:none;-webkit-user-drag:none';
-    wrap.appendChild(img);
-  } else {
-    wrap.innerHTML = '<div style="padding:28px;text-align:center;color:var(--text-muted)">' +
-      '<div style="font-size:28px;margin-bottom:6px">🗺</div><div>Chưa có ảnh bản đồ' +
-      (admin ? ' — <span onclick="renderPage(\'settings\')" style="color:var(--accent-cyan);cursor:pointer;text-decoration:underline">Upload ở Cấu Hình</span>' : '') +
-      '</div></div>';
-    // Không render markers nếu không có bản đồ
-    return;
+function clearNewSkillImg() {
+  window._pendingSkillImg = null;
+  const preview = document.getElementById('ns-img-preview');
+  if (preview) {
+    preview.innerHTML = '🎯';
+    preview.style.border = '2px dashed #444';
   }
+}
 
-  // Toolbar markers (admin)
-  var toolbar = document.getElementById('dash-marker-toolbar');
-  if (admin && toolbar) {
-    var CTYPES = [
-      {id:'flag',icon:'🚩',label:'Cờ'},{id:'target',icon:'🎯',label:'Mục tiêu'},
-      {id:'danger',icon:'⚠',label:'Nguy hiểm'},{id:'rally',icon:'⚔',label:'Tập kết'},
-      {id:'defend',icon:'🛡',label:'Phòng thủ'},{id:'star',icon:'⭐',label:'Chính'},
-    ];
-    toolbar.innerHTML =
-      '<span style="font-size:11px;color:var(--text-secondary);font-weight:600;white-space:nowrap;align-self:center">Thêm marker:</span>' +
-      CTYPES.map(function(t){
-        return '<button class="btn btn-outline" style="padding:3px 8px;font-size:11px" ' +
-          'onclick="dashAddMarker(\'' + t.id + '\',\'' + t.icon + '\',\'' + t.label + '\')">' +
-          t.icon + ' ' + t.label + '</button>';
-      }).join('') +
-      '<button class="btn btn-outline" style="padding:3px 8px;font-size:11px;margin-left:auto" onclick="dashResetMarkers()">↺ Reset</button>';
+function cfgSubmitAddSkill(ov) {
+  const id    = document.getElementById('ns-id').value.trim().replace(/\s+/g,'_').toLowerCase();
+  const name  = document.getElementById('ns-name').value.trim();
+  const color = document.getElementById('ns-color').value;
+  if(!id||!name){ showToast('Điền đầy đủ!','error'); return; }
+  Settings.addSkill({id, name, color});
+  // Save pending image if any
+  if (window._pendingSkillImg) {
+    saveImageToStorage('skill_' + id, window._pendingSkillImg);
+    window._pendingSkillImg = null;
   }
+  ov.remove(); showToast('Đã thêm skill!'); renderPage('settings');
+}
 
-  // Setup markers
-  var numTeams = settings.numTeams || 10;
-  var groups   = settings.groups || [];
-  var FALL     = ['#22c55e','#40c0e0','#f0c040','#f59e0b','#f28e99','#e05050','#9060e0','#f97316','#ec4899','#14b8a6'];
+/* ══════════════════════════════════════════════════════════ TASK */
+function cfgUpdateTask(id, field, value) { Settings.updateTask(id, { [field]: value }); }
+function cfgDeleteTask(id) {
+  if (!confirmDelete('Xóa task này?')) return;
+  Settings.deleteTask(id); showToast('Đã xóa!','error'); renderPage('settings');
+}
+function uploadTaskImg(id, input) {
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => { saveImageToStorage('task_' + id, e.target.result); showToast('Đã upload ảnh task!'); renderPage('settings'); };
+  reader.readAsDataURL(file);
+}
+function cfgOpenAddTask() {
+  openModal(`
+    <h3>+ Thêm Task</h3>
+    <div class="form-group"><label>Mã task</label><input type="text" id="nt-id" placeholder="vd: vat_tu_2"></div>
+    <div class="form-group"><label>Tên task</label><input type="text" id="nt-name" placeholder="vd: Vật tư 2"></div>
+    <div class="form-group"><label>Số lượng</label><input type="number" id="nt-count" value="1" min="1"></div>
+    <div class="form-group"><label>Màu</label><input type="color" id="nt-color" value="#F97316" style="width:100%;height:40px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Hủy</button>
+      <button class="btn btn-gold" onclick="cfgSubmitAddTask(this.closest('.modal-overlay'))">Thêm</button>
+    </div>`);
+}
+function cfgSubmitAddTask(ov) {
+  const id=document.getElementById('nt-id').value.trim().replace(/\s+/g,'_').toLowerCase();
+  const name=document.getElementById('nt-name').value.trim();
+  const count=+document.getElementById('nt-count').value||1;
+  const color=document.getElementById('nt-color').value;
+  if(!id||!name){showToast('Điền đầy đủ!','error');return;}
+  Settings.addTask({id,name,count,color}); ov.remove(); showToast('Đã thêm task!'); renderPage('settings');
+}
 
-  function tColor(ti) {
-    var t = session && session.teams && session.teams[ti];
-    var gid = t && t.group;
-    var g = gid && groups.find(function(x){ return x.id === gid; });
-    return g ? g.color : FALL[ti % FALL.length];
-  }
+/* ══════════════════════════════════════════════════════════ GROUP */
+function cfgUpdateGroup(id, field, value) {
+  const data = loadData();
+  const idx  = data.settings.groups.findIndex(g => g.id === id);
+  if (idx !== -1) { data.settings.groups[idx][field] = value; saveData(data); }
+}
+function cfgDeleteGroup(id) {
+  if (!confirmDelete('Xóa nhóm này?')) return;
+  Settings.deleteGroup(id); showToast('Đã xóa!','error'); renderPage('settings');
+}
+function cfgOpenAddGroup() {
+  openModal(`
+    <h3>+ Thêm Nhóm</h3>
+    <div class="form-group"><label>Mã nhóm</label><input type="text" id="ng-id" placeholder="vd: group_5"></div>
+    <div class="form-group"><label>Tên nhóm</label><input type="text" id="ng-name" placeholder="vd: Nhóm 5"></div>
+    <div class="form-group"><label>Màu</label><input type="color" id="ng-color" value="#3399ff" style="width:100%;height:40px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Hủy</button>
+      <button class="btn btn-gold" onclick="cfgSubmitAddGroup(this.closest('.modal-overlay'))">Thêm</button>
+    </div>`);
+}
+function cfgSubmitAddGroup(ov) {
+  const id=document.getElementById('ng-id').value.trim().replace(/\s+/g,'_');
+  const name=document.getElementById('ng-name').value.trim();
+  const color=document.getElementById('ng-color').value;
+  if(!id||!name){showToast('Điền đầy đủ!','error');return;}
+  Settings.addGroup({id,name,color}); ov.remove(); showToast('Đã thêm nhóm!'); renderPage('settings');
+}
 
-  var savedM = session && session.tactics && session.tactics.markers;
-  var defM   = buildDefaultMarkers(numTeams);
-  var _TM = defM.map(function(def, i) {
-    var s = savedM && savedM.find(function(m){ return m.teamIndex === i; });
-    return { teamIndex: i, x: s ? s.x : def.x, y: s ? s.y : def.y, color: tColor(i) };
-  });
-  var _CM = ((session && session.tactics && session.tactics.customMarkers) || []).map(function(m){ return Object.assign({}, m); });
-  var _drag = null;
-
-  function client(e) {
-    var t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]);
-    return t ? {x:t.clientX,y:t.clientY} : {x:e.clientX,y:e.clientY};
-  }
-  function pct(cx, cy) {
-    var r = wrap.getBoundingClientRect();
-    return {
-      x: Math.max(1, Math.min(99, +((cx-r.left)/r.width*100).toFixed(2))),
-      y: Math.max(1, Math.min(99, +((cy-r.top)/r.height*100).toFixed(2)))
-    };
-  }
-
-  function renderMarkers() {
-    wrap.querySelectorAll('.dm,.dm-del').forEach(function(e){ e.remove(); });
-    _TM.forEach(function(mk, ti) {
-      var el = document.createElement('div');
-      el.className = 'dm';
-      el.textContent = 'T'+(ti+1);
-      el.style.cssText =
-        'position:absolute;width:32px;height:32px;border-radius:50%;' +
-        'display:flex;align-items:center;justify-content:center;' +
-        'font-weight:800;font-size:12px;font-family:Cinzel,serif;color:#111;' +
-        'border:2px solid rgba(255,255,255,0.35);box-shadow:0 2px 8px rgba(0,0,0,0.7);' +
-        'transform:translate(-50%,-50%);z-index:10;touch-action:none;user-select:none;' +
-        'background:'+mk.color+';left:'+mk.x+'%;top:'+mk.y+'%;' +
-        'cursor:'+(admin?'grab':'pointer');
-      if (admin) {
-        (function(i,e2){
-          e2.addEventListener('mousedown',  function(ev){ ev.preventDefault(); ev.stopPropagation(); _drag={kind:'tm',idx:i,el:e2,ox:client(ev).x,oy:client(ev).y}; e2.style.cursor='grabbing'; e2.style.zIndex='50'; });
-          e2.addEventListener('touchstart', function(ev){ ev.preventDefault(); ev.stopPropagation(); _drag={kind:'tm',idx:i,el:e2,ox:client(ev).x,oy:client(ev).y}; e2.style.zIndex='50'; },{passive:false});
-        })(ti, el);
-      }
-      wrap.appendChild(el);
-    });
-    _CM.forEach(function(mk, ci) {
-      var el = document.createElement('div');
-      el.className = 'dm';
-      el.textContent = mk.icon;
-      el.style.cssText =
-        'position:absolute;font-size:22px;line-height:1;' +
-        'transform:translate(-50%,-50%);z-index:11;touch-action:none;user-select:none;' +
-        'filter:drop-shadow(0 2px 4px rgba(0,0,0,0.9));' +
-        'left:'+mk.x+'%;top:'+mk.y+'%;cursor:'+(admin?'grab':'default');
-      if (admin) {
-        (function(i,e2){
-          e2.addEventListener('mousedown',  function(ev){ ev.preventDefault(); ev.stopPropagation(); _drag={kind:'cm',idx:i,el:e2,ox:client(ev).x,oy:client(ev).y}; e2.style.cursor='grabbing'; e2.style.zIndex='51'; });
-          e2.addEventListener('touchstart', function(ev){ ev.preventDefault(); ev.stopPropagation(); _drag={kind:'cm',idx:i,el:e2,ox:client(ev).x,oy:client(ev).y}; e2.style.zIndex='51'; },{passive:false});
-          var del = document.createElement('div');
-          del.className='dm-del';
-          del.textContent='×';
-          del.style.cssText='position:absolute;width:16px;height:16px;border-radius:50%;background:#dc2626;border:2px solid white;color:white;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:20;transform:translate(-50%,-50%);left:calc('+mk.x+'% + 11px);top:calc('+mk.y+'% - 11px)';
-          del.addEventListener('click', function(ev){ ev.stopPropagation(); _CM.splice(i,1); saveM(); renderMarkers(); });
-          wrap.appendChild(del);
-        })(ci, el);
-      }
-      wrap.appendChild(el);
-    });
-  }
-
-  function onMove(e) {
-    if (!_drag) return; e.preventDefault();
-    var c = client(e);
-    var p = pct(c.x, c.y);
-    if (_drag.kind === 'tm') { _TM[_drag.idx].x=p.x; _TM[_drag.idx].y=p.y; }
-    else                     { _CM[_drag.idx].x=p.x; _CM[_drag.idx].y=p.y; }
-    _drag.el.style.left=p.x+'%'; _drag.el.style.top=p.y+'%';
-  }
-  function onUp() {
-    if (!_drag) return;
-    if (_drag.el) { _drag.el.style.cursor=admin?'grab':'default'; _drag.el.style.zIndex=''; }
-    _drag = null; saveM();
-  }
-
-  function saveM() {
-    var cur = Sessions.getCurrent(); if (!cur) return;
-    Sessions.updateCurrent({ tactics: Object.assign({}, cur.tactics||{}, { markers:_TM, customMarkers:_CM }) });
-  }
-
-  window.dashAddMarker = function(typeId, icon, label) {
-    _CM.push({id:'cm_'+Date.now(),type:typeId,icon:icon,label:label,x:50,y:50});
-    renderMarkers(); saveM();
-    if (typeof showToast === 'function') showToast('Đã thêm '+label+' — kéo để di chuyển!');
+/* ══════════════════════════════════════════════════════════ MAP */
+function cfgUpdateMap(id, field, value) { Settings.updateMap(id, { [field]: value }); }
+function setActiveMap(id) {
+  Settings.update({ currentMap: id });
+  showToast('Đã đặt bản đồ hiện tại!');
+  renderPage('settings');
+}
+function cfgDeleteMap(id) {
+  if (!confirmDelete('Xóa bản đồ này?')) return;
+  Settings.deleteMap(id); showToast('Đã xóa!','error'); renderPage('settings');
+}
+function uploadMapImg(id, input) {
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    saveImageToStorage('map_' + id, e.target.result);
+    showToast('Đã upload ảnh bản đồ!');
+    renderPage('settings');
   };
-  window.dashResetMarkers = function() {
-    _TM = defM.map(function(d,i){ return Object.assign({},d,{color:tColor(i)}); });
-    renderMarkers(); saveM();
-    if (typeof showToast === 'function') showToast('Đã reset!');
+  reader.readAsDataURL(file);
+}
+function cfgOpenAddMap() {
+  openModal(`
+    <h3>+ Thêm Bản Đồ</h3>
+    <div class="form-group"><label>Mã bản đồ</label><input type="text" id="nm-id" placeholder="vd: map_2"></div>
+    <div class="form-group"><label>Tên bản đồ</label><input type="text" id="nm-name" placeholder="vd: Chiến Trường 2"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Hủy</button>
+      <button class="btn btn-gold" onclick="cfgSubmitAddMap(this.closest('.modal-overlay'))">Thêm</button>
+    </div>`);
+}
+function cfgSubmitAddMap(ov) {
+  const id=document.getElementById('nm-id').value.trim().replace(/\s+/g,'_').toLowerCase();
+  const name=document.getElementById('nm-name').value.trim();
+  if(!id||!name){showToast('Điền đầy đủ!','error');return;}
+  Settings.addMap({id,name}); ov.remove(); showToast('Đã thêm bản đồ!'); renderPage('settings');
+}
+
+/* ══════════════════════════════════════════════════════════ DANGER */
+function clearAllMembers() {
+  if (!confirmDelete('XÓA TOÀN BỘ thành viên? Không thể hoàn tác!')) return;
+  const data=loadData(); data.members=[]; saveData(data); showToast('Đã xóa!','error');
+}
+function resetAllData() {
+  if (!confirm('RESET TOÀN BỘ? Không thể hoàn tác!')) return;
+  localStorage.removeItem(DB_KEY); showToast('Đã reset! Tải lại...','error');
+  setTimeout(()=>location.reload(),1500);
+}
+function exportData() {
+  const blob=new Blob([JSON.stringify(loadData(),null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=`guild_data_${Date.now()}.json`; a.click();
+  URL.revokeObjectURL(url); showToast('Đã xuất!');
+}
+function importData(input) {
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try {
+      const data=JSON.parse(e.target.result);
+      if(!confirm('Ghi đè dữ liệu hiện tại?')) return;
+      saveData(data); showToast('Đã nhập!'); setTimeout(()=>location.reload(),1000);
+    } catch { showToast('File không hợp lệ!','error'); }
   };
-
-  document.addEventListener('mousemove', onMove, {passive:false});
-  document.addEventListener('mouseup',   onUp);
-  document.addEventListener('touchmove', onMove, {passive:false});
-  document.addEventListener('touchend',  onUp);
-
-  renderMarkers();
+  reader.readAsText(file);
 }

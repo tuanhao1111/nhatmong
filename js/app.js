@@ -73,7 +73,7 @@ function initApp() {
             <div id="topbar-user-tag"></div>
             ${isAdmin()?`<button class="btn btn-gold" style="font-size:12px;padding:6px 14px" onclick="fbPushNow()" title="Đẩy dữ liệu lên Firebase">🔥 Push Firebase</button>`:''}
             ${isAdmin()?`<button class="btn btn-gold" style="font-size:12px;padding:6px 14px" onclick="fbPushNow()">🔥 Push Firebase</button>`:''}
-            ${isAdmin()?`<button class="btn btn-outline" style="font-size:12px" onclick="exportData()">📤 Xuất</button>`:''}}
+            ${isAdmin()?`<button class="btn btn-gold" style="font-size:12px;padding:6px 14px" onclick="fbPushNow()">🔥 Push Firebase</button>`:''}\n            ${isAdmin()?`<button class="btn btn-outline" style="font-size:12px" onclick="exportData()">📤 Xuất</button>`:''}}
           </div>
         </div>
         <div class="page-content"><div id="page-area"></div></div>
