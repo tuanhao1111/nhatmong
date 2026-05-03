@@ -43,30 +43,38 @@ function formatDateTime(dateStr) {
 
 function getClassColor(classId) {
   if (!classId) return '#666';
-  var settings = Settings.get();
-  var cls = settings.classes.find(function(c) { return c.id === classId; });
-  return cls ? cls.color : '#666';
+  try {
+    var settings = Settings.get();
+    var cls = settings.classes.find(function(c) { return c.id === classId; });
+    return cls ? cls.color : '#666';
+  } catch(e) { return '#666'; }
 }
 
 function getClassName(classId) {
   if (!classId) return '';
-  var settings = Settings.get();
-  var cls = settings.classes.find(function(c) { return c.id === classId; });
-  return cls ? cls.name : classId;
+  try {
+    var settings = Settings.get();
+    var cls = settings.classes.find(function(c) { return c.id === classId; });
+    return cls ? cls.name : classId;
+  } catch(e) { return classId || ''; }
 }
 
 function getGroupName(groupId) {
   if (!groupId) return '';
-  var settings = Settings.get();
-  var g = settings.groups.find(function(g) { return g.id === groupId; });
-  return g ? g.name : '';
+  try {
+    var settings = Settings.get();
+    var g = settings.groups.find(function(g) { return g.id === groupId; });
+    return g ? g.name : '';
+  } catch(e) { return ''; }
 }
 
 function getGroupColor(groupId) {
   if (!groupId) return '#666';
-  var settings = Settings.get();
-  var g = settings.groups.find(function(g) { return g.id === groupId; });
-  return g ? g.color : '#666';
+  try {
+    var settings = Settings.get();
+    var g = settings.groups.find(function(g) { return g.id === groupId; });
+    return g ? g.color : '#666';
+  } catch(e) { return '#666'; }
 }
 
 function classBadge(classId) {
@@ -74,16 +82,6 @@ function classBadge(classId) {
   var name  = getClassName(classId);
   if (!name) return '';
   return '<span class="badge" style="background:' + color + '22;color:' + color + ';border:1px solid ' + color + '44">' + escHtml(name) + '</span>';
-}
-
-function roleBadge(role) {
-  var map = {
-    leader:  { label:'Bang Chủ',   color:'#f0c040' },
-    officer: { label:'Phó Bang',   color:'#40c0e0' },
-    member:  { label:'Thành Viên', color:'#808090' }
-  };
-  var r = map[role] || map.member;
-  return '<span class="badge" style="background:' + r.color + '22;color:' + r.color + '">' + r.label + '</span>';
 }
 
 function openModal(html, onClose, wide) {
@@ -97,10 +95,6 @@ function openModal(html, onClose, wide) {
     if (e.target === overlay) { overlay.remove(); if (onClose) onClose(); }
   });
   return overlay;
-}
-
-function closeModal(overlay) {
-  if (overlay) overlay.remove();
 }
 
 function escHtml(str) {

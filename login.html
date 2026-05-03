@@ -329,14 +329,48 @@
 
   <!-- Register form -->
   <div id="form-register" style="display:none">
+
+    <div class="form-group">
+      <label>Tên đăng nhập (Email)</label>
+      <input type="email" id="reg-email" placeholder="email@example.com" autocomplete="email">
+    </div>
+
     <div class="form-group">
       <label>Tên hiển thị</label>
-      <input type="text" id="reg-name" placeholder="Tên trong game / biệt danh">
+      <input type="text" id="reg-name" placeholder="Biệt danh / tên trong bang">
     </div>
-    <div class="form-group">
-      <label>Email</label>
-      <input type="email" id="reg-email" placeholder="email@example.com">
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="form-group">
+        <label>Tên Ingame</label>
+        <input type="text" id="reg-ingame-name" placeholder="Tên nhân vật">
+      </div>
+      <div class="form-group">
+        <label>ID Ingame</label>
+        <input type="text" id="reg-ingame-id" placeholder="ID nhân vật">
+      </div>
     </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="form-group">
+        <label>ID Discord</label>
+        <input type="text" id="reg-discord-id" placeholder="username#0000">
+      </div>
+      <div class="form-group">
+        <label>Hệ phái (Class)</label>
+        <select id="reg-class" style="width:100%;padding:10px 12px;background:var(--bg-input,#0f0f1e);border:1px solid var(--border-color,#2a2a40);border-radius:8px;color:var(--text-primary,#e8e8f0);font-size:14px;cursor:pointer;outline:none">
+          <option value="">-- Chọn hệ phái --</option>
+          <option value="toai_mong">⚔ Toái Mộng</option>
+          <option value="thiet_y">🛡 Thiết Y</option>
+          <option value="huyet_ha">🩸 Huyết Hà</option>
+          <option value="than_tuong">⚡ Thần Tướng</option>
+          <option value="to_van">🌸 Tố Vân</option>
+          <option value="cuu_linh">🔮 Cửu Linh</option>
+          <option value="long_ngam">🐉 Long Ngâm</option>
+        </select>
+      </div>
+    </div>
+
     <div class="form-group">
       <label>Mật khẩu</label>
       <div class="input-wrap">
@@ -344,6 +378,7 @@
         <button class="pwd-toggle" onclick="togglePwd('reg-pass', this)" tabindex="-1">👁</button>
       </div>
     </div>
+
     <div class="form-group">
       <label>Xác nhận mật khẩu</label>
       <div class="input-wrap">
@@ -352,6 +387,7 @@
         <button class="pwd-toggle" onclick="togglePwd('reg-pass2', this)" tabindex="-1">👁</button>
       </div>
     </div>
+
     <button class="btn-submit" onclick="submitRegister()">Tạo tài khoản</button>
   </div>
 
@@ -489,24 +525,53 @@
 
   function submitRegister() {
     hideError();
-    const name = document.getElementById('reg-name').value.trim();
-    const email = document.getElementById('reg-email').value.trim();
-    const pass = document.getElementById('reg-pass').value;
-    const pass2 = document.getElementById('reg-pass2').value;
+    const email      = document.getElementById('reg-email').value.trim();
+    const name       = document.getElementById('reg-name').value.trim();
+    const ingameName = document.getElementById('reg-ingame-name').value.trim();
+    const ingameId   = document.getElementById('reg-ingame-id').value.trim();
+    const discordId  = document.getElementById('reg-discord-id').value.trim();
+    const classId    = document.getElementById('reg-class').value;
+    const pass       = document.getElementById('reg-pass').value;
+    const pass2      = document.getElementById('reg-pass2').value;
 
-    if (!name || !email || !pass) { showError('Vui lòng điền đầy đủ thông tin!'); return; }
+    if (!email || !name || !pass) { showError('Vui lòng điền Email, Tên hiển thị và Mật khẩu!'); return; }
+    if (!ingameName)  { showError('Vui lòng nhập Tên Ingame!'); return; }
+    if (!classId)     { showError('Vui lòng chọn Hệ phái!'); return; }
     if (pass.length < 6) { showError('Mật khẩu ít nhất 6 ký tự!'); return; }
     if (pass !== pass2) { showError('Mật khẩu xác nhận không khớp!'); return; }
 
-    const users = getUsers();
-    if (users.find(u => u.email === email)) { showError('Email này đã được đăng ký!'); return; }
+    if (_fbUsersRef) {
+      _fbUsersRef.get().then(function(snap) {
+        const users = [];
+        snap.forEach(function(d) { users.push(d.data()); });
+        if (users.length > 0) localStorage.setItem('nth_users', JSON.stringify(users));
+        doRegister(users.length > 0 ? users : getUsers());
+      }).catch(function() { doRegister(getUsers()); });
+    } else {
+      doRegister(getUsers());
+    }
 
-    const newUser = { id: Date.now().toString(36), name, email, pass: btoa(pass), role: 'member', createdAt: new Date().toISOString() };
-    users.push(newUser);
-    saveUsers(users);
-    fbPushNewUser(newUser); // ← sync lên Firebase
-    saveSession(newUser);
-    window.location.href = 'app.html';
+    function doRegister(existingUsers) {
+      if (existingUsers.find(u => u.email === email)) {
+        showError('Email này đã được đăng ký!'); return;
+      }
+      const newUser = {
+        id: Date.now().toString(36),
+        name, email,
+        inGameName: ingameName,
+        inGameId:   ingameId,
+        discordId:  discordId,
+        class:      classId,
+        pass:       btoa(pass),
+        role:       'member',
+        createdAt:  new Date().toISOString()
+      };
+      existingUsers.push(newUser);
+      saveUsers(existingUsers);
+      fbPushNewUser(newUser);
+      saveSession(newUser);
+      window.location.href = 'app.html';
+    }
   }
 
   function loginAsGuest() {
@@ -552,6 +617,21 @@
     const existing = sessionStorage.getItem('nth_session') || localStorage.getItem('nth_session');
     // auto-redirect disabled to prevent loop
   }
+
+  // Tô màu select hệ phái
+  (function() {
+    var CLASS_COLORS = {"toai_mong": "#80c7e6", "thiet_y": "#e6a35c", "huyet_ha": "#a3534a", "than_tuong": "#5e7faf", "to_van": "#f28e99", "cuu_linh": "#b36bb3", "long_ngam": "#8cb36b"};
+    var sel = document.getElementById('reg-class');
+    if (!sel) return;
+    function updateColor() {
+      var color = CLASS_COLORS[sel.value] || '#808090';
+      sel.style.borderColor = color;
+      sel.style.color = sel.value ? color : 'var(--text-secondary, #808090)';
+      sel.style.boxShadow = sel.value ? '0 0 0 1px ' + color + '44' : 'none';
+    }
+    sel.addEventListener('change', updateColor);
+    updateColor();
+  })();
 </script>
 </body>
 </html>

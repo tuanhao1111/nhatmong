@@ -189,196 +189,22 @@ function renderDashboardPage() {
     <div class="card" style="margin-top:20px">
       <div class="section-header">
         <span class="section-title">🗺 Chỉ Đạo Chiến Thuật</span>
-        ${admin ? `<div id="dash-marker-toolbar" style="display:flex;gap:6px;flex-wrap:wrap"></div>` : ''}
+        ${admin ? '<div style="display:flex;gap:8px" id="dash-marker-btns"></div>' : ''}
       </div>
-      <div id="dash-map-wrap" style="position:relative;border-radius:8px;overflow:visible;border:1px solid var(--border-color);background:#1a1510;min-height:80px"></div>
+      <div id="dash-map-wrap" style="position:relative;border-radius:8px;overflow:visible;border:1px solid var(--border-color);background:#1a1510;min-height:60px">
+      </div>
       ${admin
-        ? `<textarea id="tactics-notes" rows="3" style="width:100%;background:#0f0f1e;resize:vertical;margin-top:8px;border-radius:6px;padding:10px;font-size:14px"
-             placeholder="Ghi chép chiến thuật..." onblur="saveTacticsNotes()">${escHtml(session.tactics?.notes||'')}</textarea>`
-        : `<div style="background:#0f0f1e;border-radius:6px;padding:12px;margin-top:8px;white-space:pre-wrap;min-height:40px;font-size:14px;line-height:1.7;color:var(--text-secondary)">
-             ${escHtml(session.tactics?.notes||'') || '<em style="color:var(--text-muted)">Chưa có ghi chú chiến thuật</em>'}
-           </div>`}
+        ? '<div id="dash-marker-toolbar" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"></div><textarea id="tactics-notes" rows="3" style="width:100%;background:#0f0f1e;resize:vertical;margin-top:8px;border-radius:6px;padding:10px;font-size:14px" placeholder="Ghi chép chiến thuật..." onblur="saveTacticsNotes()">' + escHtml(session.tactics?.notes||'') + '</textarea>'
+        : '<div style=\"background:#0f0f1e;border-radius:6px;padding:12px;margin-top:8px;min-height:40px;font-size:14px;color:var(--text-secondary)\">' + (escHtml(session.tactics?.notes||'') || '<em style=\"color:var(--text-muted)\">Chưa có ghi chú</em>') + '</div>'
+      }
     </div>
   `;
 }
-
-// ── Actions (admin only) ──────────────────────────────────────────────────────
-function createNewSession() {
-  if (!isAdmin()) { denyEdit(); return; }
-  const name = prompt('Tên đợt bang chiến:', `Tuần ${getWeekNumber(new Date())} - ${new Date().getFullYear()}`);
-  if (name === null) return;
-  Sessions.createNew({ name: name || undefined });
-  showToast('Đã tạo đợt mới!');
-  renderPage('dashboard');
-}
-
-function getWeekNumber(d) {
-  d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-}
-
-function setTeamGroup(teamIndex, groupId) {
-  if (!isAdmin()) { denyEdit(); return; }
-  const data = loadData();
-  if (!data.currentSession) return;
-  data.currentSession.teams[teamIndex].group = groupId;
-  saveData(data);
-}
-
-function saveTacticsNotes() {
-  if (!isAdmin()) return;
-  const notes = document.getElementById('tactics-notes')?.value;
-  if (notes === undefined) return;
-  Sessions.updateCurrent({ tactics: { ...Sessions.getCurrent()?.tactics, notes } });
-}
-
-// ── View slot (non-admin) ─────────────────────────────────────────────────────
-function viewSlotInfo(slot) {
-  const ROLE_META = { luong:{icon:'🌾',color:'#f0c040',name:'Lương'}, cong:{icon:'⚔',color:'#e05050',name:'Công'}, thu:{icon:'🛡',color:'#5090e0',name:'Thủ'}, tro:{icon:'💠',color:'#50d0a0',name:'Trợ'} };
-  const rm = ROLE_META[slot.combatRole];
-  const cc = getClassColor(slot.class);
-  openModal(`
-    <h3 style="margin-bottom:16px">${escHtml(slot.inGameName||slot.name)}</h3>
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#0f0f1e;border-radius:8px">
-        <span style="font-size:20px">${rm?rm.icon:'·'}</span>
-        <div>
-          <div style="font-size:11px;color:var(--text-secondary)">Vai trò</div>
-          <div style="font-weight:700;color:${rm?rm.color:'var(--text-muted)'}">${rm?rm.name:'Chưa xác định'}</div>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#0f0f1e;border-radius:8px">
-        <div style="width:14px;height:14px;border-radius:3px;background:${cc}"></div>
-        <div>
-          <div style="font-size:11px;color:var(--text-secondary)">Class</div>
-          <div style="font-weight:700;color:${cc}">${getClassName(slot.class)}</div>
-        </div>
-      </div>
-    </div>
-    <div class="modal-actions"><button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Đóng</button></div>
-  `);
-}
-
-// ── Assign / remove (admin) ───────────────────────────────────────────────────
-function openAssignModal(teamIndex, slotIndex, isReserve) {
-  if (!isAdmin()) { denyEdit(); return; }
-  const members = Members.getAll();
-  const session = Sessions.getCurrent();
-  const assigned = new Set();
-  if (session) {
-    session.teams.forEach(t => t.slots.forEach(s => { if(s) assigned.add(s.id); }));
-    session.reserve.forEach(s => { if(s) assigned.add(s.id); });
-  }
-  const available = members.filter(m => !assigned.has(m.id));
-  const ROLE_META = { luong:{icon:'🌾',color:'#f0c040'}, cong:{icon:'⚔',color:'#e05050'}, thu:{icon:'🛡',color:'#5090e0'}, tro:{icon:'💠',color:'#50d0a0'} };
-
-  const listHtml = available.length === 0
-    ? '<div style="color:var(--text-muted);text-align:center;padding:24px">Không còn thành viên trống</div>'
-    : available.map(m => {
-        const cc = getClassColor(m.class);
-        const rm = ROLE_META[m.combatRole];
-        return `<div class="member-pick-item" onclick="assignMember('${m.id}', ${teamIndex}, ${slotIndex}, ${isReserve}, this.closest('.modal-overlay'))">
-          <div style="display:flex;align-items:center;gap:10px">
-            <div style="width:4px;height:40px;border-radius:2px;background:${rm?rm.color:cc};flex-shrink:0"></div>
-            <div style="flex:1;min-width:0">
-              <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(m.inGameName||m.name)}</div>
-              <div style="display:flex;gap:6px;margin-top:3px;flex-wrap:wrap">
-                ${classBadge(m.class)}
-                ${rm ? `<span class="badge" style="background:${rm.color}22;color:${rm.color}">${rm.icon} ${['Lương','Công','Thủ','Trợ'][['luong','cong','thu','tro'].indexOf(m.combatRole)]}</span>` : ''}
-                <span style="color:var(--accent-gold);font-size:11px">${formatNumber(m.power)}</span>
-              </div>
-            </div>
-          </div>
-        </div>`;
-      }).join('');
-
-  openModal(`
-    <h3>⚔ Chọn Thành Viên</h3>
-    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap" id="pick-filter-roles">
-      <button class="btn btn-outline pick-role-filter active" style="padding:4px 10px;font-size:12px" onclick="filterPickByRole('',this)">Tất cả</button>
-      ${Object.entries(ROLE_META).map(([k,r]) => `<button class="btn btn-outline pick-role-filter" style="padding:4px 10px;font-size:12px;border-color:${r.color}44;color:${r.color}" onclick="filterPickByRole('${k}',this)">${r.icon}</button>`).join('')}
-    </div>
-    <input type="text" placeholder="🔍 Tìm nhanh..." style="width:100%;margin-bottom:10px" oninput="filterMemberPick(this.value)">
-    <div id="member-pick-list" style="max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:6px">${listHtml}</div>
-    <div class="modal-actions"><button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Hủy</button></div>
-  `);
-}
-
-function filterPickByRole(roleId, btn) {
-  document.querySelectorAll('.pick-role-filter').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  document.querySelectorAll('.member-pick-item').forEach(item => {
-    if (!roleId) { item.style.display = ''; return; }
-    // check badge text for role icon
-    const hasRole = item.textContent.includes(roleId === 'luong' ? '🌾' : roleId === 'cong' ? '⚔' : roleId === 'thu' ? '🛡' : '💠');
-    item.style.display = hasRole ? '' : 'none';
-  });
-}
-
-function filterMemberPick(q) {
-  document.querySelectorAll('.member-pick-item').forEach(item => {
-    item.style.display = item.textContent.toLowerCase().includes(q.toLowerCase()) ? '' : 'none';
-  });
-}
-
-function assignMember(memberId, teamIndex, slotIndex, isReserve, overlay) {
-  if (!isAdmin()) { denyEdit(); return; }
-  // Store combatRole in slot too for display
-  const member = Members.getById(memberId);
-  Sessions.assignMember(teamIndex, slotIndex, memberId, isReserve);
-  // Patch combatRole into slot
-  const data = loadData();
-  if (data.currentSession && member) {
-    if (isReserve) {
-      if (data.currentSession.reserve[slotIndex]) data.currentSession.reserve[slotIndex].combatRole = member.combatRole;
-    } else {
-      if (data.currentSession.teams[teamIndex]?.slots[slotIndex]) {
-        data.currentSession.teams[teamIndex].slots[slotIndex].combatRole = member.combatRole;
-      }
-    }
-    saveData(data);
-  }
-  overlay.remove();
-  showToast('Đã thêm vào đội hình!');
-  renderPage('dashboard');
-}
-
-function openSlotMenu(teamIndex, slotIndex, isReserve) {
-  if (!isAdmin()) return;
-  const session = Sessions.getCurrent();
-  const slot = isReserve ? session.reserve[slotIndex] : session.teams[teamIndex]?.slots[slotIndex];
-  if (!slot) return;
-  const ROLE_META = { luong:{icon:'🌾',color:'#f0c040',name:'Lương'}, cong:{icon:'⚔',color:'#e05050',name:'Công'}, thu:{icon:'🛡',color:'#5090e0',name:'Thủ'}, tro:{icon:'💠',color:'#50d0a0',name:'Trợ'} };
-  const rm = ROLE_META[slot.combatRole];
-  const cc = getClassColor(slot.class);
-  openModal(`
-    <h3>${escHtml(slot.inGameName||slot.name)}</h3>
-    <div style="display:flex;gap:10px;margin:14px 0;flex-wrap:wrap">
-      ${rm ? `<span class="badge" style="background:${rm.color}22;color:${rm.color};font-size:13px;padding:5px 12px">${rm.icon} ${rm.name}</span>` : ''}
-      <span class="badge" style="background:${cc}22;color:${cc};font-size:13px;padding:5px 12px">${getClassName(slot.class)}</span>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Đóng</button>
-      <button class="btn btn-danger" onclick="removeSlot(${teamIndex},${slotIndex},${isReserve},this.closest('.modal-overlay'))">Gỡ khỏi đội</button>
-    </div>
-  `);
-}
-
-function removeSlot(teamIndex, slotIndex, isReserve, overlay) {
-  if (!isAdmin()) { denyEdit(); return; }
-  Sessions.removeSlot(teamIndex, slotIndex, isReserve);
-  overlay.remove();
-  showToast('Đã gỡ!');
-  renderPage('dashboard');
-}
-
 /* ═══════════════════════════════════════════════════
-   initDashMap — gọi sau khi dashboard render xong
+   Bản đồ chiến thuật tích hợp trong Dashboard
 ═══════════════════════════════════════════════════ */
 function initDashMap() {
-  var wrap = document.getElementById('dash-map-wrap');
+  var wrap   = document.getElementById('dash-map-wrap');
   if (!wrap) return;
 
   var settings = Settings.get();
@@ -387,23 +213,18 @@ function initDashMap() {
   var maps     = settings.maps || [];
   var mapId    = (session && session.map) || settings.currentMap || (maps[0] && maps[0].id) || '';
   var mapObj   = maps.find(function(m){ return m.id === mapId; });
-  var mapImg   = (typeof loadImageFromStorage === 'function' && mapObj)
-                  ? loadImageFromStorage('map_' + mapObj.id) : '';
+  var mapImg   = mapObj ? loadImageFromStorage('map_' + mapObj.id) : '';
 
   // Render bản đồ
   if (mapImg) {
-    wrap.innerHTML = '';
     var img = document.createElement('img');
     img.src = mapImg;
     img.style.cssText = 'display:block;width:100%;height:auto;border-radius:7px;pointer-events:none;-webkit-user-drag:none';
     wrap.appendChild(img);
   } else {
-    wrap.innerHTML = '<div style="padding:28px;text-align:center;color:var(--text-muted)">' +
-      '<div style="font-size:28px;margin-bottom:6px">🗺</div><div>Chưa có ảnh bản đồ' +
-      (admin ? ' — <span onclick="renderPage(\'settings\')" style="color:var(--accent-cyan);cursor:pointer;text-decoration:underline">Upload ở Cấu Hình</span>' : '') +
-      '</div></div>';
-    // Không render markers nếu không có bản đồ
-    return;
+    wrap.innerHTML = '<div style="padding:30px;text-align:center;color:var(--text-muted)"><div style="font-size:28px;margin-bottom:6px">🗺</div><div>Chưa có ảnh bản đồ' +
+      (admin ? ' — <a onclick="renderPage(\'settings\')" style="color:var(--accent-cyan);cursor:pointer">Upload ở Cấu Hình</a>' : '') + '</div></div>';
+    return; // Không cần render markers nếu không có bản đồ
   }
 
   // Toolbar markers (admin)
@@ -414,17 +235,14 @@ function initDashMap() {
       {id:'danger',icon:'⚠',label:'Nguy hiểm'},{id:'rally',icon:'⚔',label:'Tập kết'},
       {id:'defend',icon:'🛡',label:'Phòng thủ'},{id:'star',icon:'⭐',label:'Chính'},
     ];
-    toolbar.innerHTML =
-      '<span style="font-size:11px;color:var(--text-secondary);font-weight:600;white-space:nowrap;align-self:center">Thêm marker:</span>' +
+    toolbar.innerHTML = '<span style="font-size:11px;color:var(--text-secondary);font-weight:600;align-self:center">Thêm:</span>' +
       CTYPES.map(function(t){
-        return '<button class="btn btn-outline" style="padding:3px 8px;font-size:11px" ' +
-          'onclick="dashAddMarker(\'' + t.id + '\',\'' + t.icon + '\',\'' + t.label + '\')">' +
-          t.icon + ' ' + t.label + '</button>';
+        return '<button class="btn btn-outline" style="padding:4px 9px;font-size:12px" onclick="dashAddMarker(\'' + t.id + '\',\'' + t.icon + '\',\'' + t.label + '\')">' + t.icon + ' ' + t.label + '</button>';
       }).join('') +
-      '<button class="btn btn-outline" style="padding:3px 8px;font-size:11px;margin-left:auto" onclick="dashResetMarkers()">↺ Reset</button>';
+      '<button class="btn btn-outline" style="padding:4px 9px;font-size:12px;margin-left:auto" onclick="dashResetMarkers()">↺ Reset</button>';
   }
 
-  // Setup markers
+  // Marker state
   var numTeams = settings.numTeams || 10;
   var groups   = settings.groups || [];
   var FALL     = ['#22c55e','#40c0e0','#f0c040','#f59e0b','#f28e99','#e05050','#9060e0','#f97316','#ec4899','#14b8a6'];
@@ -436,24 +254,25 @@ function initDashMap() {
     return g ? g.color : FALL[ti % FALL.length];
   }
 
-  var savedM = session && session.tactics && session.tactics.markers;
-  var defM   = buildDefaultMarkers(numTeams);
-  var _TM = defM.map(function(def, i) {
-    var s = savedM && savedM.find(function(m){ return m.teamIndex === i; });
-    return { teamIndex: i, x: s ? s.x : def.x, y: s ? s.y : def.y, color: tColor(i) };
+  var savedMarkers = session && session.tactics && session.tactics.markers;
+  var defMarkers   = buildDefaultMarkers(numTeams);
+  var _TM = defMarkers.map(function(def, i) {
+    var saved = savedMarkers && savedMarkers.find(function(m){ return m.teamIndex === i; });
+    return { teamIndex: i, x: saved ? saved.x : def.x, y: saved ? saved.y : def.y, color: tColor(i) };
   });
-  var _CM = ((session && session.tactics && session.tactics.customMarkers) || []).map(function(m){ return Object.assign({}, m); });
+  var _CM = (session && session.tactics && session.tactics.customMarkers || []).map(function(m){ return Object.assign({}, m); });
+
   var _drag = null;
 
   function client(e) {
-    var t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]);
-    return t ? {x:t.clientX,y:t.clientY} : {x:e.clientX,y:e.clientY};
+    var t = e.touches && e.touches[0] || e.changedTouches && e.changedTouches[0];
+    return t ? {x: t.clientX, y: t.clientY} : {x: e.clientX, y: e.clientY};
   }
   function pct(cx, cy) {
     var r = wrap.getBoundingClientRect();
     return {
-      x: Math.max(1, Math.min(99, +((cx-r.left)/r.width*100).toFixed(2))),
-      y: Math.max(1, Math.min(99, +((cy-r.top)/r.height*100).toFixed(2)))
+      x: Math.max(1, Math.min(99, +((cx - r.left) / r.width  * 100).toFixed(2))),
+      y: Math.max(1, Math.min(99, +((cy - r.top)  / r.height * 100).toFixed(2)))
     };
   }
 
@@ -461,77 +280,79 @@ function initDashMap() {
     wrap.querySelectorAll('.dm,.dm-del').forEach(function(e){ e.remove(); });
     _TM.forEach(function(mk, ti) {
       var el = document.createElement('div');
-      el.className = 'dm';
-      el.textContent = 'T'+(ti+1);
-      el.style.cssText =
-        'position:absolute;width:32px;height:32px;border-radius:50%;' +
+      el.className = 'dm'; el.id = 'dm-' + ti;
+      el.textContent = 'T' + (ti + 1);
+      el.style.cssText = 'position:absolute;width:32px;height:32px;border-radius:50%;' +
         'display:flex;align-items:center;justify-content:center;' +
         'font-weight:800;font-size:12px;font-family:Cinzel,serif;color:#111;' +
         'border:2px solid rgba(255,255,255,0.35);box-shadow:0 2px 8px rgba(0,0,0,0.7);' +
         'transform:translate(-50%,-50%);z-index:10;touch-action:none;user-select:none;' +
-        'background:'+mk.color+';left:'+mk.x+'%;top:'+mk.y+'%;' +
-        'cursor:'+(admin?'grab':'pointer');
+        'background:' + mk.color + ';left:' + mk.x + '%;top:' + mk.y + '%;' +
+        'cursor:' + (admin ? 'grab' : 'pointer');
       if (admin) {
-        (function(i,e2){
-          e2.addEventListener('mousedown',  function(ev){ ev.preventDefault(); ev.stopPropagation(); _drag={kind:'tm',idx:i,el:e2,ox:client(ev).x,oy:client(ev).y}; e2.style.cursor='grabbing'; e2.style.zIndex='50'; });
-          e2.addEventListener('touchstart', function(ev){ ev.preventDefault(); ev.stopPropagation(); _drag={kind:'tm',idx:i,el:e2,ox:client(ev).x,oy:client(ev).y}; e2.style.zIndex='50'; },{passive:false});
-        })(ti, el);
+        el.addEventListener('mousedown',  function(e){ e.preventDefault(); e.stopPropagation(); startDrag(e,'tm',ti,el); });
+        el.addEventListener('touchstart', function(e){ e.preventDefault(); e.stopPropagation(); startDrag(e,'tm',ti,el); }, {passive:false});
       }
       wrap.appendChild(el);
     });
     _CM.forEach(function(mk, ci) {
       var el = document.createElement('div');
-      el.className = 'dm';
+      el.className = 'dm'; el.id = 'cm2-' + ci;
       el.textContent = mk.icon;
-      el.style.cssText =
-        'position:absolute;font-size:22px;line-height:1;' +
+      el.style.cssText = 'position:absolute;font-size:22px;line-height:1;' +
         'transform:translate(-50%,-50%);z-index:11;touch-action:none;user-select:none;' +
         'filter:drop-shadow(0 2px 4px rgba(0,0,0,0.9));' +
-        'left:'+mk.x+'%;top:'+mk.y+'%;cursor:'+(admin?'grab':'default');
+        'left:' + mk.x + '%;top:' + mk.y + '%;cursor:' + (admin ? 'grab' : 'default');
       if (admin) {
-        (function(i,e2){
-          e2.addEventListener('mousedown',  function(ev){ ev.preventDefault(); ev.stopPropagation(); _drag={kind:'cm',idx:i,el:e2,ox:client(ev).x,oy:client(ev).y}; e2.style.cursor='grabbing'; e2.style.zIndex='51'; });
-          e2.addEventListener('touchstart', function(ev){ ev.preventDefault(); ev.stopPropagation(); _drag={kind:'cm',idx:i,el:e2,ox:client(ev).x,oy:client(ev).y}; e2.style.zIndex='51'; },{passive:false});
-          var del = document.createElement('div');
-          del.className='dm-del';
-          del.textContent='×';
-          del.style.cssText='position:absolute;width:16px;height:16px;border-radius:50%;background:#dc2626;border:2px solid white;color:white;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:20;transform:translate(-50%,-50%);left:calc('+mk.x+'% + 11px);top:calc('+mk.y+'% - 11px)';
-          del.addEventListener('click', function(ev){ ev.stopPropagation(); _CM.splice(i,1); saveM(); renderMarkers(); });
-          wrap.appendChild(del);
-        })(ci, el);
+        el.addEventListener('mousedown',  function(e){ e.preventDefault(); e.stopPropagation(); startDrag(e,'cm',ci,el); });
+        el.addEventListener('touchstart', function(e){ e.preventDefault(); e.stopPropagation(); startDrag(e,'cm',ci,el); }, {passive:false});
+        var del = document.createElement('div');
+        del.className = 'dm-del';
+        del.textContent = '×';
+        del.style.cssText = 'position:absolute;width:16px;height:16px;border-radius:50%;background:#dc2626;border:2px solid white;color:white;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:20;transform:translate(-50%,-50%);left:calc(' + mk.x + '% + 11px);top:calc(' + mk.y + '% - 11px)';
+        (function(i){ del.addEventListener('click', function(ev){ ev.stopPropagation(); _CM.splice(i,1); saveMarkers(); renderMarkers(); }); })(ci);
+        wrap.appendChild(del);
       }
       wrap.appendChild(el);
     });
   }
 
+  function startDrag(e, kind, idx, el) {
+    var c = client(e);
+    _drag = { kind: kind, idx: idx, el: el, ox: c.x, oy: c.y, moved: false };
+    el.style.cursor = 'grabbing'; el.style.zIndex = '50';
+  }
+
   function onMove(e) {
     if (!_drag) return; e.preventDefault();
     var c = client(e);
+    if (Math.abs(c.x-_drag.ox)>2 || Math.abs(c.y-_drag.oy)>2) _drag.moved = true;
     var p = pct(c.x, c.y);
-    if (_drag.kind === 'tm') { _TM[_drag.idx].x=p.x; _TM[_drag.idx].y=p.y; }
-    else                     { _CM[_drag.idx].x=p.x; _CM[_drag.idx].y=p.y; }
-    _drag.el.style.left=p.x+'%'; _drag.el.style.top=p.y+'%';
+    if (_drag.kind === 'tm') { _TM[_drag.idx].x = p.x; _TM[_drag.idx].y = p.y; }
+    else                     { _CM[_drag.idx].x = p.x; _CM[_drag.idx].y = p.y; }
+    _drag.el.style.left = p.x + '%'; _drag.el.style.top = p.y + '%';
   }
+
   function onUp() {
     if (!_drag) return;
-    if (_drag.el) { _drag.el.style.cursor=admin?'grab':'default'; _drag.el.style.zIndex=''; }
-    _drag = null; saveM();
+    if (_drag.el) { _drag.el.style.cursor = admin ? 'grab' : 'default'; _drag.el.style.zIndex = ''; }
+    _drag = null; saveMarkers();
   }
 
-  function saveM() {
+  function saveMarkers() {
     var cur = Sessions.getCurrent(); if (!cur) return;
-    Sessions.updateCurrent({ tactics: Object.assign({}, cur.tactics||{}, { markers:_TM, customMarkers:_CM }) });
+    Sessions.updateCurrent({ tactics: Object.assign({}, cur.tactics || {}, { markers: _TM, customMarkers: _CM }) });
   }
 
+  // Expose globals
   window.dashAddMarker = function(typeId, icon, label) {
-    _CM.push({id:'cm_'+Date.now(),type:typeId,icon:icon,label:label,x:50,y:50});
-    renderMarkers(); saveM();
-    if (typeof showToast === 'function') showToast('Đã thêm '+label+' — kéo để di chuyển!');
+    _CM.push({ id: 'cm_'+Date.now(), type: typeId, icon: icon, label: label, x: 50, y: 50 });
+    renderMarkers(); saveMarkers();
+    showToast('Đã thêm ' + label + ' — kéo để di chuyển!');
   };
   window.dashResetMarkers = function() {
-    _TM = defM.map(function(d,i){ return Object.assign({},d,{color:tColor(i)}); });
-    renderMarkers(); saveM();
-    if (typeof showToast === 'function') showToast('Đã reset!');
+    _TM = buildDefaultMarkers(numTeams).map(function(def, i){ return Object.assign({}, def, {color: tColor(i)}); });
+    renderMarkers(); saveMarkers(); showToast('Đã reset vị trí!');
   };
 
   document.addEventListener('mousemove', onMove, {passive:false});
