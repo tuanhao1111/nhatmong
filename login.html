@@ -530,6 +530,8 @@
     }
     if (!name)           { showError('Vui lòng nhập tên hiển thị!'); return; }
     if (!ingameName)     { showError('Vui lòng nhập tên Ingame!'); return; }
+    if (!ingameId)       { showError('Vui lòng nhập ID Ingame!'); return; }
+    if (!discordId)      { showError('Vui lòng nhập ID Discord!'); return; }
     if (!classId)        { showError('Vui lòng chọn hệ phái!'); return; }
     if (pass.length < 6) { showError('Mật khẩu ít nhất 6 ký tự!'); return; }
     if (pass !== pass2)  { showError('Mật khẩu xác nhận không khớp!'); return; }
