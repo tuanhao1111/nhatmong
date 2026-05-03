@@ -293,7 +293,7 @@ function getWeekNumber(d) {
 
 function buildEmptyTeams(settings) {
   const teams=[], n=settings.numTeams||10, s=settings.slotsPerTeam||6;
-  for(let i=0;i<n;i++) teams.push({index:i,label:'T'+(i+1),slots:Array(s).fill(null)});
+  for(let i=0;i<n;i++) teams.push({index:i,label:'T'+(i+1),role:'',slots:Array(s).fill(null)});
   return teams;
 }
 function buildEmptyReserve(settings) {

@@ -177,15 +177,12 @@ function renderTacticsPage() {
   var FALLBACK = ['#22c55e','#40c0e0','#f0c040','#f59e0b','#f28e99','#e05050','#9060e0','#f97316','#ec4899','#14b8a6'];
   var ROLE_COLOR_MAP = { luong:'#f0c040', cong:'#e05050', thu:'#5090e0', tro:'#50d0a0' };
 
-  /* Màu team — theo vai trò chính (đa số) */
+  /* Màu team — theo vai trò admin chọn (team.role) */
   function teamColor(ti) {
     var team = session&&session.teams&&session.teams[ti];
     if (!team) return FALLBACK[ti%FALLBACK.length];
-    var counts = { luong:0, cong:0, thu:0, tro:0 };
-    (team.slots||[]).forEach(function(s){ if(s&&s.combatRole&&counts[s.combatRole]!==undefined) counts[s.combatRole]++; });
-    var best=null,bestN=0;
-    for(var k in counts) if(counts[k]>bestN){best=k;bestN=counts[k];}
-    return best ? ROLE_COLOR_MAP[best] : FALLBACK[ti%FALLBACK.length];
+    if (team.role && ROLE_COLOR_MAP[team.role]) return ROLE_COLOR_MAP[team.role];
+    return FALLBACK[ti%FALLBACK.length];
   }
 
   /* Init global state */
@@ -234,13 +231,9 @@ function renderTacticsPage() {
     for (var ti=0; ti<session.teams.length; ti++) {
       var team   = session.teams[ti];
       var tc     = teamColor(ti);
-      // Tên hiển thị: vai trò chính của team (đa số combat role)
-      var rcounts = { luong:0, cong:0, thu:0, tro:0 };
+      // Tên hiển thị: vai trò team (admin chọn)
       var ROLE_NAMES = { luong:'🌾 Lương', cong:'⚔ Công', thu:'🛡 Thủ', tro:'💠 Trợ' };
-      (team.slots||[]).forEach(function(s){ if(s&&s.combatRole&&rcounts[s.combatRole]!==undefined) rcounts[s.combatRole]++; });
-      var bestR=null,bestRN=0;
-      for(var rk in rcounts) if(rcounts[rk]>bestRN){bestR=rk;bestRN=rcounts[rk];}
-      var tgName = bestR ? ROLE_NAMES[bestR] : 'Trống';
+      var tgName = (team.role && ROLE_NAMES[team.role]) ? ROLE_NAMES[team.role] : 'Chưa xếp';
       var filled = 0; for(var x=0;x<team.slots.length;x++){if(team.slots[x])filled++;}
 
       /* ── Slots ── */
@@ -393,13 +386,7 @@ window.tacticsReset = function() {
   _TM = buildDefaultMarkers(n).map(function(m,i){
     var team=s&&s.teams&&s.teams[i];
     var color = FALL[i%FALL.length];
-    if (team) {
-      var counts={luong:0,cong:0,thu:0,tro:0};
-      (team.slots||[]).forEach(function(sl){if(sl&&sl.combatRole&&counts[sl.combatRole]!==undefined)counts[sl.combatRole]++;});
-      var best=null,bestN=0;
-      for(var k in counts) if(counts[k]>bestN){best=k;bestN=counts[k];}
-      if(best) color = RC[best];
-    }
+    if (team && team.role && RC[team.role]) color = RC[team.role];
     return Object.assign({},m,{color:color});
   });
   _tmRenderTeam(); _tmSave(); showToast('Đã reset!');

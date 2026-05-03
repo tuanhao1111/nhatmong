@@ -103,7 +103,8 @@ function renderDashboardPage() {
 
   const teamsHtml = session.teams.map((team, ti) => {
     const filledCount = team.slots.filter(Boolean).length;
-    const teamRole    = dominantRole(team);
+    // team.role là vai trò admin tự chọn. Không còn auto-dominant.
+    const teamRole    = team.role || '';
     const teamRoleMeta= teamRole ? ROLE_META[teamRole] : null;
 
     const slotsHtml = team.slots.map((slot, si) => {
@@ -162,18 +163,20 @@ function renderDashboardPage() {
     const headerBorder = teamRoleMeta ? hexA(teamRoleMeta.color, 0.55) : 'transparent';
     const headerColor = teamRoleMeta ? teamRoleMeta.color : 'var(--text-secondary)';
 
+    // Dropdown vai trò - admin sửa được, member chỉ xem
+    const roleSelectorHtml = admin
+      ? renderTeamRoleDropdown(ti, teamRole)
+      : (teamRoleMeta
+          ? `<div class="team-role-display"><span class="team-role-icon" style="color:${teamRoleMeta.color}">${teamRoleMeta.icon}</span><span class="team-role-name" style="color:${teamRoleMeta.color}">${teamRoleMeta.name.toUpperCase()}</span></div>`
+          : `<div class="team-role-display"><span class="team-role-name" style="color:var(--text-muted);font-style:italic">CHƯA XẾP</span></div>`);
+
     return `
-      <div class="team-card" style="${teamRoleMeta ? `border-top:4px solid ${teamRoleMeta.color}` : ''}">
+      <div class="team-card" style="${teamRoleMeta ? `border-top:4px solid ${teamRoleMeta.color}` : 'border-top:4px solid transparent'}">
         <div class="team-header-big" style="background:${headerBg};border-bottom-color:${headerBorder}">
           <div class="team-label-big" style="color:${headerColor}">
             <span class="team-no">T${ti+1}</span>
           </div>
-          <div class="team-role-big">
-            ${teamRoleMeta
-              ? `<span class="team-role-icon" style="color:${teamRoleMeta.color}">${teamRoleMeta.icon}</span>
-                 <span class="team-role-name" style="color:${teamRoleMeta.color}">${teamRoleMeta.name.toUpperCase()}</span>`
-              : `<span style="color:var(--text-muted);font-style:italic;font-size:13px">— Trống —</span>`}
-          </div>
+          ${roleSelectorHtml}
           <span class="team-count-big">${filledCount}/${team.slots.length}</span>
         </div>
         <div class="slots-list">${slotsHtml}</div>
@@ -298,12 +301,9 @@ function initDashMap() {
   function tColor(ti) {
     var t = session && session.teams && session.teams[ti];
     if (!t) return FALL[ti % FALL.length];
-    // Tô theo vai trò chính (đa số) trong team
-    var counts = { luong:0, cong:0, thu:0, tro:0 };
-    (t.slots || []).forEach(function(s){ if (s && s.combatRole && counts[s.combatRole] !== undefined) counts[s.combatRole]++; });
-    var best = null, bestN = 0;
-    for (var k in counts) if (counts[k] > bestN) { best = k; bestN = counts[k]; }
-    return best ? ROLE_COLORS[best] : FALL[ti % FALL.length];
+    // Ưu tiên team.role (admin chọn). Nếu chưa chọn, dùng FALL theo index.
+    if (t.role && ROLE_COLORS[t.role]) return ROLE_COLORS[t.role];
+    return FALL[ti % FALL.length];
   }
 
   var savedMarkers = session && session.tactics && session.tactics.markers;
@@ -413,4 +413,68 @@ function initDashMap() {
   document.addEventListener('touchend',  onUp);
 
   renderMarkers();
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   TEAM ROLE DROPDOWN - admin chọn vai trò chính của team từ dropdown trượt
+   ════════════════════════════════════════════════════════════════════════ */
+function renderTeamRoleDropdown(teamIdx, currentRole) {
+  const ROLES = [
+    { id:'',      name:'Chưa xếp', icon:'',  color:'var(--text-muted)' },
+    { id:'luong', name:'Lương',    icon:'🌾', color:'#f0c040' },
+    { id:'cong',  name:'Công',     icon:'⚔',  color:'#e05050' },
+    { id:'thu',   name:'Thủ',      icon:'🛡',  color:'#5090e0' },
+    { id:'tro',   name:'Trợ',      icon:'💠', color:'#50d0a0' }
+  ];
+  const cur = ROLES.find(r => r.id === (currentRole || '')) || ROLES[0];
+  const triggerColor = cur.id ? cur.color : 'var(--text-muted)';
+  const triggerStyle = cur.id ? '' : 'font-style:italic';
+
+  const itemsHtml = ROLES.map(r => `
+    <div class="trd-item ${r.id === currentRole ? 'selected' : ''}"
+         data-team-idx="${teamIdx}" data-role="${r.id}"
+         onclick="setTeamRole(${teamIdx}, '${r.id}')">
+      ${r.icon ? `<span class="trd-icon" style="color:${r.color}">${r.icon}</span>` : '<span class="trd-icon"></span>'}
+      <span class="trd-name" style="color:${r.color};${r.id===''?'font-style:italic':''}">${r.name.toUpperCase()}</span>
+      ${r.id === currentRole ? '<span class="trd-check">✓</span>' : ''}
+    </div>
+  `).join('');
+
+  return `
+    <div class="trd-wrap" data-team-idx="${teamIdx}">
+      <button class="trd-trigger" type="button" onclick="toggleTeamRoleDropdown(this)">
+        ${cur.icon ? `<span class="trd-trigger-icon" style="color:${cur.color}">${cur.icon}</span>` : ''}
+        <span class="trd-trigger-name" style="color:${triggerColor};${triggerStyle}">${cur.name.toUpperCase()}</span>
+        <span class="trd-caret">▾</span>
+      </button>
+      <div class="trd-menu">${itemsHtml}</div>
+    </div>`;
+}
+
+function toggleTeamRoleDropdown(btn) {
+  const wrap = btn.closest('.trd-wrap');
+  if (!wrap) return;
+  const isOpen = wrap.classList.contains('open');
+  // Đóng tất cả dropdown khác trước
+  document.querySelectorAll('.trd-wrap.open').forEach(w => { if (w !== wrap) w.classList.remove('open'); });
+  // Toggle current
+  wrap.classList.toggle('open', !isOpen);
+}
+
+// Đóng dropdown khi click ra ngoài
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.trd-wrap')) {
+    document.querySelectorAll('.trd-wrap.open').forEach(w => w.classList.remove('open'));
+  }
+});
+
+function setTeamRole(teamIdx, roleId) {
+  if (!isAdmin()) return;
+  const data = loadData();
+  if (!data.currentSession || !data.currentSession.teams[teamIdx]) return;
+  data.currentSession.teams[teamIdx].role = roleId || '';
+  if (typeof window.saveData === 'function') window.saveData(data); else saveData(data);
+  // Đóng dropdown trước khi re-render để tránh visual flash
+  document.querySelectorAll('.trd-wrap.open').forEach(w => w.classList.remove('open'));
+  renderPage('dashboard');
 }

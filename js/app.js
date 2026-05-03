@@ -128,12 +128,81 @@ function initDashboardStyles() {
       font-family:'Cinzel',serif;font-weight:900;font-size:28px;
       letter-spacing:1px;line-height:1;
     }
-    .team-role-big { display:flex;align-items:center;gap:8px;flex:1; }
+
+    /* Display only (member) */
+    .team-role-display { display:flex;align-items:center;gap:8px;flex:1; }
     .team-role-icon { font-size:24px;line-height:1; }
     .team-role-name {
       font-family:'Cinzel',serif;font-weight:900;font-size:18px;
       letter-spacing:3px;line-height:1;
     }
+
+    /* ─── Team role dropdown (TRD) - admin chọn vai trò team ─── */
+    .trd-wrap {
+      position:relative;flex:1;display:flex;align-items:center;
+    }
+    .trd-trigger {
+      display:flex;align-items:center;gap:8px;
+      width:100%;padding:6px 10px;
+      background:rgba(0,0,0,0.25);
+      border:1px solid rgba(255,255,255,0.08);
+      border-radius:8px;
+      cursor:pointer;color:inherit;font-family:inherit;
+      transition:all 0.18s ease;
+      text-align:left;
+    }
+    .trd-trigger:hover {
+      background:rgba(0,0,0,0.4);
+      border-color:rgba(255,255,255,0.18);
+    }
+    .trd-trigger-icon { font-size:22px;line-height:1; }
+    .trd-trigger-name {
+      font-family:'Cinzel',serif;font-weight:900;font-size:17px;
+      letter-spacing:2.5px;line-height:1;flex:1;
+    }
+    .trd-caret {
+      font-size:14px;color:var(--text-muted);
+      transition:transform 0.25s cubic-bezier(.4,0,.2,1);
+      margin-left:auto;
+    }
+    .trd-wrap.open .trd-caret { transform:rotate(180deg);color:var(--accent-gold); }
+    .trd-wrap.open .trd-trigger { border-color:rgba(240,192,64,0.5); }
+
+    /* Menu - smooth slide animation */
+    .trd-menu {
+      position:absolute;top:calc(100% + 4px);left:0;right:0;
+      background:var(--bg-card);
+      border:1px solid var(--border-color);
+      border-radius:10px;
+      box-shadow:0 8px 28px rgba(0,0,0,0.6);
+      z-index:50;overflow:hidden;
+      max-height:0;opacity:0;
+      transform:translateY(-6px);
+      transition:max-height 0.28s cubic-bezier(.4,0,.2,1),
+                 opacity 0.18s ease,
+                 transform 0.28s cubic-bezier(.4,0,.2,1);
+      pointer-events:none;
+    }
+    .trd-wrap.open .trd-menu {
+      max-height:280px;opacity:1;transform:translateY(0);
+      pointer-events:auto;
+    }
+    .trd-item {
+      display:flex;align-items:center;gap:10px;
+      padding:10px 14px;cursor:pointer;
+      border-bottom:1px solid #1a1a2e;
+      transition:background 0.12s;
+    }
+    .trd-item:last-child { border-bottom:none; }
+    .trd-item:hover { background:rgba(255,255,255,0.04); }
+    .trd-item.selected { background:rgba(240,192,64,0.08); }
+    .trd-icon { font-size:20px;width:22px;display:inline-block;text-align:center;line-height:1; }
+    .trd-name {
+      font-family:'Cinzel',serif;font-weight:800;font-size:14px;
+      letter-spacing:2px;flex:1;
+    }
+    .trd-check { color:var(--accent-gold);font-weight:900;font-size:14px; }
+
     .team-count-big {
       font-family:'Cinzel',serif;font-weight:700;font-size:14px;
       color:var(--text-secondary);padding:4px 12px;
