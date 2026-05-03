@@ -112,3 +112,22 @@ Test theo thứ tự:
 
 **Account admin@guild.com cũ vẫn login được**
 → Phải xóa account cũ trong Authentication. Hoặc tạo account mới và set role admin ở /users/{uid}.
+
+## TÍNH NĂNG XEM PHIM
+
+Đã tích hợp trang "🎬 Xem Phim" (Bún Bò on Air) vào sidebar.
+
+- Phim load từ API phimapi.com (không cần host video, không tốn bandwidth)
+- **Guest** xem được, nhưng favorites/history chỉ lưu localStorage (mất khi xóa cookie hoặc đổi máy)
+- **Member/Admin** đăng nhập rồi: favorites/history sync lên Firestore tại `/users/{uid}/movies/data` → vào máy nào cũng thấy
+- Hỗ trợ HLS streaming (.m3u8) qua hls.js
+
+Files liên quan:
+- `js/movies.js` - logic trang
+- `css/movies.css` - styling (đã scope vào `.movie-hub`, không xung đột với nhatmong)
+- `app.html` - đã thêm hls.js CDN + load file movies
+
+Firestore path mới được mở rule cho:
+- `/users/{uid}/movies/{anyDoc}` - chỉ owner (chính user đó) đọc/ghi được
+
+Nếu muốn bỏ trang phim: xóa dòng `movies:` trong `PAGES` ở `js/app.js`. Code và CSS có thể giữ lại không sao.

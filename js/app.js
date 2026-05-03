@@ -6,6 +6,7 @@ const PAGES = {
   dashboard: { label:'Chiến Lượt',  icon:'⚔',  render: renderDashboardPage },
   members:   { label:'Thành Viên',  icon:'👥', render: renderMembersPage   },
   sessions:  { label:'Lịch Sử',     icon:'📜', render: renderSessionsPage  },
+  movies:    { label:'Xem Phim',    icon:'🎬', render: renderMoviesPage    },
   settings:  { label:'Cấu Hình',    icon:'⚙',  render: renderSettingsPage, adminOnly:true },
   accounts:  { label:'Tài Khoản',   icon:'🔑', render: renderAccountsPage, adminOnly:true }
 };
@@ -25,6 +26,7 @@ function renderPage(page) {
   setTimeout(() => {
     area.innerHTML = PAGES[page].render();
     if (page==='dashboard') { initDashboardStyles(); setTimeout(initDashMap, 100); }
+    if (page==='movies') { initMoviesPage(); }
   }, 20);
 }
 

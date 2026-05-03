@@ -48,6 +48,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ─── /users/{uid}/movies/* (favorites & history per-user) ────────────
+    // Chỉ owner đọc/ghi data phim của chính mình (admin cũng không xem)
+    match /users/{uid}/movies/{document=**} {
+      allow read, write: if isOwner(uid);
+    }
+
     // ─── /guilds/guild_main ──────────────────────────────────────────────
     // Settings, sessions, currentSession - chỉ admin được ghi
     match /guilds/guild_main {
