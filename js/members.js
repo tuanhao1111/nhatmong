@@ -144,33 +144,12 @@ function buildMemberForm(m={}, selfEdit=false) {
   const settings   = Settings.get();
   const classOpts  = settings.classes.map(c=>`<option value="${c.id}" ${m.class===c.id?'selected':''}>${c.name}</option>`).join('');
 
-  // Combat role picker
-  const combatOpts = COMBAT_ROLES.map(r=>`
-    <label style="cursor:pointer">
-      <input type="radio" name="mf-combat-role" value="${r.id}" ${m.combatRole===r.id?'checked':''} style="display:none">
-      <div class="combat-role-opt" data-id="${r.id}" style="
-        padding:10px 12px;border-radius:8px;border:2px solid ${m.combatRole===r.id?r.color:'#2a2a45'};
-        background:${m.combatRole===r.id?r.color+'18':'#0f0f1e'};
-        display:flex;align-items:center;gap:10px;transition:all 0.15s">
-        <span style="font-size:22px">${r.icon}</span>
-        <div><div style="font-weight:700;color:${r.color}">${r.name}</div>
-        <div style="font-size:11px;color:var(--text-secondary)">${r.desc}</div></div>
-      </div>
-    </label>`).join('');
-
   return `
     <div class="form-row">
       <div class="form-group"><label>Tên thật</label><input type="text" id="mf-name" value="${escHtml(m.name||'')}" placeholder="Tên hiển thị"></div>
       <div class="form-group"><label>Tên trong game</label><input type="text" id="mf-ingame" value="${escHtml(m.inGameName||'')}" placeholder="Nickname game"></div>
     </div>
     <div class="form-group"><label>Class</label><select id="mf-class"><option value="">-- Chọn class --</option>${classOpts}</select></div>
-
-    ${selfEdit
-      ? `<div class="form-group"><label>⚔ Vai Trò Chiến Đấu</label><div style="padding:8px 12px;color:var(--text-muted);font-size:12px;font-style:italic">${m.combatRole ? combatRoleBadge(m.combatRole) : '—'} <span style="font-size:10px">(do Admin xếp)</span></div></div>`
-      : `<div class="form-group">
-          <label>⚔ Vai Trò Chiến Đấu</label>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">${combatOpts}</div>
-        </div>`}
 
     <div class="form-row">
       <div class="form-group"><label>Chiến lực</label><input type="number" id="mf-power" value="${m.power||0}"></div>
@@ -180,30 +159,15 @@ function buildMemberForm(m={}, selfEdit=false) {
 }
 
 function initFormPickers() {
-  // Combat role
-  document.querySelectorAll('#combat-role-picker label, .form-group label').forEach(l=>{
-    const radio = l.querySelector('input[type=radio][name="mf-combat-role"]');
-    if (!radio) return;
-    l.addEventListener('click', ()=>{
-      const id = radio.value;
-      document.querySelectorAll('.combat-role-opt').forEach(opt=>{
-        const r = getCombatRole(opt.dataset.id);
-        const active = opt.dataset.id === id;
-        opt.style.border     = `2px solid ${active?r.color:'#2a2a45'}`;
-        opt.style.background = active ? r.color+'18' : '#0f0f1e';
-      });
-    });
-  });
+  // Không còn fields cần bind events - kept for backward compat
 }
 
 function getMemberFormValues() {
-  const combatRadio = document.querySelector('input[name="mf-combat-role"]:checked');
   return {
     name:       document.getElementById('mf-name')?.value.trim()  || '',
     inGameName: document.getElementById('mf-ingame')?.value.trim()|| '',
     class:      document.getElementById('mf-class')?.value        || '',
     power:      parseInt(document.getElementById('mf-power')?.value)||0,
-    combatRole: combatRadio?.value || '',
     note:       document.getElementById('mf-note')?.value.trim()  || ''
   };
 }

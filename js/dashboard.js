@@ -111,10 +111,6 @@ function renderDashboardPage() {
       if (slot) {
         const classColor = getClassColor(slot.class);
         const className  = getClassName(slot.class);
-        const roleMeta   = ROLE_META[slot.combatRole] || null;
-        const roleColor  = roleMeta ? roleMeta.color : '#888';
-        const roleIcon   = roleMeta ? roleMeta.icon : '';
-        const roleName   = roleMeta ? roleMeta.name : '';
         // Skill: từ array slot.skills hoặc string slot.skill (legacy)
         const skillNames = [];
         if (Array.isArray(slot.skills)) skillNames.push(...slot.skills.filter(Boolean));
@@ -124,7 +120,7 @@ function renderDashboardPage() {
           ? skillNames.map(n => `<span class="slot-skill-chip">${escHtml(n)}</span>`).join('')
           : '<span style="color:var(--text-muted);font-style:italic;font-size:11px">— chưa nhập kỹ năng —</span>';
         const leaderBadge = slot.isLeader
-          ? '<span class="slot-leader-badge">⭐ LEAD</span>'
+          ? '<div class="slot-info-role"><span class="slot-leader-badge">⭐ LEAD</span></div>'
           : '';
         const customMark = slot.isCustom
           ? '<span title="Thành viên tạm — không trong DB" style="font-size:10px;color:rgba(0,0,0,0.45);margin-left:5px">⚠</span>'
@@ -139,10 +135,7 @@ function renderDashboardPage() {
             </div>
             <div class="slot-info-cell">
               <div class="slot-info-skills">${skillsHtml}</div>
-              <div class="slot-info-role" style="color:${roleColor}">
-                ${leaderBadge}
-                <span>${roleIcon} ${roleName || '<span style="color:var(--text-muted);font-style:italic">chưa xếp</span>'}</span>
-              </div>
+              ${leaderBadge}
             </div>
           </div>`;
       }
@@ -187,13 +180,10 @@ function renderDashboardPage() {
   const reserveHtml = session.reserve.map((slot, si) => {
     if (slot) {
       const classColor = getClassColor(slot.class);
-      const roleMeta   = ROLE_META[slot.combatRole] || null;
-      const roleColor  = roleMeta ? roleMeta.color : classColor;
       const clickAttr  = admin ? `onclick="openSlotMenu(-1, ${si}, true)"` : '';
       return `
-        <div class="reserve-slot filled" ${clickAttr} style="border-left:3px solid ${roleColor}">
+        <div class="reserve-slot filled" ${clickAttr} style="border-left:3px solid ${classColor}">
           <div style="display:flex;align-items:center;gap:6px">
-            ${roleMeta ? `<span style="color:${roleColor}">${roleMeta.icon}</span>` : ''}
             <span style="font-weight:600;font-size:12px">${escHtml(slot.inGameName||slot.name)}</span>
           </div>
           <div style="display:flex;gap:6px;margin-top:2px">

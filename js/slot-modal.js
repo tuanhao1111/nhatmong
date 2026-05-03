@@ -47,7 +47,6 @@ function viewSlotInfo(slot) {
   if (!slot) return;
   const settings = Settings.get();
   const cls   = (settings.classes || []).find(c => c.id === slot.class);
-  const role  = COMBAT_ROLES.find(r => r.id === slot.combatRole);
   // Skills là array string trực tiếp (không cần lookup nữa)
   const skillNames = [];
   if (Array.isArray(slot.skills)) skillNames.push(...slot.skills.filter(Boolean));
@@ -60,7 +59,6 @@ function viewSlotInfo(slot) {
   const rows = [
     ['Tên hiển thị', escHtml(slot.inGameName || slot.name || '?')],
     ['Hệ phái',     cls ? `<span style="color:${cls.color}">${escHtml(cls.name)}</span>` : '—'],
-    ['Vai trò',     role ? `${role.icon} <span style="color:${role.color}">${role.name}</span>` : '—'],
     ['Kỹ năng',     skillsHtml],
     ['Leader',      slot.isLeader ? '<span class="slot-leader-badge">⭐ LEAD</span>' : '<em style="color:var(--text-muted)">không</em>']
   ];
@@ -174,7 +172,6 @@ function renderAssignPickFromDb(teamIdx, slotIdx, isReserve, members) {
 
 function renderMemberCard(m, settings, ti, si, isReserve) {
   const cls  = settings.classes.find(c => c.id === m.class);
-  const role = COMBAT_ROLES.find(r => r.id === m.combatRole);
   const memberSkills = Array.isArray(m.skills) ? m.skills : (m.skill ? [m.skill] : []);
   const skillTxt = memberSkills.filter(Boolean).join(' + ');
 
@@ -206,7 +203,6 @@ function renderMemberCard(m, settings, ti, si, isReserve) {
         </div>
         <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
           ${cls ? `<span style="color:${cls.color}">${escHtml(cls.name)}</span>` : ''}
-          ${role ? ` • <span style="color:${role.color}">${role.icon} ${role.name}</span>` : ''}
           ${skillTxt ? ` • ${escHtml(skillTxt)}` : ''}
         </div>
       </div>
@@ -256,7 +252,7 @@ function confirmAssignMember(memberId, ti, si, isReserve) {
         skills:     memberSkills,
         customSkill:'',
         isLeader:   false
-      }, settings)}
+      }, settings, { omitRole: true })}
     </div>
 
     <div class="modal-actions">
@@ -300,7 +296,7 @@ function renderAssignCustomForm(ti, si, isReserve, settings) {
         </select>
       </div>
 
-      ${buildSlotEditFields({ combatRole:'', skills:[], customSkill:'', isLeader:false }, settings)}
+      ${buildSlotEditFields({ combatRole:'', skills:[], customSkill:'', isLeader:false }, settings, { omitRole: true })}
     </div>
 
     <div class="modal-actions">
@@ -436,7 +432,7 @@ function editSlotInfo(ti, si, isReserve) {
         skills:     slotSkills,
         customSkill:slot.customSkill || '',
         isLeader:   !!slot.isLeader
-      }, settings)}
+      }, settings, { omitRole: true })}
     </div>
 
     <div class="modal-actions">
@@ -461,7 +457,8 @@ function doSaveSlotEdit(ti, si, isReserve, ov) {
 // ════════════════════════════════════════════════════════════════════════════
 // SHARED: edit fields UI for slot (combat role + multi-skill + custom skill + leader)
 // ════════════════════════════════════════════════════════════════════════════
-function buildSlotEditFields(values, settings) {
+function buildSlotEditFields(values, settings, opts) {
+  opts = opts || {};
   // Skills giờ là free-text - mỗi dòng 1 skill
   const skillsText = Array.isArray(values.skills) ? values.skills.join('\n') : '';
 
@@ -471,11 +468,15 @@ function buildSlotEditFields(values, settings) {
               style="${active ? `border-color:${r.color};color:${r.color};background:${r.color}18` : ''}">${r.icon} ${r.name}</span>`;
   }).join('');
 
-  return `
+  // Section vai trò có thể ẩn (vd: modal sửa slot không cho đổi vai trò)
+  const roleSection = opts.omitRole ? '' : `
     <div>
       <label style="display:block;font-size:13px;color:var(--text-secondary);margin-bottom:6px;font-weight:600">⚔ Vai trò chiến đấu</label>
       <div id="slot-role-chips" style="display:flex;gap:8px;flex-wrap:wrap">${roleChips}</div>
-    </div>
+    </div>`;
+
+  return `
+    ${roleSection}
 
     <div>
       <label style="display:block;font-size:13px;color:var(--text-secondary);margin-bottom:4px;font-weight:600">✨ Kỹ năng</label>
@@ -535,16 +536,21 @@ function bindSlotEditFieldEvents() {
 }
 
 function readSlotEditFields() {
-  const activeRole = document.querySelector('#slot-role-chips .assign-role-chip[data-active="1"]');
   // Parse skills từ textarea: mỗi dòng = 1 skill, bỏ dòng trống
   const skillsRaw = document.getElementById('slot-skills-text')?.value || '';
   const skills = skillsRaw.split('\n').map(s => s.trim()).filter(Boolean);
-  return {
-    combatRole: activeRole ? activeRole.dataset.role : '',
+  const result = {
     skills:     skills,
     customSkill:'',  // không còn dùng - đã merge vào skills
     isLeader:   !!document.getElementById('slot-leader')?.checked
   };
+  // Chỉ trả combatRole nếu UI có render section đó (modal sửa slot ẩn vai trò → giữ field cũ)
+  const roleContainer = document.getElementById('slot-role-chips');
+  if (roleContainer) {
+    const activeRole = roleContainer.querySelector('.assign-role-chip[data-active="1"]');
+    result.combatRole = activeRole ? activeRole.dataset.role : '';
+  }
+  return result;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
