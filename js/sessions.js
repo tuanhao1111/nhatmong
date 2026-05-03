@@ -3,6 +3,14 @@
  */
 
 function renderSessionsPage() {
+  if (typeof isGuest === 'function' && isGuest()) {
+    return '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;' +
+      'min-height:60vh;gap:16px;color:var(--text-muted,#555)">' +
+      '<div style="font-size:48px">🔒</div>' +
+      '<div style="font-size:18px;font-weight:600">Nội dung bị ẩn</div>' +
+      '<div style="font-size:13px;text-align:center;max-width:300px;line-height:1.6">Chế độ Khách không xem được thông tin. Vui lòng <a onclick="window.location.href=\'login.html\'" style="color:#40c0e0;cursor:pointer">đăng nhập</a> để xem đầy đủ.</div>' +
+      '</div>';
+  }
   const allSessions = Sessions.getAll();
   const current = Sessions.getCurrent();
 

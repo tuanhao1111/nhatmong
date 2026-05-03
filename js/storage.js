@@ -61,7 +61,8 @@ const Members = {
   getById(id) { return this.getAll().find(m => m.id === id); },
   add(m) {
     const data = loadData();
-    const nm = { id:genId(), name:m.name||'', inGameName:m.inGameName||'',
+    const nm = { id:m.id||genId(), name:m.name||'', inGameName:m.inGameName||'',
+      inGameId:m.inGameId||'', discordId:m.discordId||'',
       class:m.class||'', power:m.power||0, combatRole:m.combatRole||'',
       skill:m.skill||'', tasks:m.tasks||[], group:m.group||'',
       role:m.role||'member', joinDate:new Date().toISOString().split('T')[0],
@@ -78,6 +79,30 @@ const Members = {
   delete(id) {
     const data = loadData();
     data.members = data.members.filter(m => m.id!==id);
+    // Xóa khỏi slots trong currentSession
+    if (data.currentSession && data.currentSession.teams) {
+      data.currentSession.teams.forEach(function(team) {
+        if (team.slots) {
+          team.slots = team.slots.map(function(slot) {
+            return (slot && slot.id === id) ? null : slot;
+          });
+        }
+      });
+    }
+    // Xóa khỏi lịch sử sessions
+    if (data.sessions) {
+      data.sessions.forEach(function(sess) {
+        if (sess.teams) {
+          sess.teams.forEach(function(team) {
+            if (team.slots) {
+              team.slots = team.slots.map(function(slot) {
+                return (slot && slot.id === id) ? null : slot;
+              });
+            }
+          });
+        }
+      });
+    }
     saveData(data); return true;
   },
   count() { return this.getAll().length; }

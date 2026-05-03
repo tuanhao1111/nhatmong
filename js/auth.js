@@ -24,6 +24,16 @@ function isAdmin() {
   return u && u.role === 'admin';
 }
 
+function isMember() {
+  const u = getCurrentUser();
+  return u && (u.role === 'member' || u.role === 'admin');
+}
+
+function isGuest() {
+  const u = getCurrentUser();
+  return !u || u.role === 'guest';
+}
+
 function canEdit() { return isAdmin(); }
 
 // ── Guard: nếu chưa đăng nhập thì redirect ───────────────────────────────────
