@@ -78,31 +78,39 @@ const Members = {
   },
   delete(id) {
     const data = loadData();
-    data.members = data.members.filter(m => m.id!==id);
-    // Xóa khỏi slots trong currentSession
+    // Tìm member trước khi xóa (để lấy inGameName dùng fallback)
+    const member = data.members.find(m => m.id === id);
+    const inGameName = member ? member.inGameName : null;
+    data.members = data.members.filter(m => m.id !== id);
+
+    // Hàm kiểm tra slot có thuộc member này không (theo id HOẶC inGameName)
+    function isThisSlot(slot) {
+      if (!slot) return false;
+      if (slot.id === id) return true;
+      if (inGameName && slot.inGameName === inGameName) return true;
+      return false;
+    }
+
+    // Xóa khỏi slots currentSession
     if (data.currentSession && data.currentSession.teams) {
       data.currentSession.teams.forEach(function(team) {
-        if (team.slots) {
-          team.slots = team.slots.map(function(slot) {
-            return (slot && slot.id === id) ? null : slot;
-          });
-        }
+        if (team.slots) team.slots = team.slots.map(function(s) { return isThisSlot(s) ? null : s; });
       });
     }
+    if (data.currentSession && data.currentSession.reserve) {
+      data.currentSession.reserve = data.currentSession.reserve.map(function(s) { return isThisSlot(s) ? null : s; });
+    }
+
     // Xóa khỏi lịch sử sessions
     if (data.sessions) {
       data.sessions.forEach(function(sess) {
-        if (sess.teams) {
-          sess.teams.forEach(function(team) {
-            if (team.slots) {
-              team.slots = team.slots.map(function(slot) {
-                return (slot && slot.id === id) ? null : slot;
-              });
-            }
-          });
-        }
+        if (sess.teams) sess.teams.forEach(function(team) {
+          if (team.slots) team.slots = team.slots.map(function(s) { return isThisSlot(s) ? null : s; });
+        });
+        if (sess.reserve) sess.reserve = sess.reserve.map(function(s) { return isThisSlot(s) ? null : s; });
       });
     }
+
     saveData(data); return true;
   },
   count() { return this.getAll().length; }

@@ -547,12 +547,17 @@
       };
       existingUsers.push(newUser);
       saveUsers(existingUsers);
-      // Tự động thêm vào Members
+      // Lưu pending member vào localStorage để app.html thêm vào Members
+      var pendingMember = {
+        id: uid, name: name, inGameName: ingameName,
+        inGameId: ingameId, discordId: discordId,
+        class: classId, role: 'member',
+        joinDate: new Date().toISOString().split('T')[0]
+      };
       try {
-        if (typeof Members !== 'undefined') {
-          Members.add({ id:uid, name, inGameName:ingameName, inGameId:ingameId,
-            discordId, class:classId, role:'member' });
-        }
+        var pending = JSON.parse(localStorage.getItem('nth_pending_members') || '[]');
+        pending.push(pendingMember);
+        localStorage.setItem('nth_pending_members', JSON.stringify(pending));
       } catch(e) {}
       // Push Firebase
       if (typeof fbPushNewUser === 'function') fbPushNewUser(newUser);
