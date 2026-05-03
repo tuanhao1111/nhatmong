@@ -106,6 +106,8 @@ function renderDashboardPage() {
     // team.role là vai trò admin tự chọn. Không còn auto-dominant.
     const teamRole    = team.role || '';
     const teamRoleMeta= teamRole ? ROLE_META[teamRole] : null;
+    // team.size: 'small' | 'medium' | 'large' (mặc định 'medium')
+    const teamSize    = team.size || 'medium';
 
     const slotsHtml = team.slots.map((slot, si) => {
       if (slot) {
@@ -126,8 +128,9 @@ function renderDashboardPage() {
           ? '<span title="Thành viên tạm — không trong DB" style="font-size:10px;color:rgba(0,0,0,0.45);margin-left:5px">⚠</span>'
           : '';
         const clickAttr  = admin ? `onclick="openSlotMenu(${ti}, ${si}, false)"` : `onclick="viewSlotInfo(${JSON.stringify(slot).replace(/"/g,'&quot;')})"`;
+        const dragAttrs = admin ? `draggable="true" data-drag="member" data-team-idx="${ti}" data-slot-idx="${si}"` : '';
         return `
-          <div class="slot-row filled" ${clickAttr}>
+          <div class="slot-row filled" ${dragAttrs} ${clickAttr}>
             <div class="slot-num-cell">${si+1}</div>
             <div class="slot-name-cell" style="background:${hexA(classColor, 0.88)};color:#0a0a0f">
               <div class="slot-name-main">${escHtml(slot.inGameName || slot.name)}${customMark}</div>
@@ -139,10 +142,11 @@ function renderDashboardPage() {
             </div>
           </div>`;
       }
-      // Empty slot
+      // Empty slot - is also a drop target for member drags
       const clickAttr = admin ? `onclick="openAssignModal(${ti}, ${si}, false)"` : '';
+      const dropAttrs = admin ? `data-drop="empty-slot" data-team-idx="${ti}" data-slot-idx="${si}"` : '';
       return `
-        <div class="slot-row empty" ${clickAttr} style="${admin?'cursor:pointer':'cursor:default'}">
+        <div class="slot-row empty" ${dropAttrs} ${clickAttr} style="${admin?'cursor:pointer':'cursor:default'}">
           <div class="slot-num-cell muted">${si+1}</div>
           <div class="slot-name-cell empty-cell">
             ${admin ? '<span>+ Thêm thành viên</span>' : '<span>— trống —</span>'}
@@ -163,13 +167,28 @@ function renderDashboardPage() {
           ? `<div class="team-role-display"><span class="team-role-icon" style="color:${teamRoleMeta.color}">${teamRoleMeta.icon}</span><span class="team-role-name" style="color:${teamRoleMeta.color}">${teamRoleMeta.name.toUpperCase()}</span></div>`
           : `<div class="team-role-display"><span class="team-role-name" style="color:var(--text-muted);font-style:italic">CHƯA XẾP</span></div>`);
 
+    // Resize control (admin only) - 3 mức nhỏ/vừa/to
+    const sizeBtnsHtml = admin ? `
+      <div class="team-size-ctrl" title="Đổi kích cỡ">
+        <button type="button" class="tsz-btn ${teamSize==='small'?'on':''}"  onclick="event.stopPropagation();setTeamSize(${ti},'small')"  title="Nhỏ">▪</button>
+        <button type="button" class="tsz-btn ${teamSize==='medium'?'on':''}" onclick="event.stopPropagation();setTeamSize(${ti},'medium')" title="Vừa">◼</button>
+        <button type="button" class="tsz-btn ${teamSize==='large'?'on':''}"  onclick="event.stopPropagation();setTeamSize(${ti},'large')"  title="Lớn">⬛</button>
+      </div>` : '';
+
+    // Drag handle (admin only) - kéo cả team
+    const dragHandle = admin ? `<span class="team-drag-handle" title="Kéo để hoán đổi team">⋮⋮</span>` : '';
+
+    const teamDragAttrs = admin ? `draggable="true" data-drag="team" data-team-idx="${ti}"` : '';
+
     return `
-      <div class="team-card" style="${teamRoleMeta ? `border-top:4px solid ${teamRoleMeta.color}` : 'border-top:4px solid transparent'}">
+      <div class="team-card team-size-${teamSize}" ${teamDragAttrs} data-team-idx="${ti}" style="${teamRoleMeta ? `border-top:4px solid ${teamRoleMeta.color}` : 'border-top:4px solid transparent'}">
         <div class="team-header-big" style="background:${headerBg};border-bottom-color:${headerBorder}">
+          ${dragHandle}
           <div class="team-label-big" style="color:${headerColor}">
             <span class="team-no">T${ti+1}</span>
           </div>
           ${roleSelectorHtml}
+          ${sizeBtnsHtml}
           <span class="team-count-big">${filledCount}/${team.slots.length}</span>
         </div>
         <div class="slots-list">${slotsHtml}</div>

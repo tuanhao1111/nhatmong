@@ -264,6 +264,65 @@ const Sessions = {
     return true;
   },
 
+  /** Hoán đổi 2 team — đổi toàn bộ nội dung (slots + role + size + label-suffix). */
+  swapTeams(idxA, idxB) {
+    const data = loadData();
+    if (!data.currentSession) return false;
+    const teams = data.currentSession.teams;
+    if (!teams[idxA] || !teams[idxB] || idxA === idxB) return false;
+    // Hoán đổi nguyên object (giữ nguyên index field nếu có)
+    const tmp = teams[idxA];
+    teams[idxA] = teams[idxB];
+    teams[idxB] = tmp;
+    // Update label / index nếu có
+    if (teams[idxA].index !== undefined) teams[idxA].index = idxA;
+    if (teams[idxB].index !== undefined) teams[idxB].index = idxB;
+    if (teams[idxA].label) teams[idxA].label = 'T' + (idxA + 1);
+    if (teams[idxB].label) teams[idxB].label = 'T' + (idxB + 1);
+    if (typeof window.saveData === 'function') window.saveData(data); else saveData(data);
+    return true;
+  },
+
+  /** Set team size: 'small' | 'medium' | 'large' */
+  setTeamSize(teamIdx, size) {
+    const data = loadData();
+    if (!data.currentSession) return false;
+    const team = data.currentSession.teams[teamIdx];
+    if (!team) return false;
+    const allowed = ['small','medium','large'];
+    team.size = allowed.indexOf(size) >= 0 ? size : 'medium';
+    if (typeof window.saveData === 'function') window.saveData(data); else saveData(data);
+    return true;
+  },
+
+  /**
+   * Di chuyển 1 member giữa 2 vị trí slot. Nếu đích đã có người → swap.
+   * Position = { teamIdx: number, slotIdx: number, isReserve: bool }
+   * teamIdx = -1 nếu isReserve.
+   */
+  moveOrSwapMember(fromPos, toPos) {
+    const data = loadData();
+    if (!data.currentSession) return false;
+    const sess = data.currentSession;
+    function getSlot(p) {
+      return p.isReserve ? sess.reserve[p.slotIdx] : sess.teams[p.teamIdx].slots[p.slotIdx];
+    }
+    function setSlot(p, val) {
+      if (p.isReserve) sess.reserve[p.slotIdx] = val;
+      else sess.teams[p.teamIdx].slots[p.slotIdx] = val;
+    }
+    const a = getSlot(fromPos);
+    const b = getSlot(toPos);
+    if (!a) return false;  // không có gì để kéo
+    if (fromPos.isReserve === toPos.isReserve && fromPos.teamIdx === toPos.teamIdx && fromPos.slotIdx === toPos.slotIdx) {
+      return false;  // cùng vị trí
+    }
+    setSlot(toPos, a);
+    setSlot(fromPos, b);  // null nếu đích trước đó trống → kết quả là di chuyển
+    if (typeof window.saveData === 'function') window.saveData(data); else saveData(data);
+    return true;
+  },
+
   /* ── ABSENCE / XIN NGHỈ ─────────────────────────────────────────────── */
 
   /** Trả về danh sách xin nghỉ trong session hiện tại */

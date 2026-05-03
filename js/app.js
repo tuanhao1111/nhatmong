@@ -109,11 +109,72 @@ function initDashboardStyles() {
   const style = document.createElement('style');
   style.id = 'dashboard-styles';
   style.textContent = `
-    /* ────── TEAMS GRID — 2-3 cột tùy màn hình ────── */
-    .teams-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:16px; }
+    /* ────── TEAMS GRID — masonry-like với CSS columns ────── */
+    .teams-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:16px;align-items:start; }
     @media (max-width:780px) { .teams-grid { grid-template-columns:1fr; } }
 
-    .team-card  { background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px;overflow:hidden; }
+    .team-card  {
+      background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px;overflow:hidden;
+      transition:opacity 0.18s, transform 0.18s, box-shadow 0.18s;
+    }
+
+    /* ────── TEAM SIZES (preset 3 mức) ────── */
+    /* Small: chiếm 1 cột bình thường, slots compact hơn */
+    .team-card.team-size-small  { /* default behavior - 1 col */ }
+    .team-card.team-size-small .slot-row { min-height:42px; }
+    .team-card.team-size-small .slot-num-cell { font-size:13px; }
+    .team-card.team-size-small .slot-name-main { font-size:13px; }
+    .team-card.team-size-small .slot-skill-chip { font-size:11px;padding:2px 7px; }
+    .team-card.team-size-small .team-no { font-size:22px; }
+    .team-card.team-size-small .team-role-name, .team-card.team-size-small .trd-trigger-name { font-size:14px; }
+
+    .team-card.team-size-medium { /* default (already styled below) */ }
+
+    /* Large: chiếm 2 cột grid */
+    .team-card.team-size-large  { grid-column: span 2; }
+    .team-card.team-size-large .slot-row { min-height:62px; }
+    .team-card.team-size-large .slot-num-cell { font-size:18px; }
+    .team-card.team-size-large .slot-name-main { font-size:16px; }
+    .team-card.team-size-large .slot-skill-chip { font-size:13px;padding:4px 11px; }
+    .team-card.team-size-large .team-no { font-size:34px; }
+    .team-card.team-size-large .team-role-name, .team-card.team-size-large .trd-trigger-name { font-size:20px; }
+    @media (max-width:900px) { .team-card.team-size-large { grid-column: auto; } }
+
+    /* ────── DRAG & DROP STATES ────── */
+    .team-card[draggable="true"] { cursor:grab; }
+    .team-card.dragging-team { opacity:0.4;transform:scale(0.97); }
+    .team-card.drag-over-team {
+      box-shadow:0 0 0 3px var(--accent-gold),0 8px 24px rgba(240,192,64,0.25);
+      transform:scale(1.015);
+    }
+    .slot-row.filled[draggable="true"] { cursor:grab; }
+    .slot-row.filled.dragging-member { opacity:0.4; }
+    .slot-row.drag-over-slot {
+      box-shadow:inset 0 0 0 2px var(--accent-gold);
+      background:rgba(240,192,64,0.10) !important;
+    }
+
+    /* Drag handle */
+    .team-drag-handle {
+      font-size:16px;color:rgba(255,255,255,0.35);cursor:grab;
+      letter-spacing:-2px;font-weight:900;line-height:1;
+      padding:0 4px;user-select:none;
+    }
+    .team-drag-handle:hover { color:var(--accent-gold); }
+    .team-drag-handle:active { cursor:grabbing; }
+
+    /* Resize control 3 nút */
+    .team-size-ctrl {
+      display:flex;gap:2px;background:rgba(0,0,0,0.3);
+      border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:2px;
+    }
+    .tsz-btn {
+      background:transparent;border:none;color:var(--text-muted);
+      font-size:11px;padding:3px 6px;cursor:pointer;border-radius:4px;
+      line-height:1;transition:all 0.15s;
+    }
+    .tsz-btn:hover { color:var(--text-primary);background:rgba(255,255,255,0.05); }
+    .tsz-btn.on { color:var(--accent-gold);background:rgba(240,192,64,0.15); }
 
     /* ────── TEAM HEADER TO + RÕ ────── */
     .team-header-big {
