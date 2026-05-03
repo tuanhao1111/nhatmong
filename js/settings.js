@@ -188,8 +188,15 @@ function uploadMapImg(id, input) {
   showToast('Đang xử lý ảnh...', 'info', 1500);
   const reader = new FileReader();
   reader.onload = e => {
-    // Resize ảnh xuống tối đa 1280px chiều rộng (giảm tải Firestore)
-    resizeImage(e.target.result, 1280, 0.85, function(resizedDataUrl) {
+    // Resize ảnh xuống tối đa 1024px chiều rộng (giảm tải Firestore - max 1MB doc)
+    resizeImage(e.target.result, 1024, 0.78, function(resizedDataUrl) {
+      // Check size sau khi resize
+      const sizeKB = Math.round(resizedDataUrl.length * 0.75 / 1024);
+      if (sizeKB > 700) {
+        showToast(`❌ Ảnh sau nén vẫn quá lớn (${sizeKB} KB). Hãy chọn ảnh nhỏ hơn.`, 'error', 5000);
+        return;
+      }
+
       // Lưu cả vào localStorage (backward compat) lẫn Settings (sync Firebase)
       saveImageToStorage('map_' + id, resizedDataUrl);
 
@@ -199,8 +206,8 @@ function uploadMapImg(id, input) {
       if (mapIdx >= 0) {
         data.settings.maps[mapIdx].imageData = resizedDataUrl;
         if (typeof window.saveData === 'function') window.saveData(data); else saveData(data);
+        console.log('[uploadMapImg] Saved imageData for', id, '— size:', sizeKB, 'KB');
       }
-      const sizeKB = Math.round(resizedDataUrl.length * 0.75 / 1024);
       showToast(`✅ Đã upload (${sizeKB} KB) — đồng bộ Firebase`, 'success', 3500);
       renderPage('settings');
     });

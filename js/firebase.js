@@ -46,10 +46,18 @@ function fbInit() {
     console.log('[FB] Connected. Auth state:', _auth.currentUser ? _auth.currentUser.email : 'not signed in');
 
     _auth.onAuthStateChanged(function(fbUser){
-      if (fbUser) console.log('[FB] Auth: signed in as', fbUser.email, fbUser.uid);
-      else        console.log('[FB] Auth: signed out');
+      if (fbUser) {
+        console.log('[FB] Auth: signed in as', fbUser.email, fbUser.uid);
+        // Re-listen sau khi sign in để Firestore Rules cho qua
+        _listenGuild();
+        _listenUsers();
+        _listenMembers();
+      } else {
+        console.log('[FB] Auth: signed out');
+      }
     });
 
+    // Cũng listen ngay (cho case đã có user từ trước - cached auth)
     _listenGuild();
     _listenUsers();
     _listenMembers();
@@ -149,6 +157,9 @@ function _listenGuild() {
     }
     if (_isSyncingGuild) return;
     var remote = snap.data();
+    var hasMapImg = !!(remote.settings && Array.isArray(remote.settings.maps) && remote.settings.maps.some(function(m){return !!m.imageData;}));
+    console.log('[FB] Guild synced. updatedAt=', remote.updatedAt, 'hasMapImg=', hasMapImg);
+
     var cache = null;
     try { cache = JSON.parse(localStorage.getItem(DB_KEY)); } catch(e){}
     var merged = Object.assign({}, remote, {
@@ -171,7 +182,7 @@ function _listenGuild() {
       setTimeout(function(){
         if (typeof renderPage === 'function') renderPage(window.currentPage);
       }, 200);
-  }, function(e){ _badge(false, 'Error'); console.error('[FB] Guild listen error:', e); });
+  }, function(e){ _badge(false, 'Error'); console.error('[FB] Guild listen error:', e.code, e.message); });
 }
 
 function _listenMembers() {

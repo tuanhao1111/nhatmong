@@ -502,12 +502,15 @@ function getMapImage(mapId) {
     if (settings && Array.isArray(settings.maps)) {
       const m = settings.maps.find(x => x.id === mapId);
       if (m && m.imageData) {
-        // Cache localStorage để render nhanh sau này
         try { localStorage.setItem(IMG_PREFIX + 'map_' + mapId, m.imageData); } catch(e) {}
         return m.imageData;
       }
     }
   } catch(e) {}
   // Fallback localStorage
-  return loadImageFromStorage('map_' + mapId);
+  const fb = loadImageFromStorage('map_' + mapId);
+  if (!fb) {
+    console.warn('[getMapImage] No image found for mapId=', mapId, '- check Firebase sync');
+  }
+  return fb;
 }
