@@ -83,15 +83,9 @@ function openAssignModal(teamIdx, slotIdx, isReserve) {
   const session = Sessions.getCurrent();
   if (!session) return;
 
-  // Đã ai đang ở slot này không (để skip khỏi pick list)?
-  const existingIds = new Set();
-  session.teams.forEach(t => t.slots.forEach(s => { if (s && s.id) existingIds.add(s.id); }));
-  session.reserve.forEach(s => { if (s && s.id) existingIds.add(s.id); });
-
   const settings = Settings.get();
   const allMembers = Members.getAll();
-  // Lọc member chưa được assign
-  const availableMembers = allMembers.filter(m => !existingIds.has(m.id));
+  const availCount = allMembers.filter(m => !Sessions.getMemberAssignment(m.id) && !Sessions.isAbsent(m.id)).length;
 
   const tabHtml = `
     <h3 style="margin-bottom:6px">➕ Thêm Vào Slot</h3>
@@ -100,12 +94,12 @@ function openAssignModal(teamIdx, slotIdx, isReserve) {
     </div>
 
     <div style="display:flex;gap:0;border-bottom:1px solid var(--border-color);margin-bottom:14px">
-      <button id="assign-tab-db"     class="assign-tab active" onclick="switchAssignTab('db')">👥 Chọn từ Thành Viên (${availableMembers.length})</button>
+      <button id="assign-tab-db"     class="assign-tab active" onclick="switchAssignTab('db')">👥 Chọn từ Thành Viên (rảnh: ${availCount})</button>
       <button id="assign-tab-custom" class="assign-tab"        onclick="switchAssignTab('custom')">✏ Thêm Thành Viên Tạm</button>
     </div>
 
     <div id="assign-pane-db">
-      ${renderAssignPickFromDb(teamIdx, slotIdx, isReserve, availableMembers)}
+      ${renderAssignPickFromDb(teamIdx, slotIdx, isReserve, allMembers)}
     </div>
 
     <div id="assign-pane-custom" style="display:none">
@@ -117,12 +111,8 @@ function openAssignModal(teamIdx, slotIdx, isReserve) {
     </div>
   `;
   openModal(tabHtml, null, true);
-  // Inject styles for tabs nếu chưa có
   ensureAssignStyles();
-  // Bind các sự kiện cho field "Vai trò chiến đấu" + "Leader" trong tab Custom
-  // (tab DB không có các field này, nhưng bind không hại vì querySelector sẽ rỗng)
   bindSlotEditFieldEvents();
-  // Bind search
   setTimeout(() => {
     const search = document.getElementById('assign-search');
     if (search) search.addEventListener('input', () => filterAssignList(teamIdx, slotIdx, isReserve));
@@ -146,6 +136,12 @@ function ensureAssignStyles() {
     .assign-tab.active { color:var(--accent-gold);border-bottom-color:var(--accent-gold); }
     .assign-member-card { padding:8px 12px;background:#0c0c1a;border:1px solid var(--border-color);border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:all 0.12s; }
     .assign-member-card:hover { border-color:var(--accent-gold);background:#1a1a2e; }
+    .assign-member-card.is-unavailable { opacity:0.55;background:#0a0a14;cursor:not-allowed; }
+    .assign-member-card.is-unavailable:hover { border-color:rgba(255,80,80,0.4);background:#100c10; }
+    .member-status-badge {
+      font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;
+      border:1px solid;letter-spacing:0.3px;white-space:nowrap;
+    }
     .assign-skill-chip { display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:10px;font-size:11px;cursor:pointer;border:1px solid transparent;transition:all 0.1s;user-select:none; }
     .assign-skill-chip.active { background:rgba(240,192,64,0.18);border-color:rgba(240,192,64,0.5);color:var(--accent-gold); }
     .assign-skill-chip:not(.active) { background:#0c0c1a;border-color:#2a2a40;color:var(--text-secondary); }
@@ -159,12 +155,19 @@ function ensureAssignStyles() {
 function renderAssignPickFromDb(teamIdx, slotIdx, isReserve, members) {
   const settings = Settings.get();
   if (members.length === 0) {
-    return '<div style="text-align:center;padding:40px;color:var(--text-muted)">Không có thành viên nào trong DB chưa được xếp slot. <br>Bạn có thể dùng tab "Thêm Thành Viên Tạm" bên cạnh.</div>';
+    return '<div style="text-align:center;padding:40px;color:var(--text-muted)">Chưa có thành viên nào trong DB. <br>Dùng tab "Thêm Thành Viên Tạm" bên cạnh.</div>';
   }
+  // Sort: rảnh (available) lên đầu, đã xếp / nghỉ xuống cuối
+  const sorted = members.slice().sort((a, b) => {
+    const aBusy = !!Sessions.getMemberAssignment(a.id) || Sessions.isAbsent(a.id);
+    const bBusy = !!Sessions.getMemberAssignment(b.id) || Sessions.isAbsent(b.id);
+    if (aBusy !== bBusy) return aBusy ? 1 : -1;
+    return (a.inGameName || a.name || '').localeCompare(b.inGameName || b.name || '');
+  });
   return `
     <input type="text" id="assign-search" placeholder="🔍 Tìm theo tên hoặc tên ingame..." style="width:100%;margin-bottom:10px;padding:8px 12px;background:#0c0c1a;border:1px solid var(--border-color);color:var(--text-primary);border-radius:6px;font-size:13px">
     <div id="assign-list" style="display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto;padding-right:4px">
-      ${members.map(m => renderMemberCard(m, settings, teamIdx, slotIdx, isReserve)).join('')}
+      ${sorted.map(m => renderMemberCard(m, settings, teamIdx, slotIdx, isReserve)).join('')}
     </div>
   `;
 }
@@ -172,24 +175,55 @@ function renderAssignPickFromDb(teamIdx, slotIdx, isReserve, members) {
 function renderMemberCard(m, settings, ti, si, isReserve) {
   const cls  = settings.classes.find(c => c.id === m.class);
   const role = COMBAT_ROLES.find(r => r.id === m.combatRole);
-  // Member trong DB không còn skills nữa (đã bỏ ở form member). Giữ tương thích cũ.
   const memberSkills = Array.isArray(m.skills) ? m.skills : (m.skill ? [m.skill] : []);
   const skillTxt = memberSkills.filter(Boolean).join(' + ');
+
+  // Check unavailable status
+  const assignment = Sessions.getMemberAssignment(m.id);
+  const isAbsent   = Sessions.isAbsent(m.id);
+  const unavailable = !!assignment || isAbsent;
+
+  let statusBadge = '';
+  if (assignment) {
+    statusBadge = `<span class="member-status-badge" style="background:rgba(80,144,224,0.2);color:#5090e0;border-color:rgba(80,144,224,0.4)">🎯 Đã ở ${assignment.label}</span>`;
+  } else if (isAbsent) {
+    statusBadge = `<span class="member-status-badge" style="background:rgba(255,140,0,0.18);color:#ffa84d;border-color:rgba(255,140,0,0.4)">😴 Xin nghỉ</span>`;
+  }
+
+  const clickAttr = unavailable
+    ? `onclick="event.stopPropagation();showAssignBlocked('${m.id}')"`
+    : `onclick="confirmAssignMember('${m.id}', ${ti}, ${si}, ${isReserve})"`;
+
   return `
-    <div class="assign-member-card" data-name="${escHtml((m.inGameName || m.name || '').toLowerCase())}"
-         onclick="confirmAssignMember('${m.id}', ${ti}, ${si}, ${isReserve})">
+    <div class="assign-member-card ${unavailable ? 'is-unavailable' : ''}"
+         data-name="${escHtml((m.inGameName || m.name || '').toLowerCase())}"
+         ${clickAttr}>
       <div style="width:8px;height:36px;border-radius:2px;background:${cls?cls.color:'#888'}"></div>
       <div style="flex:1;min-width:0">
-        <div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(m.inGameName || m.name || '?')}</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(m.inGameName || m.name || '?')}</span>
+          ${statusBadge}
+        </div>
         <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
           ${cls ? `<span style="color:${cls.color}">${escHtml(cls.name)}</span>` : ''}
           ${role ? ` • <span style="color:${role.color}">${role.icon} ${role.name}</span>` : ''}
           ${skillTxt ? ` • ${escHtml(skillTxt)}` : ''}
         </div>
       </div>
-      <div style="font-size:18px;color:var(--accent-gold)">→</div>
+      <div style="font-size:18px;color:${unavailable?'var(--text-muted)':'var(--accent-gold)'}">${unavailable?'🚫':'→'}</div>
     </div>
   `;
+}
+
+function showAssignBlocked(memberId) {
+  const m = Members.getById(memberId);
+  const assignment = Sessions.getMemberAssignment(memberId);
+  const isAbsent = Sessions.isAbsent(memberId);
+  let msg = '';
+  if (assignment) msg = `❌ ${m.inGameName||m.name} đã được xếp ở ${assignment.label}. Hãy bỏ slot cũ trước nếu muốn chuyển.`;
+  else if (isAbsent) msg = `❌ ${m.inGameName||m.name} đã đăng ký xin nghỉ. Hãy bỏ trạng thái nghỉ trước nếu muốn xếp.`;
+  else msg = '❌ Không thể xếp thành viên này.';
+  if (typeof showToast === 'function') showToast(msg, 'error', 4500);
 }
 
 function filterAssignList(ti, si, isReserve) {

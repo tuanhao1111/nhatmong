@@ -236,6 +236,9 @@ function renderDashboardPage() {
       <div class="reserve-grid">${reserveHtml}</div>
     </div>
 
+    <!-- Xin Nghỉ -->
+    ${renderAbsenceSection(session, admin)}
+
     <!-- Chiến thuật tích hợp -->
     <div class="card" style="margin-top:20px">
       <div class="section-header">
@@ -476,5 +479,169 @@ function setTeamRole(teamIdx, roleId) {
   if (typeof window.saveData === 'function') window.saveData(data); else saveData(data);
   // Đóng dropdown trước khi re-render để tránh visual flash
   document.querySelectorAll('.trd-wrap.open').forEach(w => w.classList.remove('open'));
+  renderPage('dashboard');
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   ABSENCE SECTION - danh sách xin nghỉ
+   ════════════════════════════════════════════════════════════════════════ */
+function renderAbsenceSection(session, isAdmin) {
+  const absences = session.absences || [];
+  const me = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
+  const myId = me ? me.id : null;
+  const meAlreadyAbsent = myId && absences.some(a => a.memberId === myId);
+  const meAlreadyAssigned = myId && Sessions.getMemberAssignment(myId);
+
+  const rowsHtml = absences.length === 0
+    ? '<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;font-style:italic">Chưa có ai xin nghỉ</div>'
+    : absences.map(a => {
+        const canRemove = isAdmin || (myId && a.memberId === myId);
+        const dateStr = a.addedAt ? new Date(a.addedAt).toLocaleDateString('vi-VN', {day:'2-digit',month:'2-digit'}) : '';
+        return `
+          <div class="absence-row">
+            <div class="absence-dot">😴</div>
+            <div class="absence-info">
+              <div class="absence-name">${escHtml(a.inGameName || a.name || '?')}</div>
+              ${a.reason ? `<div class="absence-reason">"${escHtml(a.reason)}"</div>` : ''}
+              <div class="absence-meta">
+                ${a.addedBy ? `Đăng ký bởi ${escHtml(a.addedBy)}` : ''}
+                ${dateStr ? ` · ${dateStr}` : ''}
+              </div>
+            </div>
+            ${canRemove
+              ? `<button class="btn btn-outline" style="padding:4px 12px;font-size:12px" onclick="removeAbsence('${a.memberId}')">↩ Bỏ nghỉ</button>`
+              : ''}
+          </div>`;
+      }).join('');
+
+  // Action buttons
+  let actionsHtml = '';
+  if (isAdmin) {
+    actionsHtml = `<button class="btn btn-cyan" style="padding:6px 14px;font-size:12px" onclick="openAbsenceAdminModal()">+ Thêm người nghỉ</button>`;
+  } else if (myId && !meAlreadyAbsent && !meAlreadyAssigned) {
+    actionsHtml = `<button class="btn btn-outline" style="padding:6px 14px;font-size:12px" onclick="openAbsenceSelfModal()">😴 Đăng ký xin nghỉ</button>`;
+  } else if (meAlreadyAssigned) {
+    actionsHtml = `<span style="font-size:11px;color:var(--text-muted);font-style:italic">Bạn đang ở ${meAlreadyAssigned.label} — không thể đăng ký nghỉ</span>`;
+  }
+
+  return `
+    <div class="card" style="margin-top:20px">
+      <div class="section-header">
+        <span class="section-title">😴 Xin Nghỉ Bang Chiến</span>
+        <div style="display:flex;align-items:center;gap:10px;margin-left:auto">
+          <span style="color:var(--text-secondary);font-size:13px">${absences.length} người</span>
+          ${actionsHtml}
+        </div>
+      </div>
+      <div class="absence-list">${rowsHtml}</div>
+    </div>
+    <style>
+      .absence-list { display:flex;flex-direction:column;gap:6px; }
+      .absence-row {
+        display:flex;align-items:center;gap:12px;
+        padding:10px 14px;background:#0c0c1a;
+        border:1px solid var(--border-color);border-radius:8px;
+        border-left:3px solid #ff8c00;
+      }
+      .absence-dot { font-size:22px;line-height:1; }
+      .absence-info { flex:1;min-width:0; }
+      .absence-name { font-weight:700;font-size:14px;color:#ffa84d; }
+      .absence-reason { font-size:12px;color:var(--text-secondary);font-style:italic;margin-top:2px; }
+      .absence-meta { font-size:10px;color:var(--text-muted);margin-top:3px; }
+    </style>`;
+}
+
+/* ── Admin: thêm người nghỉ (pick từ danh sách) ─────────────────────────── */
+function openAbsenceAdminModal() {
+  if (!isAdmin()) return;
+  const allMembers = Members.getAll();
+  // Lọc người chưa nghỉ + chưa được xếp slot
+  const available = allMembers.filter(m => !Sessions.isAbsent(m.id) && !Sessions.getMemberAssignment(m.id));
+  if (available.length === 0) {
+    showToast('Tất cả thành viên đã được xếp hoặc đã nghỉ', 'error', 4000);
+    return;
+  }
+  const sorted = available.slice().sort((a,b) => (a.inGameName||a.name||'').localeCompare(b.inGameName||b.name||''));
+  const optionsHtml = sorted.map(m => {
+    const cls = Settings.get().classes.find(c => c.id === m.class);
+    return `<option value="${m.id}">${escHtml(m.inGameName || m.name)}${cls ? ' — ' + cls.name : ''}</option>`;
+  }).join('');
+
+  openModal(`
+    <h3 style="margin-bottom:14px">😴 Thêm Người Xin Nghỉ</h3>
+    <div class="form-group">
+      <label>Thành viên</label>
+      <select id="abs-member-id" style="width:100%;padding:10px 12px;background:#0c0c1a;border:1px solid var(--border-color);color:var(--text-primary);border-radius:6px;font-size:14px">
+        <option value="">-- Chọn người --</option>
+        ${optionsHtml}
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Lý do (tùy chọn)</label>
+      <input type="text" id="abs-reason" placeholder="VD: Bận, ốm, đi công tác..." style="width:100%;padding:10px 12px;background:#0c0c1a;border:1px solid var(--border-color);color:var(--text-primary);border-radius:6px;font-size:13px">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Hủy</button>
+      <button class="btn btn-gold" onclick="submitAbsence(this.closest('.modal-overlay'))">Xác nhận</button>
+    </div>`, null, true);
+}
+
+function submitAbsence(ov) {
+  const memberId = document.getElementById('abs-member-id')?.value;
+  const reason   = document.getElementById('abs-reason')?.value.trim() || '';
+  if (!memberId) { showToast('Hãy chọn thành viên', 'error'); return; }
+  Sessions.addAbsence(memberId, reason);
+  ov.remove();
+  showToast('✅ Đã thêm vào danh sách nghỉ');
+  renderPage('dashboard');
+}
+
+/* ── Member: tự đăng ký nghỉ ────────────────────────────────────────────── */
+function openAbsenceSelfModal() {
+  const me = getCurrentUser();
+  if (!me || me.id === 'guest') { showToast('Chỉ thành viên đăng nhập mới đăng ký được', 'error'); return; }
+  const member = Members.getById(me.id);
+  if (!member) { showToast('Tài khoản của bạn chưa có trong danh sách thành viên', 'error', 4000); return; }
+  if (Sessions.getMemberAssignment(me.id)) { showToast('Bạn đang ở trong team — không đăng ký nghỉ được', 'error'); return; }
+
+  openModal(`
+    <h3 style="margin-bottom:8px">😴 Đăng Ký Xin Nghỉ</h3>
+    <div style="color:var(--text-secondary);font-size:13px;margin-bottom:14px">
+      ${escHtml(member.inGameName || member.name)}
+    </div>
+    <div style="background:#1c1610;border:1px solid #d97706;border-radius:6px;padding:10px;margin-bottom:14px;font-size:12px;color:#fbbf24;line-height:1.5">
+      ⚠ Đăng ký này được lưu cục bộ trên trình duyệt của bạn. Để admin nhìn thấy & cập nhật cho cả bang, bạn nên báo qua Discord/Zalo cho Bang Chủ.
+    </div>
+    <div class="form-group">
+      <label>Lý do (tùy chọn)</label>
+      <input type="text" id="abs-self-reason" placeholder="VD: Bận, ốm, đi công tác..." style="width:100%;padding:10px 12px;background:#0c0c1a;border:1px solid var(--border-color);color:var(--text-primary);border-radius:6px;font-size:13px">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Hủy</button>
+      <button class="btn btn-gold" onclick="submitSelfAbsence(this.closest('.modal-overlay'))">Xác nhận nghỉ</button>
+    </div>`, null, true);
+}
+
+function submitSelfAbsence(ov) {
+  const me = getCurrentUser();
+  if (!me) return;
+  const reason = document.getElementById('abs-self-reason')?.value.trim() || '';
+  Sessions.addAbsence(me.id, reason);
+  ov.remove();
+  showToast('✅ Đã đăng ký xin nghỉ');
+  renderPage('dashboard');
+}
+
+/* ── Bỏ nghỉ ────────────────────────────────────────────────────────────── */
+function removeAbsence(memberId) {
+  const me = getCurrentUser();
+  // Permission: admin OR user của chính mình
+  if (!isAdmin() && (!me || me.id !== memberId)) {
+    showToast('Không có quyền', 'error');
+    return;
+  }
+  if (!confirm('Bỏ trạng thái xin nghỉ?')) return;
+  Sessions.removeAbsence(memberId);
+  showToast('Đã bỏ nghỉ');
   renderPage('dashboard');
 }

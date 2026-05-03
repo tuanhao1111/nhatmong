@@ -174,6 +174,7 @@ const Sessions = {
       map: config.map || data.settings.currentMap || '',
       teams: buildEmptyTeams(data.settings),
       reserve: buildEmptyReserve(data.settings),
+      absences: [],   // [{memberId, name, inGameName, addedBy, addedAt, reason}]
       tactics: { notes:'', markers:[], customMarkers:[] },
       settings: JSON.parse(JSON.stringify(data.settings))
     };
@@ -259,6 +260,75 @@ const Sessions = {
     if (!data.currentSession) return false;
     if (isReserve) data.currentSession.reserve[slotIdx] = null;
     else data.currentSession.teams[teamIdx].slots[slotIdx] = null;
+    if (typeof window.saveData === 'function') window.saveData(data); else saveData(data);
+    return true;
+  },
+
+  /* ── ABSENCE / XIN NGHỈ ─────────────────────────────────────────────── */
+
+  /** Trả về danh sách xin nghỉ trong session hiện tại */
+  getAbsences() {
+    const s = this.getCurrent();
+    return (s && s.absences) || [];
+  },
+
+  /** Kiểm tra member có đang trong slot nào không. Trả về null hoặc {teamIdx, slotIdx, isReserve, label} */
+  getMemberAssignment(memberId) {
+    const s = this.getCurrent();
+    if (!s) return null;
+    for (let ti=0; ti<s.teams.length; ti++) {
+      const slots = s.teams[ti].slots || [];
+      for (let si=0; si<slots.length; si++) {
+        if (slots[si] && slots[si].id === memberId) {
+          return { teamIdx: ti, slotIdx: si, isReserve: false, label: `T${ti+1} #${si+1}` };
+        }
+      }
+    }
+    for (let si=0; si<(s.reserve || []).length; si++) {
+      if (s.reserve[si] && s.reserve[si].id === memberId) {
+        return { teamIdx: -1, slotIdx: si, isReserve: true, label: `Dự bị #${si+1}` };
+      }
+    }
+    return null;
+  },
+
+  /** Kiểm tra member có đang xin nghỉ */
+  isAbsent(memberId) {
+    return this.getAbsences().some(a => a.memberId === memberId);
+  },
+
+  /** Thêm member vào danh sách nghỉ */
+  addAbsence(memberId, reason='') {
+    const data = loadData();
+    if (!data.currentSession) return false;
+    const member = data.members.find(m => m.id === memberId);
+    if (!member) return false;
+    if (!data.currentSession.absences) data.currentSession.absences = [];
+    // Đã có rồi thì update reason, đừng dup
+    const existing = data.currentSession.absences.find(a => a.memberId === memberId);
+    const me = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
+    if (existing) {
+      existing.reason = reason || existing.reason;
+      existing.addedAt = new Date().toISOString();
+    } else {
+      data.currentSession.absences.push({
+        memberId: memberId,
+        name: member.name,
+        inGameName: member.inGameName,
+        addedBy: me ? (me.name || me.id) : '',
+        addedAt: new Date().toISOString(),
+        reason: reason || ''
+      });
+    }
+    if (typeof window.saveData === 'function') window.saveData(data); else saveData(data);
+    return true;
+  },
+
+  /** Bỏ member khỏi danh sách nghỉ */
+  removeAbsence(memberId) {
+    const data = loadData();
+    if (!data.currentSession || !data.currentSession.absences) return false;
+    data.currentSession.absences = data.currentSession.absences.filter(a => a.memberId !== memberId);
     if (typeof window.saveData === 'function') window.saveData(data); else saveData(data);
     return true;
   }
