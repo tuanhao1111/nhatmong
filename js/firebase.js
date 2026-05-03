@@ -45,21 +45,28 @@ function _listenGuild() {
   if (_unsubGuild) _unsubGuild();
   _unsubGuild = _guildRef.onSnapshot(function(snap) {
     if (!snap.exists) return;
-    if (_isSyncing) return; // skip khi đang push local lên
+    if (_isSyncing) { console.log('[FB] Skipping - syncing'); return; }
     var remote = snap.data();
-    var localTs = 0;
-    try { localTs = (JSON.parse(localStorage.getItem(DB_KEY))||{}).updatedAt||0; } catch(e){}
-    if ((remote.updatedAt||0) > localTs) {
+    var remoteTs = remote.updatedAt || 0;
+    var localRaw = null;
+    try { localRaw = JSON.parse(localStorage.getItem(DB_KEY)); } catch(e){}
+    var localTs = localRaw ? (localRaw.updatedAt || 0) : 0;
+    var localMembers = localRaw && localRaw.members ? localRaw.members.length : 0;
+    var remoteMembers = remote.members ? remote.members.length : 0;
+    
+    // Chỉ cập nhật khi Firebase mới hơn VÀ không làm giảm số members
+    if (remoteTs > localTs && remoteMembers >= localMembers) {
       try { localStorage.setItem(DB_KEY, JSON.stringify(remote)); } catch(e){}
-      _badge(true, _t(remote.updatedAt));
-      console.log('[FB] Guild data updated from server');
-      if (window.currentPage && typeof renderPage === 'function' && !document.querySelector('.modal-overlay')) {
+      _badge(true, _t(remoteTs));
+      console.log('[FB] ⬇ Updated from Firebase:', remoteMembers, 'members');
+      if (window.currentPage && !document.querySelector('.modal-overlay'))
         setTimeout(function(){ renderPage(window.currentPage); }, 200);
-      }
     } else {
       _badge(true, 'Synced');
+      if (remoteTs < localTs) console.log('[FB] Local newer, keeping local');
+      if (remoteMembers < localMembers) console.log('[FB] Local has more members, keeping local');
     }
-  }, function(e){ _badge(false, 'Error'); console.error('[FB] Guild listen error:', e); });
+  }, function(e){ _badge(false, 'Error'); console.error('[FB] Listen error:', e); });
 }
 
 function _listenUsers() {

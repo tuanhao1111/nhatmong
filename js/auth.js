@@ -65,11 +65,8 @@ const AuthUsers = {
   },
   save(users) {
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    // Sync toàn bộ users lên Firestore mỗi khi thay đổi
     if (typeof _usersRef !== 'undefined' && _usersRef) {
-      users.forEach(function(u) {
-        if (u && u.id) _usersRef.doc(u.id).set(u).catch(function(){});
-      });
+      users.forEach(function(u){ if(u&&u.id) _usersRef.doc(u.id).set(u).catch(function(){}); });
     }
   },
   setRole(userId, role) {
@@ -204,12 +201,8 @@ function setUserRole(userId, newRole) {
 function deleteUser(userId, name) {
   if (!confirmDelete(`Xóa tài khoản "${name}"?`)) return;
   AuthUsers.delete(userId);
-  // Xóa khỏi Firestore users collection
-  if (typeof _usersRef !== 'undefined' && _usersRef) {
-    _usersRef.doc(userId).delete()
-      .then(function(){ console.log('[Auth] User deleted from Firestore:', userId); })
-      .catch(function(e){ console.error('[Auth] Firestore delete error:', e); });
-  }
+  if (typeof _usersRef !== 'undefined' && _usersRef)
+    _usersRef.doc(userId).delete().catch(function(){});
   showToast('Đã xóa tài khoản!', 'error');
   renderPage('accounts');
 }
