@@ -31,6 +31,7 @@ var _membersRef = null;     // /guilds/guild_main/members
 var _unsubGuild = null, _unsubUsers = null, _unsubMembers = null;
 var _fbOk = false;
 var _isSyncingGuild = false;
+var _guildSynced = false;   // true sau khi listener nhận snapshot lần đầu
 
 function fbInit() {
   if (typeof firebase === 'undefined') { setTimeout(fbInit, 800); return; }
@@ -61,6 +62,14 @@ function fbInit() {
     _listenGuild();
     _listenUsers();
     _listenMembers();
+
+    // Fallback: nếu sau 8s vẫn chưa sync → unblock saveData (network down, etc)
+    setTimeout(function(){
+      if (!_guildSynced) {
+        console.warn('[FB] No sync after 8s — unblocking saveData with timeout fallback');
+        _guildSynced = true;
+      }
+    }, 8000);
   } catch(e) {
     _fbOk = false;
     _badge(false, e.message);
@@ -159,6 +168,7 @@ function _listenGuild() {
     var remote = snap.data();
     var hasMapImg = !!(remote.settings && Array.isArray(remote.settings.maps) && remote.settings.maps.some(function(m){return !!m.imageData;}));
     console.log('[FB] Guild synced. updatedAt=', remote.updatedAt, 'hasMapImg=', hasMapImg);
+    _guildSynced = true;   // ⭐ Đánh dấu đã sync ít nhất 1 lần
 
     var cache = null;
     try { cache = JSON.parse(localStorage.getItem(DB_KEY)); } catch(e){}
@@ -335,7 +345,7 @@ window.saveData = function(data) {
   // Debug: check imageData trước khi push
   var hasImg = !!(dataNoMembers.settings && Array.isArray(dataNoMembers.settings.maps) && dataNoMembers.settings.maps.some(function(m){return !!m.imageData;}));
   var docSize = JSON.stringify(dataNoMembers).length;
-  console.log('[saveData] hasImg=', hasImg, 'docSize=', Math.round(docSize/1024), 'KB', 'isAdmin=', _isAdmin(), 'fbOk=', _fbOk);
+  console.log('[saveData] hasImg=', hasImg, 'docSize=', Math.round(docSize/1024), 'KB', 'isAdmin=', _isAdmin(), 'fbOk=', _fbOk, 'synced=', _guildSynced);
 
   // Cache local cho reload — strip imageData để không bị quota
   try {
@@ -346,23 +356,34 @@ window.saveData = function(data) {
     console.warn('[saveData] localStorage write failed:', e.message);
   }
 
-  if (_fbOk && _guildRef && _isAdmin()) {
-    _isSyncingGuild = true;
-    _guildRef.set(dataNoMembers, { merge: true })
-      .then(function(){
-        _isSyncingGuild = false;
-        _badge(true, _t(dataNoMembers.updatedAt));
-        console.log('[saveData] ✅ Firebase write OK');
-      })
-      .catch(function(e){
-        _isSyncingGuild = false;
-        console.error('[saveData] ❌ Firebase write FAILED:', e.code, e.message);
-        if (typeof showToast === 'function')
-          showToast('❌ Lỗi push Firebase: ' + (e.code || e.message), 'error', 5000);
-      });
-  } else {
+  if (!_fbOk || !_guildRef || !_isAdmin()) {
     console.warn('[saveData] ⚠ Skipped Firebase push. _fbOk=', _fbOk, '_guildRef=', !!_guildRef, '_isAdmin=', _isAdmin());
+    return true;
   }
+
+  // ⭐ NẾU CHƯA SYNC LẦN NÀO TỪ FIREBASE → KHÔNG GHI ĐÈ
+  // (RAM hiện tại có thể là DEFAULT_DATA hoặc localStorage stale)
+  if (!_guildSynced) {
+    console.warn('[saveData] ⚠ BLOCKED — chưa sync với Firebase lần nào. Đợi listener fire trước.');
+    if (typeof showToast === 'function') {
+      showToast('⏳ Đang đồng bộ với Firebase, hãy thử lại sau 1-2 giây', 'info', 3000);
+    }
+    return false;
+  }
+
+  _isSyncingGuild = true;
+  _guildRef.set(dataNoMembers, { merge: true })
+    .then(function(){
+      _isSyncingGuild = false;
+      _badge(true, _t(dataNoMembers.updatedAt));
+      console.log('[saveData] ✅ Firebase write OK');
+    })
+    .catch(function(e){
+      _isSyncingGuild = false;
+      console.error('[saveData] ❌ Firebase write FAILED:', e.code, e.message);
+      if (typeof showToast === 'function')
+        showToast('❌ Lỗi push Firebase: ' + (e.code || e.message), 'error', 5000);
+    });
   return true;
 };
 
@@ -374,13 +395,16 @@ function _bootstrapGuildIfEmpty() {
   if (!_fbOk || !_guildRef) return;
   if (!_isAdmin()) return;
   _guildRef.get().then(function(s){
-    if (s.exists) return;
+    if (s.exists) { _guildSynced = true; return; }
     console.log('[FB] Bootstrap: pushing initial data');
     var data = (typeof loadData === 'function') ? loadData() : null;
     if (!data) return;
     var d = Object.assign({}, data); delete d.members;
     d.updatedAt = Date.now();
-    _guildRef.set(d).catch(function(e){ console.error('[FB] Bootstrap error:', e); });
+    _guildRef.set(d).then(function(){
+      _guildSynced = true;
+      console.log('[FB] Bootstrap done — _guildSynced=true');
+    }).catch(function(e){ console.error('[FB] Bootstrap error:', e); });
   });
 }
 
