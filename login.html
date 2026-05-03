@@ -329,17 +329,14 @@
 
   <!-- Register form -->
   <div id="form-register" style="display:none">
-
     <div class="form-group">
       <label>Tên đăng nhập</label>
       <input type="text" id="reg-email" placeholder="Tên tài khoản (không cần email)" autocomplete="username">
     </div>
-
     <div class="form-group">
       <label>Tên hiển thị</label>
       <input type="text" id="reg-name" placeholder="Biệt danh trong bang">
     </div>
-
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <div class="form-group">
         <label>Tên Ingame</label>
@@ -350,15 +347,14 @@
         <input type="text" id="reg-ingame-id" placeholder="ID nhân vật">
       </div>
     </div>
-
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <div class="form-group">
         <label>ID Discord</label>
-        <input type="text" id="reg-discord-id" placeholder="username hoặc ID">
+        <input type="text" id="reg-discord-id" placeholder="username#0000">
       </div>
       <div class="form-group">
         <label>Hệ phái</label>
-        <select id="reg-class" style="width:100%;padding:10px 12px;background:#0f0f1e;border:1px solid #2a2a40;border-radius:8px;color:#e8e8f0;font-size:14px;cursor:pointer;outline:none;appearance:none">
+        <select id="reg-class" style="width:100%;padding:10px 12px;background:#0f0f1e;border:1px solid #2a2a40;border-radius:8px;color:#e8e8f0;font-size:14px;cursor:pointer;outline:none">
           <option value="">-- Chọn hệ phái --</option>
           <option value="toai_mong">⚔ Toái Mộng</option>
           <option value="thiet_y">🛡 Thiết Y</option>
@@ -370,7 +366,6 @@
         </select>
       </div>
     </div>
-
     <div class="form-group">
       <label>Mật khẩu</label>
       <div class="input-wrap">
@@ -378,7 +373,6 @@
         <button class="pwd-toggle" onclick="togglePwd('reg-pass', this)" tabindex="-1">👁</button>
       </div>
     </div>
-
     <div class="form-group">
       <label>Xác nhận mật khẩu</label>
       <div class="input-wrap">
@@ -387,7 +381,6 @@
         <button class="pwd-toggle" onclick="togglePwd('reg-pass2', this)" tabindex="-1">👁</button>
       </div>
     </div>
-
     <button class="btn-submit" onclick="submitRegister()">Tạo tài khoản</button>
   </div>
 
@@ -488,7 +481,6 @@
     const email = document.getElementById('login-email').value.trim();
     const pass  = document.getElementById('login-pass').value;
     if (!email || !pass) { showError('Vui lòng nhập đầy đủ thông tin!'); return; }
-    // Không validate email format - chỉ cần tên tài khoản
 
     // Tài khoản admin cứng
     if (email === 'admin@guild.com' && pass === 'admin123') {
@@ -526,67 +518,58 @@
 
   function submitRegister() {
     hideError();
-    const username    = (document.getElementById('reg-email')||{}).value?.trim() || '';
-    const name        = (document.getElementById('reg-name')||{}).value?.trim() || '';
-    const ingameName  = (document.getElementById('reg-ingame-name')||{}).value?.trim() || '';
-    const ingameId    = (document.getElementById('reg-ingame-id')||{}).value?.trim() || '';
-    const discordId   = (document.getElementById('reg-discord-id')||{}).value?.trim() || '';
-    const classId     = (document.getElementById('reg-class')||{}).value || '';
-    const pass        = (document.getElementById('reg-pass')||{}).value || '';
-    const pass2       = (document.getElementById('reg-pass2')||{}).value || '';
+    const username   = (document.getElementById('reg-email')||{value:''}).value.trim();
+    const name       = (document.getElementById('reg-name')||{value:''}).value.trim();
+    const ingameName = (document.getElementById('reg-ingame-name')||{value:''}).value.trim();
+    const ingameId   = (document.getElementById('reg-ingame-id')||{value:''}).value.trim();
+    const discordId  = (document.getElementById('reg-discord-id')||{value:''}).value.trim();
+    const classId    = (document.getElementById('reg-class')||{value:''}).value;
+    const pass       = (document.getElementById('reg-pass')||{value:''}).value;
+    const pass2      = (document.getElementById('reg-pass2')||{value:''}).value;
 
-    if (!username)    { showError('Vui lòng nhập tên đăng nhập!'); return; }
-    if (!name)        { showError('Vui lòng nhập tên hiển thị!'); return; }
-    if (!ingameName)  { showError('Vui lòng nhập tên Ingame!'); return; }
-    if (!classId)     { showError('Vui lòng chọn hệ phái!'); return; }
+    if (!username)       { showError('Vui lòng nhập tên đăng nhập!'); return; }
+    if (!name)           { showError('Vui lòng nhập tên hiển thị!'); return; }
+    if (!ingameName)     { showError('Vui lòng nhập tên Ingame!'); return; }
+    if (!classId)        { showError('Vui lòng chọn hệ phái!'); return; }
     if (pass.length < 6) { showError('Mật khẩu ít nhất 6 ký tự!'); return; }
     if (pass !== pass2)  { showError('Mật khẩu xác nhận không khớp!'); return; }
 
     function doRegister(existingUsers) {
-      if (existingUsers.find(function(u){ return u.email === username; })) {
-        showError('Tên đăng nhập này đã được dùng!'); return;
+      if (existingUsers.find(u => u.email === username)) {
+        showError('Tên đăng nhập này đã tồn tại!'); return;
       }
       const uid = Date.now().toString(36);
       const newUser = {
-        id: uid, name: name, email: username,
-        inGameName: ingameName, inGameId: ingameId,
-        discordId: discordId, class: classId,
-        pass: btoa(pass), role: 'member',
+        id: uid, name, email: username,
+        inGameName: ingameName, inGameId: ingameId, discordId,
+        class: classId, pass: btoa(pass), role: 'member',
         createdAt: new Date().toISOString()
       };
       existingUsers.push(newUser);
       saveUsers(existingUsers);
-
-      // Tự động thêm vào danh sách Thành Viên
-      if (typeof Members !== 'undefined' && Members.add) {
-        const existing = Members.getAll().find(function(m){ return m.id === uid; });
-        if (!existing) {
-          Members.add({
-            id: uid, name: name, inGameName: ingameName,
-            inGameId: ingameId, discordId: discordId,
-            class: classId, role: 'member'
-          });
+      // Tự động thêm vào Members
+      try {
+        if (typeof Members !== 'undefined') {
+          Members.add({ id:uid, name, inGameName:ingameName, inGameId:ingameId,
+            discordId, class:classId, role:'member' });
         }
-      }
-
-      // Push lên Firebase
+      } catch(e) {}
+      // Push Firebase
       if (typeof fbPushNewUser === 'function') fbPushNewUser(newUser);
       if (typeof _fbUsersRef !== 'undefined' && _fbUsersRef) {
-        _fbUsersRef.doc(uid).set(newUser).catch(function(){});
+        _fbUsersRef.doc(uid).set(newUser).catch(()=>{});
       }
-
       saveSession(newUser);
       window.location.href = 'app.html';
     }
 
-    // Lấy users mới nhất từ Firebase trước
     if (typeof _fbUsersRef !== 'undefined' && _fbUsersRef) {
-      _fbUsersRef.get().then(function(snap) {
+      _fbUsersRef.get().then(snap => {
         const users = [];
-        snap.forEach(function(d){ users.push(d.data()); });
-        if (users.length > 0) localStorage.setItem('nth_users', JSON.stringify(users));
-        doRegister(users.length > 0 ? users : getUsers());
-      }).catch(function(){ doRegister(getUsers()); });
+        snap.forEach(d => users.push(d.data()));
+        if (users.length) localStorage.setItem('nth_users', JSON.stringify(users));
+        doRegister(users.length ? users : getUsers());
+      }).catch(() => doRegister(getUsers()));
     } else {
       doRegister(getUsers());
     }
