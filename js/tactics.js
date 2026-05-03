@@ -171,7 +171,7 @@ function renderTacticsPage() {
   var maps     = settings.maps || [];
   var mapId    = (session&&session.map) || settings.currentMap || (maps[0]&&maps[0].id) || '';
   var mapObj   = maps.find(function(m){return m.id===mapId;}) || maps[0];
-  var mapImg   = mapObj ? loadImageFromStorage('map_'+mapObj.id) : '';
+  var mapImg   = mapObj ? getMapImage(mapObj.id) : '';
   var numTeams = settings.numTeams || 10;
 
   var FALLBACK = ['#22c55e','#40c0e0','#f0c040','#f59e0b','#f28e99','#e05050','#9060e0','#f97316','#ec4899','#14b8a6'];

@@ -37,7 +37,7 @@ function renderSettingsPage() {
 
   /* ── Maps ── */
   const mapRows = s.maps.map(m => {
-    const imgSrc = loadImageFromStorage('map_' + m.id);
+    const imgSrc = getMapImage(m.id);
     const thumb  = imgSrc
       ? `<img src="${imgSrc}" style="height:40px;border-radius:4px;object-fit:cover;max-width:80px;border:1px solid #444">`
       : `<div style="height:40px;width:60px;border-radius:4px;background:#1a1a2e;border:1px dashed #444;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:18px">🗺</div>`;
@@ -174,17 +174,57 @@ function setActiveMap(id) {
 }
 function cfgDeleteMap(id) {
   if (!confirmDelete('Xóa bản đồ này?')) return;
-  Settings.deleteMap(id); showToast('Đã xóa!','error'); renderPage('settings');
+  Settings.deleteMap(id);
+  removeImageFromStorage('map_' + id);
+  showToast('Đã xóa!','error'); renderPage('settings');
 }
 function uploadMapImg(id, input) {
   const file = input.files[0]; if(!file) return;
+  if (file.size > 8 * 1024 * 1024) {
+    showToast('❌ Ảnh quá lớn (>8MB). Hãy chọn ảnh nhỏ hơn.', 'error', 4000);
+    input.value = '';
+    return;
+  }
+  showToast('Đang xử lý ảnh...', 'info', 1500);
   const reader = new FileReader();
   reader.onload = e => {
-    saveImageToStorage('map_' + id, e.target.result);
-    showToast('Đã upload ảnh bản đồ!');
-    renderPage('settings');
+    // Resize ảnh xuống tối đa 1280px chiều rộng (giảm tải Firestore)
+    resizeImage(e.target.result, 1280, 0.85, function(resizedDataUrl) {
+      // Lưu cả vào localStorage (backward compat) lẫn Settings (sync Firebase)
+      saveImageToStorage('map_' + id, resizedDataUrl);
+
+      // Lưu vào maps[].imageData để sync Firebase
+      const data = loadData();
+      const mapIdx = (data.settings.maps || []).findIndex(m => m.id === id);
+      if (mapIdx >= 0) {
+        data.settings.maps[mapIdx].imageData = resizedDataUrl;
+        if (typeof window.saveData === 'function') window.saveData(data); else saveData(data);
+      }
+      const sizeKB = Math.round(resizedDataUrl.length * 0.75 / 1024);
+      showToast(`✅ Đã upload (${sizeKB} KB) — đồng bộ Firebase`, 'success', 3500);
+      renderPage('settings');
+    });
   };
   reader.readAsDataURL(file);
+}
+
+/* Resize ảnh dataURL → trả về dataURL mới (JPEG nén) */
+function resizeImage(dataUrl, maxWidth, quality, callback) {
+  const img = new Image();
+  img.onload = function() {
+    let w = img.width, h = img.height;
+    if (w > maxWidth) {
+      h = Math.round(h * maxWidth / w);
+      w = maxWidth;
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, w, h);
+    callback(canvas.toDataURL('image/jpeg', quality));
+  };
+  img.onerror = function() { callback(dataUrl); };  // fallback giữ nguyên
+  img.src = dataUrl;
 }
 function cfgOpenAddMap() {
   openModal(`

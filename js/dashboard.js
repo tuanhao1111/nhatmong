@@ -276,7 +276,7 @@ function initDashMap() {
   var maps     = settings.maps || [];
   var mapId    = (session && session.map) || settings.currentMap || (maps[0] && maps[0].id) || '';
   var mapObj   = maps.find(function(m){ return m.id === mapId; });
-  var mapImg   = mapObj ? loadImageFromStorage('map_' + mapObj.id) : '';
+  var mapImg   = mapObj ? getMapImage(mapObj.id) : '';
 
   // Render bản đồ
   if (mapImg) {

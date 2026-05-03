@@ -444,3 +444,25 @@ const IMG_PREFIX = 'nth_img_';
 function loadImageFromStorage(k){try{return localStorage.getItem(IMG_PREFIX+k)||'';}catch(e){return '';}}
 function saveImageToStorage(k,v){try{localStorage.setItem(IMG_PREFIX+k,v);return true;}catch(e){return false;}}
 function removeImageFromStorage(k){try{localStorage.removeItem(IMG_PREFIX+k);}catch(e){}}
+
+/**
+ * Lấy ảnh bản đồ — ưu tiên data từ Firebase (settings.maps[].imageData),
+ * fallback localStorage (để tương thích data cũ).
+ * Cũng tự cache vào localStorage khi tìm thấy ở Firebase để lần sau load nhanh.
+ */
+function getMapImage(mapId) {
+  if (!mapId) return '';
+  try {
+    const settings = (typeof Settings !== 'undefined' && Settings.get) ? Settings.get() : null;
+    if (settings && Array.isArray(settings.maps)) {
+      const m = settings.maps.find(x => x.id === mapId);
+      if (m && m.imageData) {
+        // Cache localStorage để render nhanh sau này
+        try { localStorage.setItem(IMG_PREFIX + 'map_' + mapId, m.imageData); } catch(e) {}
+        return m.imageData;
+      }
+    }
+  } catch(e) {}
+  // Fallback localStorage
+  return loadImageFromStorage('map_' + mapId);
+}
