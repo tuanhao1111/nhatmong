@@ -332,6 +332,11 @@ window.saveData = function(data) {
   delete dataNoMembers.members;
   dataNoMembers.updatedAt = Date.now();
 
+  // Debug: check imageData trước khi push
+  var hasImg = !!(dataNoMembers.settings && Array.isArray(dataNoMembers.settings.maps) && dataNoMembers.settings.maps.some(function(m){return !!m.imageData;}));
+  var docSize = JSON.stringify(dataNoMembers).length;
+  console.log('[saveData] hasImg=', hasImg, 'docSize=', Math.round(docSize/1024), 'KB', 'isAdmin=', _isAdmin(), 'fbOk=', _fbOk);
+
   // Cache local cho reload — strip imageData để không bị quota
   try {
     var slim = (typeof _stripBigData === 'function') ? _stripBigData(data) : data;
@@ -344,13 +349,19 @@ window.saveData = function(data) {
   if (_fbOk && _guildRef && _isAdmin()) {
     _isSyncingGuild = true;
     _guildRef.set(dataNoMembers, { merge: true })
-      .then(function(){ _isSyncingGuild = false; _badge(true, _t(dataNoMembers.updatedAt)); })
+      .then(function(){
+        _isSyncingGuild = false;
+        _badge(true, _t(dataNoMembers.updatedAt));
+        console.log('[saveData] ✅ Firebase write OK');
+      })
       .catch(function(e){
         _isSyncingGuild = false;
-        console.error('[FB] saveData error:', e);
-        if (e.code === 'permission-denied' && typeof showToast === 'function')
-          showToast('❌ Không có quyền ghi (Firestore Rules chặn)', 'error', 4000);
+        console.error('[saveData] ❌ Firebase write FAILED:', e.code, e.message);
+        if (typeof showToast === 'function')
+          showToast('❌ Lỗi push Firebase: ' + (e.code || e.message), 'error', 5000);
       });
+  } else {
+    console.warn('[saveData] ⚠ Skipped Firebase push. _fbOk=', _fbOk, '_guildRef=', !!_guildRef, '_isAdmin=', _isAdmin());
   }
   return true;
 };
