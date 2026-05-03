@@ -1,238 +1,192 @@
 /**
- * firebase.js - nhatmongdata
- * KHÔNG dùng window.location.reload() - tránh redirect loop
+ * storage.js - Database localStorage
  */
 
-var FIREBASE_CONFIG = {
-  apiKey:            "AIzaSyBszK09g8sHvufGNrFwDDgcw6rolV37KSA",
-  authDomain:        "nhatmongdata.firebaseapp.com",
-  projectId:         "nhatmongdata",
-  storageBucket:     "nhatmongdata.firebasestorage.app",
-  messagingSenderId: "814787062547",
-  appId:             "1:814787062547:web:c4ca571227c5a5555688e6"
+const DB_KEY = 'nghich_thuy_han_guild';
+
+const DEFAULT_DATA = {
+  guild: { name: 'Nghịch Thủy Hàn', description: 'Bang hội hùng mạnh', maxMembers: 100, level: 1 },
+  members: [],
+  sessions: [],
+  settings: {
+    numTeams: 10, slotsPerTeam: 6, reserveSlots: 30,
+    classes: [
+      { id:'toai_mong',  name:'Toái Mộng', color:'#80c7e6' },
+      { id:'thiet_y',    name:'Thiết Y',   color:'#e6a35c' },
+      { id:'huyet_ha',   name:'Huyết Hà',  color:'#a3534a' },
+      { id:'than_tuong', name:'Thần Tướng',color:'#5e7faf' },
+      { id:'to_van',     name:'Tố Vân',    color:'#f28e99' },
+      { id:'cuu_linh',   name:'Cửu Linh',  color:'#b36bb3' },
+      { id:'long_ngam',  name:'Long Ngâm', color:'#8cb36b' }
+    ],
+    skills: [], tasks: [], maps: [],
+    groups: [
+      { id:'group_1', name:'Nhóm 1', color:'#F97316' },
+      { id:'group_2', name:'Nhóm 2', color:'#0EA5E9' },
+      { id:'group_3', name:'Nhóm 3', color:'#22C55E' },
+      { id:'group_4', name:'Nhóm 4', color:'#A855F7' }
+    ],
+    currentMap: ''
+  },
+  currentSession: null
 };
 
-var _db = null, _guildRef = null, _usersRef = null;
-var _unsubGuild = null, _unsubUsers = null;
-var _fbOk = false;
-
-function fbInit() {
-  if (typeof firebase === 'undefined') { setTimeout(fbInit, 800); return; }
+function loadData() {
   try {
-    var app = firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(FIREBASE_CONFIG);
-    _db       = firebase.firestore(app);
-    _guildRef = _db.collection('guilds').doc('guild_main');
-    _usersRef = _db.collection('users');
-    _fbOk     = true;
-    _badge(true, 'OK');
-    console.log('[FB] Connected. Role=' + _getRole());
-    _listenGuild();
-    _listenUsers();
-    if (_isAdmin()) {
-      _guildRef.get().then(function(s) {
-        if (!s.exists) { console.log('[FB] Empty - auto push'); _rawPush(); }
-      });
-    }
-  } catch(e) {
-    _fbOk = false;
-    _badge(false, e.message);
-    console.error('[FB] Init error:', e);
-  }
+    const raw = localStorage.getItem(DB_KEY);
+    if (!raw) return JSON.parse(JSON.stringify(DEFAULT_DATA));
+    const d = JSON.parse(raw);
+    // Ensure settings has all required fields
+    if (!d.settings) d.settings = DEFAULT_DATA.settings;
+    if (!d.settings.skills) d.settings.skills = [];
+    if (!d.settings.tasks)  d.settings.tasks  = [];
+    if (!d.settings.maps)   d.settings.maps   = [];
+    if (!d.settings.groups) d.settings.groups  = DEFAULT_DATA.settings.groups;
+    if (!d.settings.classes)d.settings.classes = DEFAULT_DATA.settings.classes;
+    return d;
+  } catch(e) { return JSON.parse(JSON.stringify(DEFAULT_DATA)); }
 }
 
-function _listenGuild() {
-  if (_unsubGuild) _unsubGuild();
-  _unsubGuild = _guildRef.onSnapshot(function(snap) {
-    if (!snap.exists) return;
-    var remote = snap.data();
-    var localTs = 0;
-    try { localTs = (JSON.parse(localStorage.getItem(DB_KEY))||{}).updatedAt||0; } catch(e){}
-    if ((remote.updatedAt||0) > localTs) {
-      try { localStorage.setItem(DB_KEY, JSON.stringify(remote)); } catch(e){}
-      _badge(true, _t(remote.updatedAt));
-      console.log('[FB] Guild data updated from server');
-      if (window.currentPage && typeof renderPage === 'function' && !document.querySelector('.modal-overlay')) {
-        setTimeout(function(){ renderPage(window.currentPage); }, 200);
-      }
-    } else {
-      _badge(true, 'Synced');
-    }
-  }, function(e){ _badge(false, 'Error'); console.error('[FB] Guild listen error:', e); });
+function saveData(data) {
+  try { localStorage.setItem(DB_KEY, JSON.stringify(data)); return true; }
+  catch(e) { return false; }
 }
 
-function _listenUsers() {
-  if (_unsubUsers) _unsubUsers();
-  _unsubUsers = _usersRef.onSnapshot(function(snap) {
-    var users = [];
-    snap.forEach(function(d){ users.push(d.data()); });
-    if (!users.length) return;
-
-    try { localStorage.setItem('nth_users', JSON.stringify(users)); } catch(e){}
-    console.log('[FB] Users synced:', users.length);
-
-    // Check role change - KHÔNG reload, chỉ cập nhật session + re-render sidebar
-    var sessRaw = sessionStorage.getItem('nth_session') || localStorage.getItem('nth_session');
-    if (!sessRaw) return;
-    try {
-      var sess = JSON.parse(sessRaw);
-      if (sess.id === 'admin' || sess.id === 'guest') return;
-      var me = users.find(function(u){ return u.id === sess.id; });
-      if (me && me.role !== sess.role) {
-        console.log('[FB] Role changed:', sess.role, '->', me.role);
-        // Cập nhật session với role mới
-        var newSess = Object.assign({}, sess, { role: me.role });
-        if (sessionStorage.getItem('nth_session'))
-          sessionStorage.setItem('nth_session', JSON.stringify(newSess));
-        else
-          localStorage.setItem('nth_session', JSON.stringify(newSess));
-
-        // Cập nhật UI mà KHÔNG reload trang - tránh redirect loop
-        _updateRoleUI(me.role);
-      }
-    } catch(e){ console.error('[FB] Session update error:', e); }
-  }, function(e){ console.error('[FB] Users listen error:', e); });
+function genId() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2,5);
 }
 
-// Cập nhật UI khi role thay đổi - KHÔNG reload trang
-function _updateRoleUI(newRole) {
-  // Hiện thông báo
-  if (typeof showToast === 'function')
-    showToast('Quyền đã cập nhật: ' + newRole);
-
-  // Cập nhật badge role trong sidebar footer
-  var roleEl = document.querySelector('.user-role');
-  if (roleEl) {
-    var RLABELS = { admin:'👑 Admin', member:'👤 Member', guest:'🚪 Khách' };
-    var rColors  = { admin:'var(--accent-gold)', member:'var(--accent-cyan)', guest:'var(--text-muted)' };
-    roleEl.textContent = RLABELS[newRole] || newRole;
-    roleEl.style.color = rColors[newRole] || 'var(--text-secondary)';
-  }
-
-  // Rebuild sidebar để hiện/ẩn menu admin
-  if (typeof buildSidebar === 'function' && typeof initApp === 'function') {
-    var sidebarEl = document.getElementById('sidebar');
-    if (sidebarEl) {
-      // Re-render chỉ phần sidebar nav
-      var nav = sidebarEl.querySelector('.sidebar-nav');
-      if (nav && typeof PAGES !== 'undefined') {
-        var admin = newRole === 'admin';
-        nav.innerHTML = Object.entries(PAGES)
-          .filter(function(e){ return !e[1].adminOnly || admin; })
-          .map(function(e){ 
-            return '<a class="nav-item" data-page="'+e[0]+'" href="#" onclick="renderPage(\''+e[0]+'\');return false;"><span class="nav-icon">'+e[1].icon+'</span><span>'+e[1].label+'</span></a>';
-          }).join('');
-        // Re-highlight active page
-        nav.querySelectorAll('.nav-item').forEach(function(el){
-          el.classList.toggle('active', el.dataset.page === window.currentPage);
-        });
-      }
-    }
-  }
-
-  // Re-render trang hiện tại để áp dụng permission mới
-  if (window.currentPage && typeof renderPage === 'function')
-    setTimeout(function(){ renderPage(window.currentPage); }, 300);
-}
-
-window.saveData = function(data) {
-  var ok = false;
-  try { localStorage.setItem(DB_KEY, JSON.stringify(data)); ok = true; } catch(e){}
-  if (_fbOk && _guildRef && _isAdmin()) {
-    _guildRef.set(Object.assign({}, data, { updatedAt: Date.now() }))
-      .then(function(){ _badge(true, _t(Date.now())); })
-      .catch(function(e){ console.error('[FB] Save error:', e); });
-  }
-  return ok;
+const Members = {
+  getAll()    { return loadData().members || []; },
+  getById(id) { return this.getAll().find(m => m.id === id); },
+  add(m) {
+    const data = loadData();
+    const nm = { id:genId(), name:m.name||'', inGameName:m.inGameName||'',
+      class:m.class||'', power:m.power||0, combatRole:m.combatRole||'',
+      skill:m.skill||'', tasks:m.tasks||[], group:m.group||'',
+      role:m.role||'member', joinDate:new Date().toISOString().split('T')[0],
+      note:m.note||'' };
+    data.members.push(nm); saveData(data); return nm;
+  },
+  update(id, u) {
+    const data = loadData();
+    const idx = data.members.findIndex(m => m.id===id);
+    if (idx<0) return false;
+    data.members[idx] = Object.assign({}, data.members[idx], u);
+    saveData(data); return data.members[idx];
+  },
+  delete(id) {
+    const data = loadData();
+    data.members = data.members.filter(m => m.id!==id);
+    saveData(data); return true;
+  },
+  count() { return this.getAll().length; }
 };
 
-(function(){
-  var orig = localStorage.setItem.bind(localStorage);
-  localStorage.setItem = function(key, value) {
-    orig(key, value);
-    if (key === 'nth_users' && _fbOk && _usersRef) {
-      try {
-        JSON.parse(value).forEach(function(u){
-          if (u && u.id) _usersRef.doc(u.id).set(u).catch(function(){});
-        });
-      } catch(e){}
+const Sessions = {
+  getAll()    { return loadData().sessions || []; },
+  getCurrent(){ return loadData().currentSession || null; },
+  createNew(config={}) {
+    const data = loadData();
+    if (data.currentSession) {
+      data.sessions.unshift(Object.assign({},data.currentSession,{status:'closed',closedAt:new Date().toISOString()}));
     }
-  };
-})();
+    const now = new Date();
+    const session = {
+      id: genId(),
+      name: config.name || ('Tuần '+getWeekNumber(now)+' - '+now.getFullYear()),
+      createdAt: now.toISOString(), status:'active',
+      map: config.map || data.settings.currentMap || '',
+      teams: buildEmptyTeams(data.settings),
+      reserve: buildEmptyReserve(data.settings),
+      tactics: { notes:'', markers:[], customMarkers:[] },
+      settings: JSON.parse(JSON.stringify(data.settings))
+    };
+    data.currentSession = session; saveData(data); return session;
+  },
+  updateCurrent(updates) {
+    const data = loadData();
+    if (!data.currentSession) return false;
+    data.currentSession = Object.assign({}, data.currentSession, updates);
+    saveData(data); return data.currentSession;
+  },
+  saveMarkers(markers, customMarkers) {
+    const data = loadData();
+    if (!data.currentSession) return;
+    data.currentSession.tactics.markers = markers;
+    if (customMarkers !== undefined) data.currentSession.tactics.customMarkers = customMarkers;
+    saveData(data);
+  },
+  assignMember(teamIdx, slotIdx, memberId, isReserve=false) {
+    const data = loadData();
+    if (!data.currentSession) return false;
+    const member = data.members.find(m => m.id===memberId);
+    if (!member) return false;
+    const info = { id:memberId, name:member.name, inGameName:member.inGameName,
+      class:member.class, combatRole:member.combatRole, skill:member.skill };
+    if (isReserve) data.currentSession.reserve[slotIdx] = info;
+    else data.currentSession.teams[teamIdx].slots[slotIdx] = info;
+    saveData(data); return true;
+  },
+  removeSlot(teamIdx, slotIdx, isReserve=false) {
+    const data = loadData();
+    if (!data.currentSession) return false;
+    if (isReserve) data.currentSession.reserve[slotIdx] = null;
+    else data.currentSession.teams[teamIdx].slots[slotIdx] = null;
+    saveData(data); return true;
+  }
+};
 
-function _rawPush(cb) {
-  if (!_guildRef) { if(cb) cb(new Error('no ref')); return; }
-  var data = loadData();
-  _guildRef.set(Object.assign({}, data, { updatedAt: Date.now() }))
-    .then(function(){ if(cb) cb(null); })
-    .catch(function(e){ if(cb) cb(e); });
+const Settings = {
+  get()         { return loadData().settings || DEFAULT_DATA.settings; },
+  update(u)     { const data=loadData(); data.settings=Object.assign({},data.settings,u); saveData(data); return data.settings; },
+  addClass(c)   { const data=loadData(); data.settings.classes.push(Object.assign({id:genId()},c)); saveData(data); },
+  updateClass(id,u){ const data=loadData(); const i=data.settings.classes.findIndex(c=>c.id===id); if(i>=0){data.settings.classes[i]=Object.assign({},data.settings.classes[i],u);saveData(data);} },
+  deleteClass(id){ const data=loadData(); data.settings.classes=data.settings.classes.filter(c=>c.id!==id); saveData(data); },
+  addSkill(s)   { const data=loadData(); if(!data.settings.skills)data.settings.skills=[]; data.settings.skills.push(Object.assign({id:genId()},s)); saveData(data); },
+  updateSkill(id,u){ const data=loadData(); const i=(data.settings.skills||[]).findIndex(s=>s.id===id); if(i>=0){data.settings.skills[i]=Object.assign({},data.settings.skills[i],u);saveData(data);} },
+  deleteSkill(id){ const data=loadData(); data.settings.skills=(data.settings.skills||[]).filter(s=>s.id!==id); saveData(data); },
+  addTask(t)    { const data=loadData(); if(!data.settings.tasks)data.settings.tasks=[]; data.settings.tasks.push(Object.assign({id:genId()},t)); saveData(data); },
+  updateTask(id,u){ const data=loadData(); const i=(data.settings.tasks||[]).findIndex(t=>t.id===id); if(i>=0){data.settings.tasks[i]=Object.assign({},data.settings.tasks[i],u);saveData(data);} },
+  deleteTask(id){ const data=loadData(); data.settings.tasks=(data.settings.tasks||[]).filter(t=>t.id!==id); saveData(data); },
+  addGroup(g)   { const data=loadData(); data.settings.groups.push(Object.assign({id:genId()},g)); saveData(data); },
+  deleteGroup(id){ const data=loadData(); data.settings.groups=data.settings.groups.filter(g=>g.id!==id); saveData(data); },
+  addMap(m)     { const data=loadData(); if(!data.settings.maps)data.settings.maps=[]; data.settings.maps.push(m); saveData(data); },
+  updateMap(id,u){ const data=loadData(); const i=(data.settings.maps||[]).findIndex(m=>m.id===id); if(i>=0){data.settings.maps[i]=Object.assign({},data.settings.maps[i],u);saveData(data);} },
+  deleteMap(id) { const data=loadData(); data.settings.maps=(data.settings.maps||[]).filter(m=>m.id!==id); saveData(data); },
+};
+
+const Guild = {
+  get()     { return loadData().guild || DEFAULT_DATA.guild; },
+  update(u) { const data=loadData(); data.guild=Object.assign({},data.guild,u); saveData(data); return data.guild; }
+};
+
+function getWeekNumber(d) {
+  d = new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  d.setUTCDate(d.getUTCDate()+4-(d.getUTCDay()||7));
+  return Math.ceil((((d-new Date(Date.UTC(d.getUTCFullYear(),0,1)))/86400000)+1)/7);
 }
 
-window.fbPushNow = function() {
-  var btn = document.querySelector('button[onclick="fbPushNow()"]');
-  function setBtn(t,d){ if(btn){btn.textContent=t;btn.disabled=d;} }
-  function done(msg, ok){ setBtn('🔥 Push Firebase',false); if(typeof showToast==='function') showToast(msg, ok?'success':'error', 5000); }
-
-  function go() {
-    if (!_fbOk || !_guildRef) { done('❌ Firebase chưa kết nối — mở F12 xem Console',false); return; }
-    setBtn('⏳ Đang push...',true);
-    _rawPush(function(err){
-      if (err) {
-        done(err.code==='permission-denied'
-          ? '❌ Firestore Rules chặn ghi! Vào Firebase Console → Rules → sửa'
-          : '❌ Lỗi: '+err.message, false);
-      } else {
-        // Push users
-        var users=[];
-        try{users=JSON.parse(localStorage.getItem('nth_users'))||[];}catch(e){}
-        users.forEach(function(u){ if(u&&u.id) _usersRef.doc(u.id).set(u).catch(function(){}); });
-        done('✅ Đã push '+(loadData().members||[]).length+' thành viên lên Firebase!', true);
-      }
+function buildEmptyTeams(settings) {
+  const teams=[], n=settings.numTeams||10, s=settings.slotsPerTeam||6;
+  for(let i=0;i<n;i++) teams.push({index:i,label:'T'+(i+1),group:'',slots:Array(s).fill(null)});
+  return teams;
+}
+function buildEmptyReserve(settings) {
+  return Array(settings.reserveSlots||30).fill(null);
+}
+function buildDefaultMarkers(numTeams) {
+  const cols=Math.ceil(Math.sqrt(numTeams)), rows=Math.ceil(numTeams/cols), markers=[];
+  for(let i=0;i<numTeams;i++){
+    markers.push({ teamIndex:i,
+      x: +(10+(i%cols)*(80/Math.max(cols-1,1))).toFixed(1),
+      y: +(15+Math.floor(i/cols)*(70/Math.max(rows-1,1))).toFixed(1)
     });
   }
-
-  if (!_fbOk) {
-    setBtn('⏳ Chờ Firebase...',true);
-    var w=0, iv=setInterval(function(){ w+=300; if(_fbOk||w>=6000){clearInterval(iv);go();} },300);
-  } else { go(); }
-};
-
-function _isAdmin() {
-  try { var s=sessionStorage.getItem('nth_session')||localStorage.getItem('nth_session'); return !!(s&&JSON.parse(s).role==='admin'); } catch(e){return false;}
-}
-function _getRole() {
-  try { var s=sessionStorage.getItem('nth_session')||localStorage.getItem('nth_session'); return s?JSON.parse(s).role:'?'; } catch(e){return '?';}
-}
-function _t(ts){ return ts?new Date(ts).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}):''; }
-
-function _badge(ok, msg) {
-  setTimeout(function(){
-    var el=document.getElementById('fb-badge');
-    if (!el) {
-      el=document.createElement('div');
-      el.id='fb-badge';
-      el.style.cssText='font-size:11px;padding:3px 10px;border-radius:12px;cursor:pointer;white-space:nowrap';
-      el.onclick=function(){ if(_fbOk&&_guildRef) _guildRef.get().then(function(s){ if(typeof showToast==='function') showToast(s.exists?'✅ Firebase OK — '+_t(s.data().updatedAt):'⚠️ Chưa có data — bấm Push Firebase'); }); };
-      var bar=document.querySelector('.topbar-actions');
-      if(bar) bar.insertBefore(el,bar.firstChild);
-    }
-    el.style.background=ok?'#052e16':'#1c1400';
-    el.style.border='1px solid '+(ok?'#16a34a':'#d97706');
-    el.style.color=ok?'#4ade80':'#fbbf24';
-    el.textContent=ok?'🔥 Firebase':'🟡 '+(msg||'Local');
-  },400);
+  return markers;
 }
 
-function renderFirebaseConfigUI() {
-  return '<div class="cfg-section" style="border-color:'+(_fbOk?'#16a34a44':'#dc262644')+'">' +
-    '<div class="section-header"><span class="section-title">🔥 Firebase</span>' +
-    '<span style="font-size:12px;padding:3px 12px;border-radius:20px;'+(_fbOk?'background:#052e16;border:1px solid #16a34a;color:#4ade80':'background:#1c1400;border:1px solid #d97706;color:#fbbf24')+'">' +
-    (_fbOk?'🔥 nhatmongdata':'🟡 Chưa kết nối')+'</span></div>' +
-    '<div style="color:var(--text-secondary);font-size:13px;margin-top:8px">Role hiện tại: <strong>'+_getRole()+'</strong></div>' +
-    '</div>';
-}
-
-setTimeout(fbInit, 800);
-
+// Image storage
 const IMG_PREFIX = 'nth_img_';
 function loadImageFromStorage(k){try{return localStorage.getItem(IMG_PREFIX+k)||'';}catch(e){return '';}}
 function saveImageToStorage(k,v){try{localStorage.setItem(IMG_PREFIX+k,v);return true;}catch(e){return false;}}

@@ -1,468 +1,121 @@
 /**
- * settings.js - Cấu hình (chỉ Admin)
- * Layout theo hình mẫu: Đội hình / Class / Skill / Task / Nhóm / Bản đồ chiến thuật
+ * utils.js - Hàm tiện ích dùng chung
  */
 
-function renderSettingsPage() {
-  if (!isAdmin()) return `<div style="text-align:center;padding:80px;color:var(--text-muted)">🔒 Chỉ Admin mới có thể truy cập trang cấu hình.</div>`;
-
-  const s     = Settings.get();
-  const guild = Guild.get();
-
-  /* ── Đội hình ── */
-  const formationHtml = `
-    <div class="cfg-section">
-      <div class="section-header"><span class="section-title">⚔ Đội Hình</span></div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:600px">
-        <div class="form-group"><label>SỐ TEAM</label><input type="number" id="cfg-teams" value="${s.numTeams}" min="1" max="20"></div>
-        <div class="form-group"><label>SLOT MỖI TEAM</label><input type="number" id="cfg-slots" value="${s.slotsPerTeam}" min="1" max="12"></div>
-        <div class="form-group"><label>DỰ BỊ</label><input type="number" id="cfg-reserve" value="${s.reserveSlots}" min="0" max="100"></div>
-      </div>
-      <button class="btn btn-gold" style="margin-top:8px" onclick="saveFormation()">Lưu đội hình</button>
-    </div>`;
-
-  /* ── Classes ── */
-  const classRows = s.classes.map(c => `
-    <div class="cfg-row">
-      <input class="cfg-input-id" type="text" value="${escHtml(c.id)}" readonly>
-      <input class="cfg-input-name" type="text" value="${escHtml(c.name)}" onchange="cfgUpdateClass('${c.id}','name',this.value)">
-      <input type="color" value="${c.color}" onchange="cfgUpdateClass('${c.id}','color',this.value)"
-             style="width:44px;height:36px;padding:2px;cursor:pointer;border-radius:4px;border:1px solid #2a2a45;background:#1a1a2e">
-      <div style="width:20px;height:20px;border-radius:50%;background:${c.color}"></div>
-      <button class="btn btn-danger cfg-btn-sm" onclick="cfgDeleteClass('${c.id}')">Xóa</button>
-    </div>`).join('');
-
-  /* ── Skills ── */
-  const skillRows = s.skills.map(sk => {
-    const imgSrc = loadImageFromStorage('skill_' + sk.id);
-    const thumb  = imgSrc
-      ? `<img src="${imgSrc}" style="width:36px;height:36px;border-radius:6px;object-fit:cover;border:1px solid #333">`
-      : `<div style="width:36px;height:36px;border-radius:6px;background:#1a1a2e;border:1px dashed #444;display:flex;align-items:center;justify-content:center;font-size:16px">🎯</div>`;
-    return `
-    <div class="cfg-row" id="skill-row-${sk.id}">
-      <input class="cfg-input-id" type="text" value="${escHtml(sk.id)}" readonly>
-      <input class="cfg-input-name" type="text" value="${escHtml(sk.name)}" onchange="cfgUpdateSkill('${sk.id}','name',this.value)">
-      <input type="color" value="${sk.color}" onchange="cfgUpdateSkill('${sk.id}','color',this.value)"
-             style="width:44px;height:36px;padding:2px;cursor:pointer;border-radius:4px;border:1px solid #2a2a45;background:#1a1a2e">
-      <div style="width:20px;height:20px;border-radius:4px;background:${sk.color}"></div>
-      ${thumb}
-      <label class="btn btn-outline cfg-btn-sm" style="cursor:pointer">
-        Upload ảnh
-        <input type="file" accept="image/*" style="display:none" onchange="uploadSkillImg('${sk.id}',this)">
-      </label>
-      <button class="btn btn-danger cfg-btn-sm" onclick="cfgDeleteSkill('${sk.id}')">Xóa</button>
-    </div>`;
-  }).join('');
-
-  /* ── Tasks ── */
-  const taskRows = s.tasks.map(t => {
-    const imgSrc = loadImageFromStorage('task_' + t.id);
-    const thumb  = imgSrc
-      ? `<img src="${imgSrc}" style="width:36px;height:36px;border-radius:6px;object-fit:cover;border:1px solid #333">`
-      : `<div style="width:36px;height:36px;border-radius:6px;background:#1a1a2e;border:1px dashed #444;display:flex;align-items:center;justify-content:center;font-size:16px">📦</div>`;
-    return `
-    <div class="cfg-row">
-      <input class="cfg-input-id" type="text" value="${escHtml(t.id)}" readonly>
-      <input class="cfg-input-name" type="text" value="${escHtml(t.name)}" onchange="cfgUpdateTask('${t.id}','name',this.value)">
-      <input type="color" value="${t.color}" onchange="cfgUpdateTask('${t.id}','color',this.value)"
-             style="width:44px;height:36px;padding:2px;cursor:pointer;border-radius:4px;border:1px solid #2a2a45;background:#1a1a2e">
-      <div style="width:20px;height:20px;border-radius:4px;background:${t.color}"></div>
-      <input type="number" value="${t.count||1}" min="1" max="99" style="width:60px;text-align:center"
-             onchange="cfgUpdateTask('${t.id}','count',+this.value)">
-      <input type="checkbox" ${t.required?'checked':''} title="Bắt buộc"
-             onchange="cfgUpdateTask('${t.id}','required',this.checked)"
-             style="width:16px;height:16px;accent-color:var(--accent-gold);cursor:pointer">
-      ${thumb}
-      <label class="btn btn-outline cfg-btn-sm" style="cursor:pointer">
-        Upload ảnh
-        <input type="file" accept="image/*" style="display:none" onchange="uploadTaskImg('${t.id}',this)">
-      </label>
-      <button class="btn btn-danger cfg-btn-sm" onclick="cfgDeleteTask('${t.id}')">Xóa</button>
-    </div>`;
-  }).join('');
-
-  /* ── Groups ── */
-  const groupRows = s.groups.map(g => `
-    <div class="cfg-row">
-      <input class="cfg-input-id" type="text" value="${escHtml(g.id)}" readonly>
-      <input class="cfg-input-name" type="text" value="${escHtml(g.name)}" onchange="cfgUpdateGroup('${g.id}','name',this.value)">
-      <input type="color" value="${g.color}" onchange="cfgUpdateGroup('${g.id}','color',this.value)"
-             style="width:44px;height:36px;padding:2px;cursor:pointer;border-radius:4px;border:1px solid #2a2a45;background:#1a1a2e">
-      <div style="width:20px;height:20px;border-radius:50%;background:${g.color}"></div>
-      <button class="btn btn-danger cfg-btn-sm" onclick="cfgDeleteGroup('${g.id}')">Xóa</button>
-    </div>`).join('');
-
-  /* ── Maps ── */
-  const mapRows = s.maps.map(m => {
-    const imgSrc = loadImageFromStorage('map_' + m.id);
-    const thumb  = imgSrc
-      ? `<img src="${imgSrc}" style="height:40px;border-radius:4px;object-fit:cover;max-width:80px;border:1px solid #444">`
-      : `<div style="height:40px;width:60px;border-radius:4px;background:#1a1a2e;border:1px dashed #444;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:18px">🗺</div>`;
-    const isActive = (s.currentMap === m.id);
-    return `
-    <div class="cfg-row" style="${isActive?'background:#0a1a0a;border-radius:6px;padding:4px 8px':''}">
-      <input class="cfg-input-id" type="text" value="${escHtml(m.id)}" readonly>
-      <input class="cfg-input-name" type="text" value="${escHtml(m.name)}" onchange="cfgUpdateMap('${m.id}','name',this.value)" style="flex:1">
-      ${thumb}
-      <label class="btn btn-outline cfg-btn-sm" style="cursor:pointer">
-        Upload ảnh
-        <input type="file" accept="image/*" style="display:none" onchange="uploadMapImg('${m.id}',this)">
-      </label>
-      ${isActive
-        ? `<span style="color:var(--accent-green);font-size:12px;font-weight:600;white-space:nowrap">✔ Đang dùng</span>`
-        : `<button class="btn btn-outline cfg-btn-sm" onclick="setActiveMap('${m.id}')">Dùng</button>`}
-      <button class="btn btn-danger cfg-btn-sm" onclick="cfgDeleteMap('${m.id}')">Xóa</button>
-    </div>`;
-  }).join('');
-
-  return `
-    <!-- Inject settings styles -->
-    <style>
-      .cfg-section { background:var(--bg-card);border:1px solid var(--border-color);border-radius:10px;padding:20px;margin-bottom:20px; }
-      .cfg-row { display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #1a1a2e;flex-wrap:wrap; }
-      .cfg-row:last-child { border-bottom:none; }
-      .cfg-input-id   { width:150px;font-size:12px;color:var(--text-secondary);flex-shrink:0; }
-      .cfg-input-name { flex:1;min-width:140px; }
-      .cfg-btn-sm { padding:5px 12px;font-size:12px;white-space:nowrap;flex-shrink:0; }
-    </style>
-
-    <div class="page-header">
-      <div class="page-title">Cấu Hình</div>
-      <div class="page-subtitle">Quản lý cấu hình: đội hình, class, skill, task, nhóm, bản đồ</div>
-    </div>
-
-    <!-- Guild -->
-    <div class="cfg-section">
-      <div class="section-header"><span class="section-title">🏰 Thông Tin Bang</span></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:600px">
-        <div class="form-group"><label>Tên Bang</label><input type="text" id="cfg-guild-name" value="${escHtml(guild.name)}"></div>
-        <div class="form-group"><label>Giới thiệu</label><input type="text" id="cfg-guild-desc" value="${escHtml(guild.description)}"></div>
-      </div>
-      <button class="btn btn-gold" onclick="saveGuildInfo()">Lưu</button>
-    </div>
-
-    ${formationHtml}
-
-    <!-- Classes -->
-    <div class="cfg-section">
-      <div class="section-header">
-        <span class="section-title">🎭 Danh Sách Class</span>
-        <button class="btn btn-cyan" style="padding:6px 14px;font-size:12px" onclick="cfgOpenAddClass()">+ Thêm class</button>
-      </div>
-      <div>${classRows || '<div style="color:var(--text-muted);padding:12px">Chưa có class nào</div>'}</div>
-    </div>
-
-    <!-- Skills -->
-    <div class="cfg-section">
-      <div class="section-header">
-        <span class="section-title">✨ Danh Sách Skill</span>
-        <button class="btn btn-cyan" style="padding:6px 14px;font-size:12px" onclick="cfgOpenAddSkill()">+ Thêm skill</button>
-      </div>
-      <div>${skillRows || '<div style="color:var(--text-muted);padding:12px">Chưa có skill nào</div>'}</div>
-    </div>
-
-    <!-- Tasks -->
-    <div class="cfg-section">
-      <div class="section-header">
-        <span class="section-title">📦 Danh Sách Task</span>
-        <button class="btn btn-cyan" style="padding:6px 14px;font-size:12px" onclick="cfgOpenAddTask()">+ Thêm task</button>
-      </div>
-      <div>${taskRows || '<div style="color:var(--text-muted);padding:12px">Chưa có task nào</div>'}</div>
-    </div>
-
-    <!-- Groups -->
-    <div class="cfg-section">
-      <div class="section-header">
-        <span class="section-title">👥 Nhóm Chiến</span>
-        <button class="btn btn-cyan" style="padding:6px 14px;font-size:12px" onclick="cfgOpenAddGroup()">+ Thêm nhóm</button>
-      </div>
-      <div>${groupRows || '<div style="color:var(--text-muted);padding:12px">Chưa có nhóm nào</div>'}</div>
-    </div>
-
-    <!-- Maps -->
-    <div class="cfg-section">
-      <div class="section-header">
-        <span class="section-title">🗺 Bản Đồ Chiến Thuật</span>
-        <button class="btn btn-cyan" style="padding:6px 14px;font-size:12px" onclick="cfgOpenAddMap()">+ Thêm bản đồ</button>
-      </div>
-      <div style="margin-bottom:14px">
-        <label style="font-size:11px;color:var(--text-secondary);letter-spacing:1px;text-transform:uppercase">MAP HIỆN TẠI</label>
-        <select onchange="setActiveMap(this.value)" style="width:100%;margin-top:6px;max-width:400px">
-          ${s.maps.map(m => `<option value="${m.id}" ${s.currentMap===m.id?'selected':''}>${m.name}</option>`).join('')}
-        </select>
-      </div>
-      <div>${mapRows || '<div style="color:var(--text-muted);padding:12px">Chưa có bản đồ nào</div>'}</div>
-    </div>
-
-    <!-- Danger zone -->
-    <div class="cfg-section" style="border-color:#e0404044">
-      <div class="section-title" style="color:var(--accent-red);margin-bottom:12px">⚠ Vùng Nguy Hiểm</div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <button class="btn btn-danger" onclick="clearAllMembers()">Xóa toàn bộ thành viên</button>
-        <button class="btn btn-danger" onclick="resetAllData()">Reset toàn bộ dữ liệu</button>
-        <button class="btn btn-outline" onclick="exportData()">📤 Xuất JSON</button>
-        <label class="btn btn-outline" style="cursor:pointer">📥 Nhập JSON<input type="file" accept=".json" style="display:none" onchange="importData(this)"></label>
-      </div>
-    </div>
-  `;
+function showToast(message, type, duration) {
+  duration = duration || 3000;
+  var existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  var toast = document.createElement('div');
+  toast.className = 'toast' + (type ? ' ' + type : '');
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(function() {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.3s';
+    setTimeout(function() { if (toast.parentNode) toast.remove(); }, 300);
+  }, duration);
 }
 
-/* ══════════════════════════════════════════════════════════ GUILD / FORMATION */
-function saveGuildInfo() {
-  Guild.update({ name: document.getElementById('cfg-guild-name').value.trim(), description: document.getElementById('cfg-guild-desc').value.trim() });
-  const el = document.getElementById('sidebar-guild-name');
-  if (el) el.textContent = Guild.get().name;
-  showToast('Đã lưu thông tin bang!');
+function confirmDelete(message) {
+  return window.confirm(message || 'Bạn có chắc muốn xóa?');
 }
-function saveFormation() {
-  Settings.update({
-    numTeams:     +document.getElementById('cfg-teams').value   || 10,
-    slotsPerTeam: +document.getElementById('cfg-slots').value   || 6,
-    reserveSlots: +document.getElementById('cfg-reserve').value || 30
+
+function formatNumber(n) {
+  n = n || 0;
+  if (n >= 1e9) return (n/1e9).toFixed(1) + 'B';
+  if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+  return n.toString();
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  var d = new Date(dateStr);
+  return d.toLocaleDateString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric' });
+}
+
+function formatDateTime(dateStr) {
+  if (!dateStr) return '';
+  var d = new Date(dateStr);
+  return d.toLocaleString('vi-VN');
+}
+
+function getClassColor(classId) {
+  if (!classId) return '#666';
+  var settings = Settings.get();
+  var cls = settings.classes.find(function(c) { return c.id === classId; });
+  return cls ? cls.color : '#666';
+}
+
+function getClassName(classId) {
+  if (!classId) return '';
+  var settings = Settings.get();
+  var cls = settings.classes.find(function(c) { return c.id === classId; });
+  return cls ? cls.name : classId;
+}
+
+function getGroupName(groupId) {
+  if (!groupId) return '';
+  var settings = Settings.get();
+  var g = settings.groups.find(function(g) { return g.id === groupId; });
+  return g ? g.name : '';
+}
+
+function getGroupColor(groupId) {
+  if (!groupId) return '#666';
+  var settings = Settings.get();
+  var g = settings.groups.find(function(g) { return g.id === groupId; });
+  return g ? g.color : '#666';
+}
+
+function classBadge(classId) {
+  var color = getClassColor(classId);
+  var name  = getClassName(classId);
+  if (!name) return '';
+  return '<span class="badge" style="background:' + color + '22;color:' + color + ';border:1px solid ' + color + '44">' + escHtml(name) + '</span>';
+}
+
+function roleBadge(role) {
+  var map = {
+    leader:  { label:'Bang Chủ',   color:'#f0c040' },
+    officer: { label:'Phó Bang',   color:'#40c0e0' },
+    member:  { label:'Thành Viên', color:'#808090' }
+  };
+  var r = map[role] || map.member;
+  return '<span class="badge" style="background:' + r.color + '22;color:' + r.color + '">' + r.label + '</span>';
+}
+
+function openModal(html, onClose, wide) {
+  var existing = document.querySelector('.modal-overlay');
+  if (existing) existing.remove();
+  var overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = '<div class="modal" style="' + (wide ? 'max-width:700px;width:95%' : '') + '"><div style="max-height:80vh;overflow-y:auto">' + html + '</div></div>';
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) { overlay.remove(); if (onClose) onClose(); }
   });
-  showToast('Đã lưu đội hình!');
+  return overlay;
 }
 
-/* ══════════════════════════════════════════════════════════ CLASS */
-function cfgUpdateClass(id, field, value) { Settings.updateClass(id, { [field]: value }); }
-function cfgDeleteClass(id) {
-  if (!confirmDelete('Xóa class này?')) return;
-  Settings.deleteClass(id); showToast('Đã xóa!','error'); renderPage('settings');
-}
-function cfgOpenAddClass() {
-  openModal(`
-    <h3>+ Thêm Class</h3>
-    <div class="form-group"><label>Mã (không dấu)</label><input type="text" id="nc-id" placeholder="vd: kiem_khach"></div>
-    <div class="form-group"><label>Tên hiển thị</label><input type="text" id="nc-name" placeholder="vd: Kiếm Khách"></div>
-    <div class="form-group"><label>Màu sắc</label><input type="color" id="nc-color" value="#80c7e6" style="width:100%;height:40px"></div>
-    <div class="modal-actions">
-      <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Hủy</button>
-      <button class="btn btn-gold" onclick="cfgSubmitAddClass(this.closest('.modal-overlay'))">Thêm</button>
-    </div>`);
-}
-function cfgSubmitAddClass(ov) {
-  const id=document.getElementById('nc-id').value.trim().replace(/\s+/g,'_').toLowerCase();
-  const name=document.getElementById('nc-name').value.trim();
-  const color=document.getElementById('nc-color').value;
-  if(!id||!name){showToast('Điền đầy đủ!','error');return;}
-  Settings.addClass({id,name,color}); ov.remove(); showToast('Đã thêm class!'); renderPage('settings');
+function closeModal(overlay) {
+  if (overlay) overlay.remove();
 }
 
-/* ══════════════════════════════════════════════════════════ SKILL */
-function cfgUpdateSkill(id, field, value) { Settings.updateSkill(id, { [field]: value }); }
-function cfgDeleteSkill(id) {
-  if (!confirmDelete('Xóa skill này?')) return;
-  Settings.deleteSkill(id); showToast('Đã xóa!','error'); renderPage('settings');
-}
-function uploadSkillImg(id, input) {
-  const file = input.files[0]; if(!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    saveImageToStorage('skill_' + id, e.target.result);
-    // Update thumb in DOM without re-render
-    const row = document.getElementById('skill-row-' + id);
-    if (row) {
-      const thumbEl = row.querySelector('img,div[style*="dashed"]');
-      if (thumbEl) {
-        const img = document.createElement('img');
-        img.src = e.target.result;
-        img.style.cssText = 'width:36px;height:36px;border-radius:6px;object-fit:cover;border:1px solid #333';
-        thumbEl.replaceWith(img);
-      }
-    }
-    showToast('Đã upload ảnh skill!');
-  };
-  reader.readAsDataURL(file);
-}
-// Pending image for new skill (set before submit)
-window._pendingSkillImg = null;
-
-function cfgOpenAddSkill() {
-  window._pendingSkillImg = null;
-  openModal(`
-    <h3>+ Thêm Skill</h3>
-    <div class="form-group"><label>Mã skill (không dấu, không cách)</label><input type="text" id="ns-id" placeholder="vd: skill_11"></div>
-    <div class="form-group"><label>Tên skill</label><input type="text" id="ns-name" placeholder="vd: Thiên Lôi"></div>
-    <div class="form-group"><label>Màu</label><input type="color" id="ns-color" value="#F59E0B" style="width:100%;height:40px"></div>
-    <div class="form-group">
-      <label>Ảnh skill (tuỳ chọn)</label>
-      <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
-        <div id="ns-img-preview" style="width:56px;height:56px;border-radius:8px;background:#1a1a2e;border:2px dashed #444;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">🎯</div>
-        <label class="btn btn-outline" style="cursor:pointer;padding:8px 16px">
-          📁 Chọn ảnh
-          <input type="file" accept="image/*" style="display:none" onchange="previewNewSkillImg(this)">
-        </label>
-        <button class="btn btn-danger" style="padding:6px 10px;font-size:12px" onclick="clearNewSkillImg()">✕</button>
-      </div>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove();window._pendingSkillImg=null;">Hủy</button>
-      <button class="btn btn-gold" onclick="cfgSubmitAddSkill(this.closest('.modal-overlay'))">Thêm Skill</button>
-    </div>`);
+function escHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
 }
 
-function previewNewSkillImg(input) {
-  const file = input.files[0]; if(!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    window._pendingSkillImg = e.target.result;
-    const preview = document.getElementById('ns-img-preview');
-    if (preview) {
-      preview.innerHTML = `<img src="${e.target.result}" style="width:52px;height:52px;border-radius:7px;object-fit:cover">`;
-      preview.style.border = '2px solid var(--accent-gold)';
-    }
-  };
-  reader.readAsDataURL(file);
+function navigate(page) {
+  if (typeof renderPage === 'function') renderPage(page);
 }
 
-function clearNewSkillImg() {
-  window._pendingSkillImg = null;
-  const preview = document.getElementById('ns-img-preview');
-  if (preview) {
-    preview.innerHTML = '🎯';
-    preview.style.border = '2px dashed #444';
-  }
-}
-
-function cfgSubmitAddSkill(ov) {
-  const id    = document.getElementById('ns-id').value.trim().replace(/\s+/g,'_').toLowerCase();
-  const name  = document.getElementById('ns-name').value.trim();
-  const color = document.getElementById('ns-color').value;
-  if(!id||!name){ showToast('Điền đầy đủ!','error'); return; }
-  Settings.addSkill({id, name, color});
-  // Save pending image if any
-  if (window._pendingSkillImg) {
-    saveImageToStorage('skill_' + id, window._pendingSkillImg);
-    window._pendingSkillImg = null;
-  }
-  ov.remove(); showToast('Đã thêm skill!'); renderPage('settings');
-}
-
-/* ══════════════════════════════════════════════════════════ TASK */
-function cfgUpdateTask(id, field, value) { Settings.updateTask(id, { [field]: value }); }
-function cfgDeleteTask(id) {
-  if (!confirmDelete('Xóa task này?')) return;
-  Settings.deleteTask(id); showToast('Đã xóa!','error'); renderPage('settings');
-}
-function uploadTaskImg(id, input) {
-  const file = input.files[0]; if(!file) return;
-  const reader = new FileReader();
-  reader.onload = e => { saveImageToStorage('task_' + id, e.target.result); showToast('Đã upload ảnh task!'); renderPage('settings'); };
-  reader.readAsDataURL(file);
-}
-function cfgOpenAddTask() {
-  openModal(`
-    <h3>+ Thêm Task</h3>
-    <div class="form-group"><label>Mã task</label><input type="text" id="nt-id" placeholder="vd: vat_tu_2"></div>
-    <div class="form-group"><label>Tên task</label><input type="text" id="nt-name" placeholder="vd: Vật tư 2"></div>
-    <div class="form-group"><label>Số lượng</label><input type="number" id="nt-count" value="1" min="1"></div>
-    <div class="form-group"><label>Màu</label><input type="color" id="nt-color" value="#F97316" style="width:100%;height:40px"></div>
-    <div class="modal-actions">
-      <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Hủy</button>
-      <button class="btn btn-gold" onclick="cfgSubmitAddTask(this.closest('.modal-overlay'))">Thêm</button>
-    </div>`);
-}
-function cfgSubmitAddTask(ov) {
-  const id=document.getElementById('nt-id').value.trim().replace(/\s+/g,'_').toLowerCase();
-  const name=document.getElementById('nt-name').value.trim();
-  const count=+document.getElementById('nt-count').value||1;
-  const color=document.getElementById('nt-color').value;
-  if(!id||!name){showToast('Điền đầy đủ!','error');return;}
-  Settings.addTask({id,name,count,color}); ov.remove(); showToast('Đã thêm task!'); renderPage('settings');
-}
-
-/* ══════════════════════════════════════════════════════════ GROUP */
-function cfgUpdateGroup(id, field, value) {
-  const data = loadData();
-  const idx  = data.settings.groups.findIndex(g => g.id === id);
-  if (idx !== -1) { data.settings.groups[idx][field] = value; saveData(data); }
-}
-function cfgDeleteGroup(id) {
-  if (!confirmDelete('Xóa nhóm này?')) return;
-  Settings.deleteGroup(id); showToast('Đã xóa!','error'); renderPage('settings');
-}
-function cfgOpenAddGroup() {
-  openModal(`
-    <h3>+ Thêm Nhóm</h3>
-    <div class="form-group"><label>Mã nhóm</label><input type="text" id="ng-id" placeholder="vd: group_5"></div>
-    <div class="form-group"><label>Tên nhóm</label><input type="text" id="ng-name" placeholder="vd: Nhóm 5"></div>
-    <div class="form-group"><label>Màu</label><input type="color" id="ng-color" value="#3399ff" style="width:100%;height:40px"></div>
-    <div class="modal-actions">
-      <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Hủy</button>
-      <button class="btn btn-gold" onclick="cfgSubmitAddGroup(this.closest('.modal-overlay'))">Thêm</button>
-    </div>`);
-}
-function cfgSubmitAddGroup(ov) {
-  const id=document.getElementById('ng-id').value.trim().replace(/\s+/g,'_');
-  const name=document.getElementById('ng-name').value.trim();
-  const color=document.getElementById('ng-color').value;
-  if(!id||!name){showToast('Điền đầy đủ!','error');return;}
-  Settings.addGroup({id,name,color}); ov.remove(); showToast('Đã thêm nhóm!'); renderPage('settings');
-}
-
-/* ══════════════════════════════════════════════════════════ MAP */
-function cfgUpdateMap(id, field, value) { Settings.updateMap(id, { [field]: value }); }
-function setActiveMap(id) {
-  Settings.update({ currentMap: id });
-  showToast('Đã đặt bản đồ hiện tại!');
-  renderPage('settings');
-}
-function cfgDeleteMap(id) {
-  if (!confirmDelete('Xóa bản đồ này?')) return;
-  Settings.deleteMap(id); showToast('Đã xóa!','error'); renderPage('settings');
-}
-function uploadMapImg(id, input) {
-  const file = input.files[0]; if(!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    saveImageToStorage('map_' + id, e.target.result);
-    showToast('Đã upload ảnh bản đồ!');
-    renderPage('settings');
-  };
-  reader.readAsDataURL(file);
-}
-function cfgOpenAddMap() {
-  openModal(`
-    <h3>+ Thêm Bản Đồ</h3>
-    <div class="form-group"><label>Mã bản đồ</label><input type="text" id="nm-id" placeholder="vd: map_2"></div>
-    <div class="form-group"><label>Tên bản đồ</label><input type="text" id="nm-name" placeholder="vd: Chiến Trường 2"></div>
-    <div class="modal-actions">
-      <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Hủy</button>
-      <button class="btn btn-gold" onclick="cfgSubmitAddMap(this.closest('.modal-overlay'))">Thêm</button>
-    </div>`);
-}
-function cfgSubmitAddMap(ov) {
-  const id=document.getElementById('nm-id').value.trim().replace(/\s+/g,'_').toLowerCase();
-  const name=document.getElementById('nm-name').value.trim();
-  if(!id||!name){showToast('Điền đầy đủ!','error');return;}
-  Settings.addMap({id,name}); ov.remove(); showToast('Đã thêm bản đồ!'); renderPage('settings');
-}
-
-/* ══════════════════════════════════════════════════════════ DANGER */
-function clearAllMembers() {
-  if (!confirmDelete('XÓA TOÀN BỘ thành viên? Không thể hoàn tác!')) return;
-  const data=loadData(); data.members=[]; saveData(data); showToast('Đã xóa!','error');
-}
-function resetAllData() {
-  if (!confirm('RESET TOÀN BỘ? Không thể hoàn tác!')) return;
-  localStorage.removeItem(DB_KEY); showToast('Đã reset! Tải lại...','error');
-  setTimeout(()=>location.reload(),1500);
-}
-function exportData() {
-  const blob=new Blob([JSON.stringify(loadData(),null,2)],{type:'application/json'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a'); a.href=url; a.download=`guild_data_${Date.now()}.json`; a.click();
-  URL.revokeObjectURL(url); showToast('Đã xuất!');
-}
-function importData(input) {
-  const file=input.files[0]; if(!file) return;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    try {
-      const data=JSON.parse(e.target.result);
-      if(!confirm('Ghi đè dữ liệu hiện tại?')) return;
-      saveData(data); showToast('Đã nhập!'); setTimeout(()=>location.reload(),1000);
-    } catch { showToast('File không hợp lệ!','error'); }
-  };
-  reader.readAsText(file);
+function denyEdit() {
+  showToast('🔒 Bạn không có quyền chỉnh sửa. Liên hệ Admin.', 'error', 4000);
 }
