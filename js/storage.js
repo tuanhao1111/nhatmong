@@ -32,10 +32,21 @@ const DEFAULT_DATA = {
   currentSession: null
 };
 
+// RAM cache - là source of truth chính, không bị quota
+// localStorage chỉ là backup persist sau reload (đã strip imageData)
+var _ramData = null;
+
 function loadData() {
+  // Ưu tiên RAM cache nếu có
+  if (_ramData) {
+    return _ramData;
+  }
   try {
     const raw = localStorage.getItem(DB_KEY);
-    if (!raw) return JSON.parse(JSON.stringify(DEFAULT_DATA));
+    if (!raw) {
+      _ramData = JSON.parse(JSON.stringify(DEFAULT_DATA));
+      return _ramData;
+    }
     const d = JSON.parse(raw);
     if (!d.settings) d.settings = DEFAULT_DATA.settings;
     if (!d.settings.skills) d.settings.skills = [];
@@ -43,15 +54,49 @@ function loadData() {
     if (!d.settings.maps)   d.settings.maps   = [];
     if (!d.settings.classes)d.settings.classes = DEFAULT_DATA.settings.classes;
     if (!d.members) d.members = [];
+    _ramData = d;
     return d;
-  } catch(e) { return JSON.parse(JSON.stringify(DEFAULT_DATA)); }
+  } catch(e) {
+    _ramData = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    return _ramData;
+  }
 }
 
-// Default saveData chỉ ghi cache local. firebase.js sẽ override window.saveData
-// để thêm push lên Firestore.
+/**
+ * Strip imageData khỏi maps để giảm size khi ghi localStorage.
+ * imageData vẫn còn ở Firebase + IMG_PREFIX cache riêng → đọc về sau OK.
+ */
+function _stripBigData(data) {
+  try {
+    const slim = JSON.parse(JSON.stringify(data));
+    if (slim.settings && Array.isArray(slim.settings.maps)) {
+      slim.settings.maps.forEach(m => {
+        if (m.imageData) {
+          m._hasImg = true;  // marker
+          delete m.imageData;
+        }
+      });
+    }
+    return slim;
+  } catch(e) { return data; }
+}
+
+// Default saveData chỉ ghi RAM + cache local (slim). firebase.js override để push Firestore.
 function saveData(data) {
-  try { localStorage.setItem(DB_KEY, JSON.stringify(data)); return true; }
-  catch(e) { return false; }
+  _ramData = data;  // luôn update RAM
+  try {
+    const slim = _stripBigData(data);
+    localStorage.setItem(DB_KEY, JSON.stringify(slim));
+    return true;
+  } catch(e) {
+    console.warn('[saveData] localStorage write failed (likely quota):', e.message);
+    return false;
+  }
+}
+
+/** Cập nhật RAM cache trực tiếp - dùng cho realtime listener */
+function _updateRamData(newData) {
+  _ramData = newData;
 }
 
 function genId() {

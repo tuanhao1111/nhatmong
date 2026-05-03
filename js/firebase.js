@@ -154,7 +154,17 @@ function _listenGuild() {
     var merged = Object.assign({}, remote, {
       members: (cache && cache.members) || []
     });
-    try { localStorage.setItem(DB_KEY, JSON.stringify(merged)); } catch(e){}
+
+    // Update RAM cache với data đầy đủ (imageData còn nguyên)
+    if (typeof _updateRamData === 'function') _updateRamData(merged);
+
+    // localStorage cache: strip imageData để tránh quota
+    try {
+      var slim = (typeof _stripBigData === 'function') ? _stripBigData(merged) : merged;
+      localStorage.setItem(DB_KEY, JSON.stringify(slim));
+    } catch(e) {
+      console.warn('[FB onSnapshot] localStorage write failed:', e.message);
+    }
 
     _badge(true, _t(remote.updatedAt));
     if (window.currentPage && !document.querySelector('.modal-overlay'))
@@ -171,11 +181,23 @@ function _listenMembers() {
     snap.forEach(function(d){ members.push(d.data()); });
     console.log('[FB] Members synced:', members.length);
 
+    // Update RAM cache (giữ imageData nếu có trong settings)
+    var ram = (typeof _ramData !== 'undefined' && _ramData) ? _ramData : null;
+    if (ram) {
+      ram.members = members;
+      if (typeof _updateRamData === 'function') _updateRamData(ram);
+    }
+
     var cache = null;
     try { cache = JSON.parse(localStorage.getItem(DB_KEY)); } catch(e){}
     if (!cache) cache = (typeof DEFAULT_DATA !== 'undefined') ? JSON.parse(JSON.stringify(DEFAULT_DATA)) : {};
     cache.members = members;
-    try { localStorage.setItem(DB_KEY, JSON.stringify(cache)); } catch(e){}
+    try {
+      // localStorage: cache đã được strip từ trước nên không cần strip lại
+      localStorage.setItem(DB_KEY, JSON.stringify(cache));
+    } catch(e) {
+      console.warn('[FB Members] localStorage write failed:', e.message);
+    }
 
     if (window.currentPage && !document.querySelector('.modal-overlay')) {
       var p = window.currentPage;
@@ -292,12 +314,21 @@ window.UsersFB = {
 // ════════════════════════════════════════════════════════════════════════════
 
 window.saveData = function(data) {
+  // Update RAM cache (chứa imageData đầy đủ)
+  if (typeof _updateRamData === 'function') _updateRamData(data);
+
   var dataNoMembers = Object.assign({}, data);
   delete dataNoMembers.members;
   dataNoMembers.updatedAt = Date.now();
 
-  var fullCache = Object.assign({}, data, { updatedAt: dataNoMembers.updatedAt });
-  try { localStorage.setItem(DB_KEY, JSON.stringify(fullCache)); } catch(e){}
+  // Cache local cho reload — strip imageData để không bị quota
+  try {
+    var slim = (typeof _stripBigData === 'function') ? _stripBigData(data) : data;
+    var slimWithUpdated = Object.assign({}, slim, { updatedAt: dataNoMembers.updatedAt });
+    localStorage.setItem(DB_KEY, JSON.stringify(slimWithUpdated));
+  } catch(e) {
+    console.warn('[saveData] localStorage write failed:', e.message);
+  }
 
   if (_fbOk && _guildRef && _isAdmin()) {
     _isSyncingGuild = true;
