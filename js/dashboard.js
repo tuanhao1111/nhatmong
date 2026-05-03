@@ -268,7 +268,7 @@ function renderDashboardPage() {
 ═══════════════════════════════════════════════════ */
 function initDashMap() {
   var wrap   = document.getElementById('dash-map-wrap');
-  if (!wrap) return;
+  if (!wrap) { console.warn('[initDashMap] No #dash-map-wrap element found'); return; }
 
   var settings = Settings.get();
   var session  = Sessions.getCurrent();
@@ -277,6 +277,29 @@ function initDashMap() {
   var mapId    = (session && session.map) || settings.currentMap || (maps[0] && maps[0].id) || '';
   var mapObj   = maps.find(function(m){ return m.id === mapId; });
   var mapImg   = mapObj ? getMapImage(mapObj.id) : '';
+
+  // Fallback: nếu map đang chọn không có ảnh, thử map đầu tiên có ảnh
+  if (!mapImg && maps.length > 0) {
+    for (var i = 0; i < maps.length; i++) {
+      var alt = getMapImage(maps[i].id);
+      if (alt) {
+        console.warn('[initDashMap] mapId=', mapId, 'không có ảnh — fallback sang', maps[i].id);
+        mapObj = maps[i];
+        mapId  = maps[i].id;
+        mapImg = alt;
+        break;
+      }
+    }
+  }
+
+  // Debug: full status of map lookup
+  console.log('[initDashMap] mapId=', mapId,
+              '| session.map=', session && session.map,
+              '| settings.currentMap=', settings.currentMap,
+              '| maps.length=', maps.length,
+              '| mapObj=', mapObj ? mapObj.id : null,
+              '| mapObj.imageData?', !!(mapObj && mapObj.imageData),
+              '| mapImg.length=', (mapImg||'').length);
 
   // Render bản đồ
   if (mapImg) {
