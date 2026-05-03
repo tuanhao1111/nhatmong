@@ -65,9 +65,8 @@ const AuthUsers = {
   },
   save(users) {
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    if (typeof _usersRef !== 'undefined' && _usersRef) {
+    if (typeof _usersRef !== 'undefined' && _usersRef)
       users.forEach(function(u){ if(u&&u.id) _usersRef.doc(u.id).set(u).catch(function(){}); });
-    }
   },
   setRole(userId, role) {
     const users = this.getAll();
