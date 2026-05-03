@@ -27,12 +27,6 @@ const DEFAULT_DATA = {
       { id:'long_ngam',  name:'Long Ngâm', color:'#8cb36b' }
     ],
     skills: [], tasks: [], maps: [],
-    groups: [
-      { id:'group_1', name:'Nhóm 1', color:'#F97316' },
-      { id:'group_2', name:'Nhóm 2', color:'#0EA5E9' },
-      { id:'group_3', name:'Nhóm 3', color:'#22C55E' },
-      { id:'group_4', name:'Nhóm 4', color:'#A855F7' }
-    ],
     currentMap: ''
   },
   currentSession: null
@@ -47,7 +41,6 @@ function loadData() {
     if (!d.settings.skills) d.settings.skills = [];
     if (!d.settings.tasks)  d.settings.tasks  = [];
     if (!d.settings.maps)   d.settings.maps   = [];
-    if (!d.settings.groups) d.settings.groups  = DEFAULT_DATA.settings.groups;
     if (!d.settings.classes)d.settings.classes = DEFAULT_DATA.settings.classes;
     if (!d.members) d.members = [];
     return d;
@@ -118,7 +111,6 @@ const Members = {
       skill:      m.skill      || (m.skills && m.skills[0]) || '',
       skills:     Array.isArray(m.skills) ? m.skills : (m.skill ? [m.skill] : []),
       tasks:      m.tasks      || [],
-      group:      m.group      || '',
       role:       m.role       || 'member',
       joinDate:   m.joinDate   || new Date().toISOString().split('T')[0],
       note:       m.note       || ''
@@ -278,14 +270,6 @@ const Settings = {
   addClass(c)   { const data=loadData(); data.settings.classes.push(Object.assign({id:genId()},c)); _save(data); },
   updateClass(id,u){ const data=loadData(); const i=data.settings.classes.findIndex(c=>c.id===id); if(i>=0){data.settings.classes[i]=Object.assign({},data.settings.classes[i],u);_save(data);} },
   deleteClass(id){ const data=loadData(); data.settings.classes=data.settings.classes.filter(c=>c.id!==id); _save(data); },
-  addSkill(s)   { const data=loadData(); if(!data.settings.skills)data.settings.skills=[]; data.settings.skills.push(Object.assign({id:genId()},s)); _save(data); },
-  updateSkill(id,u){ const data=loadData(); const i=(data.settings.skills||[]).findIndex(s=>s.id===id); if(i>=0){data.settings.skills[i]=Object.assign({},data.settings.skills[i],u);_save(data);} },
-  deleteSkill(id){ const data=loadData(); data.settings.skills=(data.settings.skills||[]).filter(s=>s.id!==id); _save(data); },
-  addTask(t)    { const data=loadData(); if(!data.settings.tasks)data.settings.tasks=[]; data.settings.tasks.push(Object.assign({id:genId()},t)); _save(data); },
-  updateTask(id,u){ const data=loadData(); const i=(data.settings.tasks||[]).findIndex(t=>t.id===id); if(i>=0){data.settings.tasks[i]=Object.assign({},data.settings.tasks[i],u);_save(data);} },
-  deleteTask(id){ const data=loadData(); data.settings.tasks=(data.settings.tasks||[]).filter(t=>t.id!==id); _save(data); },
-  addGroup(g)   { const data=loadData(); data.settings.groups.push(Object.assign({id:genId()},g)); _save(data); },
-  deleteGroup(id){ const data=loadData(); data.settings.groups=data.settings.groups.filter(g=>g.id!==id); _save(data); },
   addMap(m)     { const data=loadData(); if(!data.settings.maps)data.settings.maps=[]; data.settings.maps.push(m); _save(data); },
   updateMap(id,u){ const data=loadData(); const i=(data.settings.maps||[]).findIndex(m=>m.id===id); if(i>=0){data.settings.maps[i]=Object.assign({},data.settings.maps[i],u);_save(data);} },
   deleteMap(id) { const data=loadData(); data.settings.maps=(data.settings.maps||[]).filter(m=>m.id!==id); _save(data); },
@@ -309,7 +293,7 @@ function getWeekNumber(d) {
 
 function buildEmptyTeams(settings) {
   const teams=[], n=settings.numTeams||10, s=settings.slotsPerTeam||6;
-  for(let i=0;i<n;i++) teams.push({index:i,label:'T'+(i+1),group:'',slots:Array(s).fill(null)});
+  for(let i=0;i<n;i++) teams.push({index:i,label:'T'+(i+1),slots:Array(s).fill(null)});
   return teams;
 }
 function buildEmptyReserve(settings) {

@@ -103,8 +103,6 @@ function renderDashboardPage() {
 
   const teamsHtml = session.teams.map((team, ti) => {
     const filledCount = team.slots.filter(Boolean).length;
-    const groupColor  = getGroupColor(team.group);
-    const groupName   = getGroupName(team.group);
     const teamRole    = dominantRole(team);
     const teamRoleMeta= teamRole ? ROLE_META[teamRole] : null;
 
@@ -116,27 +114,25 @@ function renderDashboardPage() {
         const roleColor  = roleMeta ? roleMeta.color : '#888';
         const roleIcon   = roleMeta ? roleMeta.icon : '';
         const roleName   = roleMeta ? roleMeta.name : '';
-        // Skill list: lấy từ slot.skills[] (mới) hoặc slot.skill (cũ - backward compat)
-        const skillIds   = (slot.skills && slot.skills.length) ? slot.skills : (slot.skill ? [slot.skill] : []);
-        const skillNames = skillIds.map(id => {
-          const sk = (settings.skills || []).find(s => s.id === id);
-          return sk ? sk.name : null;
-        }).filter(Boolean);
+        // Skill: từ array slot.skills hoặc string slot.skill (legacy)
+        const skillNames = [];
+        if (Array.isArray(slot.skills)) skillNames.push(...slot.skills.filter(Boolean));
+        else if (slot.skill) skillNames.push(slot.skill);
         if (slot.customSkill) skillNames.push(slot.customSkill);
         const skillsHtml = skillNames.length
           ? skillNames.map(n => `<span class="slot-skill-chip">${escHtml(n)}</span>`).join('')
-          : '<span style="color:var(--text-muted);font-style:italic;font-size:11px">— skill —</span>';
+          : '<span style="color:var(--text-muted);font-style:italic;font-size:11px">— chưa nhập kỹ năng —</span>';
         const leaderBadge = slot.isLeader
           ? '<span class="slot-leader-badge">⭐ LEAD</span>'
           : '';
         const customMark = slot.isCustom
-          ? '<span title="Thành viên tạm — không trong DB" style="font-size:9px;color:var(--text-muted);margin-left:4px">⚠</span>'
+          ? '<span title="Thành viên tạm — không trong DB" style="font-size:10px;color:rgba(0,0,0,0.45);margin-left:5px">⚠</span>'
           : '';
         const clickAttr  = admin ? `onclick="openSlotMenu(${ti}, ${si}, false)"` : `onclick="viewSlotInfo(${JSON.stringify(slot).replace(/"/g,'&quot;')})"`;
         return `
           <div class="slot-row filled" ${clickAttr}>
             <div class="slot-num-cell">${si+1}</div>
-            <div class="slot-name-cell" style="background:${hexA(classColor, 0.85)};color:#0a0a0f">
+            <div class="slot-name-cell" style="background:${hexA(classColor, 0.88)};color:#0a0a0f">
               <div class="slot-name-main">${escHtml(slot.inGameName || slot.name)}${customMark}</div>
               <div class="slot-name-cls">${escHtml(className)}</div>
             </div>
@@ -155,34 +151,30 @@ function renderDashboardPage() {
         <div class="slot-row empty" ${clickAttr} style="${admin?'cursor:pointer':'cursor:default'}">
           <div class="slot-num-cell muted">${si+1}</div>
           <div class="slot-name-cell empty-cell">
-            ${admin ? '<span style="color:var(--text-muted)">+ Thêm thành viên</span>' : '<span style="color:var(--text-muted)">— trống —</span>'}
+            ${admin ? '<span>+ Thêm thành viên</span>' : '<span>— trống —</span>'}
           </div>
           <div class="slot-info-cell empty-cell"></div>
         </div>`;
     }).join('');
 
-    // Group select (admin only)
-    const groupControl = admin
-      ? `<select class="team-group-select" onchange="setTeamGroup(${ti}, this.value)" onclick="event.stopPropagation()">
-           <option value="">Chưa nhóm</option>
-           ${settings.groups.map(g => `<option value="${g.id}" ${team.group===g.id?'selected':''}>${g.name}</option>`).join('')}
-         </select>`
-      : (groupName ? `<span style="font-size:11px;color:${groupColor};font-weight:600">${groupName}</span>` : '');
-
-    // Team role badge (đa số)
-    const teamRoleBadge = teamRoleMeta
-      ? `<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${teamRoleMeta.color}22;color:${teamRoleMeta.color};border:1px solid ${teamRoleMeta.color}55;font-weight:700">${teamRoleMeta.icon} ${teamRoleMeta.name}</span>`
-      : '';
+    // Team header: nhãn vai trò chính TO + RÕ
+    const headerBg = teamRoleMeta ? hexA(teamRoleMeta.color, 0.18) : 'linear-gradient(180deg,#0f0f1e,#0a0a18)';
+    const headerBorder = teamRoleMeta ? hexA(teamRoleMeta.color, 0.55) : 'transparent';
+    const headerColor = teamRoleMeta ? teamRoleMeta.color : 'var(--text-secondary)';
 
     return `
-      <div class="team-card" style="${team.group?`border-top:3px solid ${groupColor}`:''}">
-        <div class="team-header">
-          <div class="team-label" style="${team.group?`color:${groupColor}`:''}">
-            <span style="font-family:'Cinzel',serif;font-weight:700;font-size:16px">T${ti+1}</span>
+      <div class="team-card" style="${teamRoleMeta ? `border-top:4px solid ${teamRoleMeta.color}` : ''}">
+        <div class="team-header-big" style="background:${headerBg};border-bottom-color:${headerBorder}">
+          <div class="team-label-big" style="color:${headerColor}">
+            <span class="team-no">T${ti+1}</span>
           </div>
-          ${teamRoleBadge}
-          ${groupControl}
-          <span class="team-count">${filledCount}/${team.slots.length}</span>
+          <div class="team-role-big">
+            ${teamRoleMeta
+              ? `<span class="team-role-icon" style="color:${teamRoleMeta.color}">${teamRoleMeta.icon}</span>
+                 <span class="team-role-name" style="color:${teamRoleMeta.color}">${teamRoleMeta.name.toUpperCase()}</span>`
+              : `<span style="color:var(--text-muted);font-style:italic;font-size:13px">— Trống —</span>`}
+          </div>
+          <span class="team-count-big">${filledCount}/${team.slots.length}</span>
         </div>
         <div class="slots-list">${slotsHtml}</div>
       </div>`;
@@ -300,14 +292,18 @@ function initDashMap() {
 
   // Marker state
   var numTeams = settings.numTeams || 10;
-  var groups   = settings.groups || [];
   var FALL     = ['#22c55e','#40c0e0','#f0c040','#f59e0b','#f28e99','#e05050','#9060e0','#f97316','#ec4899','#14b8a6'];
+  var ROLE_COLORS = { luong:'#f0c040', cong:'#e05050', thu:'#5090e0', tro:'#50d0a0' };
 
   function tColor(ti) {
     var t = session && session.teams && session.teams[ti];
-    var gid = t && t.group;
-    var g = gid && groups.find(function(x){ return x.id === gid; });
-    return g ? g.color : FALL[ti % FALL.length];
+    if (!t) return FALL[ti % FALL.length];
+    // Tô theo vai trò chính (đa số) trong team
+    var counts = { luong:0, cong:0, thu:0, tro:0 };
+    (t.slots || []).forEach(function(s){ if (s && s.combatRole && counts[s.combatRole] !== undefined) counts[s.combatRole]++; });
+    var best = null, bestN = 0;
+    for (var k in counts) if (counts[k] > bestN) { best = k; bestN = counts[k]; }
+    return best ? ROLE_COLORS[best] : FALL[ti % FALL.length];
   }
 
   var savedMarkers = session && session.tactics && session.tactics.markers;

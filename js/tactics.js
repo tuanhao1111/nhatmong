@@ -173,16 +173,19 @@ function renderTacticsPage() {
   var mapObj   = maps.find(function(m){return m.id===mapId;}) || maps[0];
   var mapImg   = mapObj ? loadImageFromStorage('map_'+mapObj.id) : '';
   var numTeams = settings.numTeams || 10;
-  var groups   = settings.groups || [];
 
   var FALLBACK = ['#22c55e','#40c0e0','#f0c040','#f59e0b','#f28e99','#e05050','#9060e0','#f97316','#ec4899','#14b8a6'];
+  var ROLE_COLOR_MAP = { luong:'#f0c040', cong:'#e05050', thu:'#5090e0', tro:'#50d0a0' };
 
-  /* Màu team */
+  /* Màu team — theo vai trò chính (đa số) */
   function teamColor(ti) {
     var team = session&&session.teams&&session.teams[ti];
-    var gid  = team&&team.group;
-    var g    = gid&&groups.find(function(g){return g.id===gid;});
-    return g ? g.color : FALLBACK[ti%FALLBACK.length];
+    if (!team) return FALLBACK[ti%FALLBACK.length];
+    var counts = { luong:0, cong:0, thu:0, tro:0 };
+    (team.slots||[]).forEach(function(s){ if(s&&s.combatRole&&counts[s.combatRole]!==undefined) counts[s.combatRole]++; });
+    var best=null,bestN=0;
+    for(var k in counts) if(counts[k]>bestN){best=k;bestN=counts[k];}
+    return best ? ROLE_COLOR_MAP[best] : FALLBACK[ti%FALLBACK.length];
   }
 
   /* Init global state */
@@ -231,9 +234,13 @@ function renderTacticsPage() {
     for (var ti=0; ti<session.teams.length; ti++) {
       var team   = session.teams[ti];
       var tc     = teamColor(ti);
-      var tgid   = team.group;
-      var tgObj  = tgid&&groups.find(function(g){return g.id===tgid;});
-      var tgName = tgObj?tgObj.name:'Chưa nhóm';
+      // Tên hiển thị: vai trò chính của team (đa số combat role)
+      var rcounts = { luong:0, cong:0, thu:0, tro:0 };
+      var ROLE_NAMES = { luong:'🌾 Lương', cong:'⚔ Công', thu:'🛡 Thủ', tro:'💠 Trợ' };
+      (team.slots||[]).forEach(function(s){ if(s&&s.combatRole&&rcounts[s.combatRole]!==undefined) rcounts[s.combatRole]++; });
+      var bestR=null,bestRN=0;
+      for(var rk in rcounts) if(rcounts[rk]>bestRN){bestR=rk;bestRN=rcounts[rk];}
+      var tgName = bestR ? ROLE_NAMES[bestR] : 'Trống';
       var filled = 0; for(var x=0;x<team.slots.length;x++){if(team.slots[x])filled++;}
 
       /* ── Slots ── */
@@ -284,13 +291,17 @@ function renderTacticsPage() {
     }
   }
 
-  /* ── Legend ── */
-  var legendHtml=''; var seen={};
-  for(var li=0;li<numTeams;li++){
-    var lgid=session&&session.teams&&session.teams[li]&&session.teams[li].group;
-    if(lgid&&!seen[lgid]){seen[lgid]=1;var lg=groups.find(function(g){return g.id===lgid;}); var lc=lg?lg.color:FALLBACK[li%FALLBACK.length];
-      legendHtml+='<span style="padding:4px 10px;background:'+lc+'18;border:1px solid '+lc+'44;border-radius:14px;font-size:11px;font-weight:600;color:'+lc+'">'+escHtml(lg?lg.name:lgid)+'</span>';}
-  }
+  /* ── Legend (theo vai trò) ── */
+  var legendHtml='';
+  var ROLE_LEGEND = [
+    { id:'luong', name:'🌾 Lương', color:'#f0c040' },
+    { id:'cong',  name:'⚔ Công',   color:'#e05050' },
+    { id:'thu',   name:'🛡 Thủ',   color:'#5090e0' },
+    { id:'tro',   name:'💠 Trợ',   color:'#50d0a0' }
+  ];
+  ROLE_LEGEND.forEach(function(r){
+    legendHtml+='<span style="padding:4px 10px;background:'+r.color+'18;border:1px solid '+r.color+'44;border-radius:14px;font-size:11px;font-weight:600;color:'+r.color+'">'+r.name+'</span>';
+  });
 
   /* ── Notes ── */
   var notes = (session&&session.tactics&&session.tactics.notes)||'';
@@ -376,12 +387,20 @@ window.tacticsAddCustom = function(typeId, icon, label) {
 };
 
 window.tacticsReset = function() {
-  var n=Settings.get().numTeams||10, g=Settings.get().groups||[], s=Sessions.getCurrent();
+  var n=Settings.get().numTeams||10, s=Sessions.getCurrent();
   var FALL=['#22c55e','#40c0e0','#f0c040','#f59e0b','#f28e99','#e05050','#9060e0','#f97316','#ec4899','#14b8a6'];
+  var RC = { luong:'#f0c040', cong:'#e05050', thu:'#5090e0', tro:'#50d0a0' };
   _TM = buildDefaultMarkers(n).map(function(m,i){
-    var team=s&&s.teams&&s.teams[i]; var gid=team&&team.group;
-    var gr=gid&&g.find(function(x){return x.id===gid;});
-    return Object.assign({},m,{color:gr?gr.color:FALL[i%FALL.length]});
+    var team=s&&s.teams&&s.teams[i];
+    var color = FALL[i%FALL.length];
+    if (team) {
+      var counts={luong:0,cong:0,thu:0,tro:0};
+      (team.slots||[]).forEach(function(sl){if(sl&&sl.combatRole&&counts[sl.combatRole]!==undefined)counts[sl.combatRole]++;});
+      var best=null,bestN=0;
+      for(var k in counts) if(counts[k]>bestN){best=k;bestN=counts[k];}
+      if(best) color = RC[best];
+    }
+    return Object.assign({},m,{color:color});
   });
   _tmRenderTeam(); _tmSave(); showToast('Đã reset!');
 };

@@ -45,13 +45,11 @@ function renderMembersPage() {
     if (filters.search && !m.name.toLowerCase().includes(filters.search.toLowerCase())
         && !(m.inGameName||'').toLowerCase().includes(filters.search.toLowerCase())) return false;
     if (filters.class     && m.class     !== filters.class)     return false;
-    if (filters.group     && m.group     !== filters.group)     return false;
     if (filters.combatRole&& m.combatRole!== filters.combatRole) return false;
     return true;
   });
 
   const classOpts       = settings.classes.map(c=>`<option value="${c.id}" ${filters.class===c.id?'selected':''}>${c.name}</option>`).join('');
-  const groupOpts       = settings.groups.map(g=>`<option value="${g.id}" ${filters.group===g.id?'selected':''}>${g.name}</option>`).join('');
   const combatRoleOpts  = COMBAT_ROLES.map(r=>`<option value="${r.id}" ${filters.combatRole===r.id?'selected':''}>${r.icon} ${r.name}</option>`).join('');
 
   // Role summary
@@ -95,8 +93,6 @@ function renderMembersPage() {
         <td style="padding:10px 16px">${classBadge(m.class)}</td>
         <td style="padding:10px 16px;font-weight:600;color:var(--accent-gold)">${formatNumber(m.power||0)}</td>
         <td style="padding:10px 16px">${combatRoleBadge(m.combatRole)}</td>
-        <td style="padding:10px 16px">${skillBadge(m.skill)}</td>
-        <td style="padding:10px 16px">${m.group?`<span class="badge" style="background:${getGroupColor(m.group)}22;color:${getGroupColor(m.group)}">${getGroupName(m.group)}</span>`:'<span style="color:var(--text-muted)">—</span>'}</td>
         <td style="padding:10px 16px;color:var(--text-secondary);font-size:12px">${formatDate(m.joinDate)}</td>
         ${actionTd}
       </tr>`;
@@ -120,7 +116,6 @@ function renderMembersPage() {
         <input type="text" placeholder="🔍 Tìm tên..." value="${escHtml(filters.search)}" style="flex:1;min-width:180px" oninput="memberFilter('search',this.value)">
         <select onchange="memberFilter('class',this.value)" style="min-width:140px"><option value="">Tất cả class</option>${classOpts}</select>
         <select onchange="memberFilter('combatRole',this.value)" style="min-width:130px"><option value="">Tất cả vai trò</option>${combatRoleOpts}</select>
-        <select onchange="memberFilter('group',this.value)" style="min-width:130px"><option value="">Tất cả nhóm</option>${groupOpts}</select>
       </div>
     </div>
 
@@ -128,10 +123,10 @@ function renderMembersPage() {
       <table style="width:100%;border-collapse:collapse">
         <thead><tr style="background:#0f0f1e;border-bottom:1px solid var(--border-color)">
           <th class="th">Tên</th><th class="th">Class</th><th class="th">Chiến lực</th>
-          <th class="th">Vai trò</th><th class="th">Skill</th><th class="th">Nhóm</th>
+          <th class="th">Vai trò</th>
           <th class="th">Ngày vào</th>${actionTh}
         </tr></thead>
-        <tbody>${filtered.length===0?`<tr><td colspan="${(admin||myId)?8:7}" style="text-align:center;padding:40px;color:var(--text-muted)">Không có thành viên nào</td></tr>`:rows}</tbody>
+        <tbody>${filtered.length===0?`<tr><td colspan="${(admin||myId)?6:5}" style="text-align:center;padding:40px;color:var(--text-muted)">Không có thành viên nào</td></tr>`:rows}</tbody>
       </table>
     </div>
     <style>.th{padding:12px 16px;text-align:left;font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px}</style>
@@ -148,7 +143,6 @@ function memberFilter(key, value) {
 function buildMemberForm(m={}, selfEdit=false) {
   const settings   = Settings.get();
   const classOpts  = settings.classes.map(c=>`<option value="${c.id}" ${m.class===c.id?'selected':''}>${c.name}</option>`).join('');
-  const groupOpts  = settings.groups.map(g=>`<option value="${g.id}" ${m.group===g.id?'selected':''}>${g.name}</option>`).join('');
 
   // Combat role picker
   const combatOpts = COMBAT_ROLES.map(r=>`
@@ -164,60 +158,12 @@ function buildMemberForm(m={}, selfEdit=false) {
       </div>
     </label>`).join('');
 
-  // Skill grid (multi-select - chọn nhiều)
-  // Backwards compat: hỗ trợ cả m.skills (mới, array) lẫn m.skill (cũ, single)
-  const memberSkills = Array.isArray(m.skills) ? m.skills : (m.skill ? [m.skill] : []);
-  const skillGrid = settings.skills.length === 0
-    ? '<div style="color:var(--text-muted);font-size:12px">Chưa có skill. Thêm ở Cấu Hình.</div>'
-    : `<div style="margin-bottom:6px;font-size:11px;color:var(--text-secondary)">💡 Có thể chọn nhiều kỹ năng (click để bật/tắt)</div>
-       <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px" id="skill-grid">
-        ${settings.skills.map(sk => {
-          const img    = loadImageFromStorage('skill_' + sk.id);
-          const active = memberSkills.includes(sk.id);
-          return `<label style="cursor:pointer">
-            <input type="checkbox" name="mf-skill" value="${sk.id}" ${active?'checked':''} style="display:none">
-            <div class="skill-opt" data-id="${sk.id}" style="
-              text-align:center;padding:6px 4px;border-radius:8px;
-              border:2px solid ${active?sk.color:'#2a2a45'};
-              background:${active?sk.color+'18':'#0f0f1e'};
-              transition:all 0.15s;cursor:pointer;position:relative">
-              ${active ? `<div style="position:absolute;top:2px;right:2px;background:${sk.color};color:#0a0a0f;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">✓</div>` : ''}
-              ${img
-                ? `<img src="${img}" style="width:44px;height:44px;border-radius:6px;object-fit:cover;display:block;margin:0 auto 4px">`
-                : `<div style="width:44px;height:44px;border-radius:6px;background:${sk.color}33;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;font-size:20px">✨</div>`}
-              <div style="font-size:10px;color:${active?sk.color:'var(--text-secondary)'};font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(sk.name)}</div>
-            </div>
-          </label>`;
-        }).join('')}
-      </div>`;
-
-  // Task checkboxes
-  const taskChecks = settings.tasks.length === 0
-    ? '<div style="color:var(--text-muted);font-size:12px">Chưa có task. Thêm ở Cấu Hình.</div>'
-    : `<div style="display:flex;gap:10px;flex-wrap:wrap" id="task-checks">
-        ${settings.tasks.map(t => {
-          const img     = loadImageFromStorage('task_' + t.id);
-          const checked = (m.tasks||[]).includes(t.id);
-          return `<label style="cursor:pointer;display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;border:2px solid ${checked?t.color:'#2a2a45'};background:${checked?t.color+'18':'#0f0f1e'}" id="task-label-${t.id}">
-            <input type="checkbox" name="mf-task" value="${t.id}" ${checked?'checked':''} style="display:none"
-                   onchange="toggleTaskLabel('${t.id}','${t.color}',this)">
-            ${img?`<img src="${img}" style="width:20px;height:20px;border-radius:3px;object-fit:cover">`:''}
-            <span style="font-size:12px;font-weight:600;color:${checked?t.color:'var(--text-secondary)'}">${escHtml(t.name)}</span>
-          </label>`;
-        }).join('')}
-      </div>`;
-
   return `
     <div class="form-row">
       <div class="form-group"><label>Tên thật</label><input type="text" id="mf-name" value="${escHtml(m.name||'')}" placeholder="Tên hiển thị"></div>
       <div class="form-group"><label>Tên trong game</label><input type="text" id="mf-ingame" value="${escHtml(m.inGameName||'')}" placeholder="Nickname game"></div>
     </div>
-    <div class="form-row">
-      <div class="form-group"><label>Class</label><select id="mf-class"><option value="">-- Chọn class --</option>${classOpts}</select></div>
-      ${selfEdit
-        ? `<div class="form-group"><label>Nhóm</label><div style="padding:8px 12px;color:var(--text-muted);font-size:12px;font-style:italic">${m.group ? getGroupName(m.group) : '—'} <span style="font-size:10px">(do Admin xếp)</span></div></div>`
-        : `<div class="form-group"><label>Nhóm</label><select id="mf-group"><option value="">-- Chọn nhóm --</option>${groupOpts}</select></div>`}
-    </div>
+    <div class="form-group"><label>Class</label><select id="mf-class"><option value="">-- Chọn class --</option>${classOpts}</select></div>
 
     ${selfEdit
       ? `<div class="form-group"><label>⚔ Vai Trò Chiến Đấu</label><div style="padding:8px 12px;color:var(--text-muted);font-size:12px;font-style:italic">${m.combatRole ? combatRoleBadge(m.combatRole) : '—'} <span style="font-size:10px">(do Admin xếp)</span></div></div>`
@@ -226,31 +172,11 @@ function buildMemberForm(m={}, selfEdit=false) {
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">${combatOpts}</div>
         </div>`}
 
-    <div class="form-group">
-      <label>✨ Skill</label>
-      ${skillGrid}
-    </div>
-
-    <div class="form-group">
-      <label>📦 Nhiệm Vụ</label>
-      ${taskChecks}
-    </div>
-
     <div class="form-row">
       <div class="form-group"><label>Chiến lực</label><input type="number" id="mf-power" value="${m.power||0}"></div>
       <div class="form-group"><label>Ghi chú</label><input type="text" id="mf-note" value="${escHtml(m.note||'')}"></div>
     </div>
   `;
-}
-
-function toggleTaskLabel(taskId, color, checkbox) {
-  const label = document.getElementById('task-label-' + taskId);
-  if (!label) return;
-  const on = checkbox.checked;
-  label.style.border      = `2px solid ${on?color:'#2a2a45'}`;
-  label.style.background  = on ? color+'18' : '#0f0f1e';
-  const span = label.querySelector('span');
-  if (span) span.style.color = on ? color : 'var(--text-secondary)';
 }
 
 function initFormPickers() {
@@ -268,50 +194,16 @@ function initFormPickers() {
       });
     });
   });
-  // Skill (multi-select)
-  document.querySelectorAll('input[name="mf-skill"]').forEach(cb=>{
-    cb.closest('label').addEventListener('click', ()=>{
-      // Defer 1 tick để cb.checked đã update
-      setTimeout(()=>{
-        const id = cb.value;
-        const sk = Settings.get().skills.find(s=>s.id===id);
-        const opt = document.querySelector('.skill-opt[data-id="'+id+'"]');
-        if (!opt || !sk) return;
-        const active = cb.checked;
-        opt.style.border     = `2px solid ${active?sk.color:'#2a2a45'}`;
-        opt.style.background = active ? sk.color+'18' : '#0f0f1e';
-        const nameEl = opt.querySelector('div:last-child');
-        if (nameEl) nameEl.style.color = active ? sk.color : 'var(--text-secondary)';
-        // Toggle check badge
-        const oldBadge = opt.querySelector('div[data-badge]');
-        if (active && !oldBadge) {
-          const badge = document.createElement('div');
-          badge.setAttribute('data-badge','1');
-          badge.style.cssText = `position:absolute;top:2px;right:2px;background:${sk.color};color:#0a0a0f;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700`;
-          badge.textContent = '✓';
-          opt.appendChild(badge);
-        } else if (!active && oldBadge) {
-          oldBadge.remove();
-        }
-      }, 5);
-    });
-  });
 }
 
 function getMemberFormValues() {
   const combatRadio = document.querySelector('input[name="mf-combat-role"]:checked');
-  const skillsChecked = [...document.querySelectorAll('input[name="mf-skill"]:checked')].map(el=>el.value);
-  const taskChecked = [...document.querySelectorAll('input[name="mf-task"]:checked')].map(el=>el.value);
   return {
     name:       document.getElementById('mf-name')?.value.trim()  || '',
     inGameName: document.getElementById('mf-ingame')?.value.trim()|| '',
     class:      document.getElementById('mf-class')?.value        || '',
-    group:      document.getElementById('mf-group')?.value        || '',
     power:      parseInt(document.getElementById('mf-power')?.value)||0,
     combatRole: combatRadio?.value || '',
-    skills:     skillsChecked,        // array - mới
-    skill:      skillsChecked[0] || '', // backwards compat: skill đầu = skill chính
-    tasks:      taskChecked,
     note:       document.getElementById('mf-note')?.value.trim()  || ''
   };
 }

@@ -111,39 +111,70 @@ function initDashboardStyles() {
   style.id = 'dashboard-styles';
   style.textContent = `
     /* ────── TEAMS GRID — 2-3 cột tùy màn hình ────── */
-    .teams-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:14px; }
+    .teams-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:16px; }
     @media (max-width:780px) { .teams-grid { grid-template-columns:1fr; } }
 
-    .team-card  { background:var(--bg-card);border:1px solid var(--border-color);border-radius:10px;overflow:hidden; }
-    .team-header{ padding:10px 12px;background:linear-gradient(180deg,#0f0f1e,#0a0a18);border-bottom:1px solid var(--border-color);display:flex;align-items:center;gap:8px;flex-wrap:wrap; }
-    .team-label { font-size:14px;font-weight:700; }
-    .team-count { font-size:11px;color:var(--text-muted);margin-left:auto;padding:2px 8px;background:#0a0a18;border-radius:10px;border:1px solid var(--border-color); }
-    .team-group-select { font-size:11px;background:#0c0c1a;border:1px solid var(--border-color);color:var(--text-secondary);padding:3px 6px;cursor:pointer;border-radius:4px;max-width:120px; }
+    .team-card  { background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px;overflow:hidden; }
+
+    /* ────── TEAM HEADER TO + RÕ ────── */
+    .team-header-big {
+      display:flex;align-items:center;gap:14px;
+      padding:14px 18px;
+      border-bottom:2px solid;
+      background:linear-gradient(180deg,#0f0f1e,#0a0a18);
+    }
+    .team-label-big { display:flex;align-items:center; }
+    .team-no {
+      font-family:'Cinzel',serif;font-weight:900;font-size:28px;
+      letter-spacing:1px;line-height:1;
+    }
+    .team-role-big { display:flex;align-items:center;gap:8px;flex:1; }
+    .team-role-icon { font-size:24px;line-height:1; }
+    .team-role-name {
+      font-family:'Cinzel',serif;font-weight:900;font-size:18px;
+      letter-spacing:3px;line-height:1;
+    }
+    .team-count-big {
+      font-family:'Cinzel',serif;font-weight:700;font-size:14px;
+      color:var(--text-secondary);padding:4px 12px;
+      background:rgba(0,0,0,0.4);border-radius:14px;
+      border:1px solid rgba(255,255,255,0.08);
+      white-space:nowrap;
+    }
 
     /* ────── SLOTS — Excel-style 3-cột rõ ràng ────── */
     .slots-list { padding:0; }
-    .slot-row { display:grid;grid-template-columns:36px 1.4fr 1fr;align-items:stretch;border-bottom:1px solid #1a1a2e;transition:background 0.12s;min-height:46px; }
+    .slot-row { display:grid;grid-template-columns:42px 1.4fr 1.2fr;align-items:stretch;border-bottom:1px solid #1a1a2e;transition:background 0.12s;min-height:54px; }
     .slot-row:last-child { border-bottom:none; }
     .slot-row.filled { cursor:pointer; }
     .slot-row.filled:hover { background:rgba(240,192,64,0.05); }
 
     /* Cột STT */
-    .slot-num-cell { display:flex;align-items:center;justify-content:center;background:#08080f;color:var(--text-secondary);font-weight:700;font-size:13px;font-family:'Cinzel',serif;border-right:1px solid #1a1a2e; }
+    .slot-num-cell { display:flex;align-items:center;justify-content:center;background:#08080f;color:var(--text-secondary);font-weight:700;font-size:15px;font-family:'Cinzel',serif;border-right:1px solid #1a1a2e; }
     .slot-num-cell.muted { color:var(--text-muted); }
 
     /* Cột tên (background màu class) */
-    .slot-name-cell { display:flex;flex-direction:column;justify-content:center;padding:6px 10px;border-right:1px solid #1a1a2e;min-width:0; }
-    .slot-name-cell.empty-cell { background:#0a0a14;color:var(--text-muted);font-size:12px;font-style:italic;justify-content:center; }
-    .slot-name-main { font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2; }
-    .slot-name-cls  { font-size:10px;opacity:0.75;font-weight:600;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+    .slot-name-cell { display:flex;flex-direction:column;justify-content:center;padding:8px 12px;border-right:1px solid #1a1a2e;min-width:0; }
+    .slot-name-cell.empty-cell { background:#0a0a14;color:var(--text-muted);font-size:13px;font-style:italic;justify-content:center; }
+    .slot-name-main { font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2; }
+    .slot-name-cls  { font-size:11px;opacity:0.78;font-weight:600;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
 
     /* Cột info (skill trên + role dưới) */
-    .slot-info-cell { display:flex;flex-direction:column;justify-content:center;padding:5px 10px;background:#0a0a14;min-width:0; }
+    .slot-info-cell { display:flex;flex-direction:column;justify-content:center;padding:6px 12px;background:#0a0a14;min-width:0;gap:4px; }
     .slot-info-cell.empty-cell { background:#08080f; }
-    .slot-info-skills { display:flex;flex-wrap:wrap;gap:3px;align-items:center;line-height:1.2;min-height:14px; }
-    .slot-skill-chip { font-size:10px;font-weight:600;padding:1px 6px;border-radius:8px;background:rgba(240,192,64,0.12);color:var(--accent-gold);border:1px solid rgba(240,192,64,0.3);white-space:nowrap; }
-    .slot-info-role  { font-size:10px;font-weight:700;line-height:1.3;margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap; }
-    .slot-leader-badge { font-size:9px;font-weight:900;padding:1px 6px;border-radius:8px;background:linear-gradient(135deg,#f0c040,#e8a020);color:#0a0a0f;border:1px solid #f0c040;letter-spacing:0.5px;text-shadow:0 1px 0 rgba(255,255,255,0.3); }
+    .slot-info-skills { display:flex;flex-wrap:wrap;gap:4px;align-items:center;line-height:1.2; }
+    .slot-skill-chip {
+      font-size:12px;font-weight:600;padding:3px 9px;border-radius:10px;
+      background:rgba(240,192,64,0.16);color:var(--accent-gold);
+      border:1px solid rgba(240,192,64,0.4);white-space:nowrap;
+    }
+    .slot-info-role  { font-size:12px;font-weight:700;line-height:1.3;display:flex;align-items:center;gap:6px;flex-wrap:wrap; }
+    .slot-leader-badge {
+      font-size:10px;font-weight:900;padding:2px 7px;border-radius:8px;
+      background:linear-gradient(135deg,#f0c040,#e8a020);color:#0a0a0f;
+      border:1px solid #f0c040;letter-spacing:0.5px;
+      text-shadow:0 1px 0 rgba(255,255,255,0.3);
+    }
 
     .slot-row.empty:hover .slot-name-cell.empty-cell { color:var(--accent-gold); }
 

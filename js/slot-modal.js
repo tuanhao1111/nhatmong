@@ -48,13 +48,14 @@ function viewSlotInfo(slot) {
   const settings = Settings.get();
   const cls   = (settings.classes || []).find(c => c.id === slot.class);
   const role  = COMBAT_ROLES.find(r => r.id === slot.combatRole);
-  const skillIds = (slot.skills && slot.skills.length) ? slot.skills : (slot.skill ? [slot.skill] : []);
-  const skillNames = skillIds.map(id => {
-    const sk = settings.skills.find(s => s.id === id);
-    return sk ? `<span class="slot-skill-chip">${escHtml(sk.name)}</span>` : '';
-  }).filter(Boolean);
-  if (slot.customSkill) skillNames.push(`<span class="slot-skill-chip">${escHtml(slot.customSkill)}</span>`);
-  const skillsHtml = skillNames.length ? skillNames.join(' ') : '<em style="color:var(--text-muted)">— chưa có —</em>';
+  // Skills là array string trực tiếp (không cần lookup nữa)
+  const skillNames = [];
+  if (Array.isArray(slot.skills)) skillNames.push(...slot.skills.filter(Boolean));
+  else if (slot.skill) skillNames.push(slot.skill);
+  if (slot.customSkill) skillNames.push(slot.customSkill);
+  const skillsHtml = skillNames.length
+    ? skillNames.map(n => `<span class="slot-skill-chip">${escHtml(n)}</span>`).join(' ')
+    : '<em style="color:var(--text-muted)">— chưa có —</em>';
 
   const rows = [
     ['Tên hiển thị', escHtml(slot.inGameName || slot.name || '?')],
@@ -168,11 +169,9 @@ function renderAssignPickFromDb(teamIdx, slotIdx, isReserve, members) {
 function renderMemberCard(m, settings, ti, si, isReserve) {
   const cls  = settings.classes.find(c => c.id === m.class);
   const role = COMBAT_ROLES.find(r => r.id === m.combatRole);
+  // Member trong DB không còn skills nữa (đã bỏ ở form member). Giữ tương thích cũ.
   const memberSkills = Array.isArray(m.skills) ? m.skills : (m.skill ? [m.skill] : []);
-  const skillTxt = memberSkills.map(id => {
-    const sk = settings.skills.find(s => s.id === id);
-    return sk ? sk.name : null;
-  }).filter(Boolean).join(' + ');
+  const skillTxt = memberSkills.filter(Boolean).join(' + ');
   return `
     <div class="assign-member-card" data-name="${escHtml((m.inGameName || m.name || '').toLowerCase())}"
          onclick="confirmAssignMember('${m.id}', ${ti}, ${si}, ${isReserve})">
@@ -338,13 +337,8 @@ function doSaveSlotEdit(ti, si, isReserve, ov) {
 // SHARED: edit fields UI for slot (combat role + multi-skill + custom skill + leader)
 // ════════════════════════════════════════════════════════════════════════════
 function buildSlotEditFields(values, settings) {
-  const skillChips = (settings.skills || []).map(sk => {
-    const active = values.skills.includes(sk.id);
-    return `<span class="assign-skill-chip ${active?'active':''}" data-skill="${sk.id}" data-color="${sk.color}"
-              ${active ? `style="background:${sk.color}28;border-color:${sk.color};color:${sk.color}"` : ''}>
-      ${escHtml(sk.name)}
-    </span>`;
-  }).join('');
+  // Skills giờ là free-text - mỗi dòng 1 skill
+  const skillsText = Array.isArray(values.skills) ? values.skills.join('\n') : '';
 
   const roleChips = COMBAT_ROLES.map(r => {
     const active = values.combatRole === r.id;
@@ -354,25 +348,21 @@ function buildSlotEditFields(values, settings) {
 
   return `
     <div>
-      <label style="display:block;font-size:12px;color:var(--text-secondary);margin-bottom:6px">⚔ Vai trò chiến đấu</label>
-      <div id="slot-role-chips" style="display:flex;gap:6px;flex-wrap:wrap">${roleChips}</div>
+      <label style="display:block;font-size:13px;color:var(--text-secondary);margin-bottom:6px;font-weight:600">⚔ Vai trò chiến đấu</label>
+      <div id="slot-role-chips" style="display:flex;gap:8px;flex-wrap:wrap">${roleChips}</div>
     </div>
 
     <div>
-      <label style="display:block;font-size:12px;color:var(--text-secondary);margin-bottom:6px">✨ Kỹ năng (chọn nhiều)</label>
-      <div id="slot-skill-chips" style="display:flex;gap:6px;flex-wrap:wrap">${skillChips}</div>
+      <label style="display:block;font-size:13px;color:var(--text-secondary);margin-bottom:4px;font-weight:600">✨ Kỹ năng</label>
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Mỗi dòng là 1 kỹ năng. VD:<br>TCD<br>Tường băng<br>Lead</div>
+      <textarea id="slot-skills-text" rows="4"
+        placeholder="Nhập mỗi kỹ năng 1 dòng..."
+        style="width:100%;padding:8px 12px;background:#0c0c1a;border:1px solid var(--border-color);color:var(--text-primary);border-radius:6px;font-size:13px;font-family:inherit;resize:vertical">${escHtml(skillsText)}</textarea>
     </div>
 
-    <div>
-      <label style="display:block;font-size:12px;color:var(--text-secondary);margin-bottom:4px">📝 Skill / Ghi chú thêm (tùy chọn)</label>
-      <input type="text" id="slot-custom-skill" value="${escHtml(values.customSkill || '')}"
-        placeholder='VD: "TCD / Tường băng" hoặc "Tank phụ"'
-        style="width:100%;padding:8px 12px;background:#0c0c1a;border:1px solid var(--border-color);color:var(--text-primary);border-radius:6px;font-size:13px">
-    </div>
-
-    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 12px;background:${values.isLeader?'rgba(240,192,64,0.12)':'#0c0c1a'};border:1px solid ${values.isLeader?'rgba(240,192,64,0.5)':'var(--border-color)'};border-radius:6px" id="slot-leader-wrap">
-      <input type="checkbox" id="slot-leader" ${values.isLeader?'checked':''} style="width:18px;height:18px;cursor:pointer">
-      <span style="font-size:13px;font-weight:600">⭐ Đặt làm Leader của team</span>
+    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:12px 14px;background:${values.isLeader?'rgba(240,192,64,0.15)':'#0c0c1a'};border:2px solid ${values.isLeader?'rgba(240,192,64,0.6)':'var(--border-color)'};border-radius:8px;transition:all 0.15s" id="slot-leader-wrap">
+      <input type="checkbox" id="slot-leader" ${values.isLeader?'checked':''} style="width:20px;height:20px;cursor:pointer;accent-color:#f0c040">
+      <span style="font-size:14px;font-weight:700">⭐ Đặt làm <span style="color:#f0c040">LEADER</span> của team</span>
     </label>
   `;
 }
@@ -402,24 +392,7 @@ function bindSlotEditFieldEvents() {
     if (isInitialActive) chip.dataset.active = '1';
   });
 
-  // Skill chips - multi select
-  document.querySelectorAll('#slot-skill-chips .assign-skill-chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      const isActive = chip.classList.contains('active');
-      if (isActive) {
-        chip.classList.remove('active');
-        chip.style.background = '';
-        chip.style.borderColor = '';
-        chip.style.color = '';
-      } else {
-        chip.classList.add('active');
-        const color = chip.dataset.color;
-        chip.style.background = color + '28';
-        chip.style.borderColor = color;
-        chip.style.color = color;
-      }
-    });
-  });
+  // Skill chips không còn nữa - dùng textarea thay thế
 
   // Leader checkbox visual update
   const leaderCb = document.getElementById('slot-leader');
@@ -427,8 +400,8 @@ function bindSlotEditFieldEvents() {
     const wrap = document.getElementById('slot-leader-wrap');
     if (!wrap) return;
     if (leaderCb.checked) {
-      wrap.style.background = 'rgba(240,192,64,0.12)';
-      wrap.style.borderColor = 'rgba(240,192,64,0.5)';
+      wrap.style.background = 'rgba(240,192,64,0.15)';
+      wrap.style.borderColor = 'rgba(240,192,64,0.6)';
     } else {
       wrap.style.background = '#0c0c1a';
       wrap.style.borderColor = 'var(--border-color)';
@@ -438,11 +411,13 @@ function bindSlotEditFieldEvents() {
 
 function readSlotEditFields() {
   const activeRole = document.querySelector('#slot-role-chips .assign-role-chip[data-active="1"]');
-  const activeSkills = [...document.querySelectorAll('#slot-skill-chips .assign-skill-chip.active')].map(c => c.dataset.skill);
+  // Parse skills từ textarea: mỗi dòng = 1 skill, bỏ dòng trống
+  const skillsRaw = document.getElementById('slot-skills-text')?.value || '';
+  const skills = skillsRaw.split('\n').map(s => s.trim()).filter(Boolean);
   return {
     combatRole: activeRole ? activeRole.dataset.role : '',
-    skills:     activeSkills,
-    customSkill:document.getElementById('slot-custom-skill')?.value.trim() || '',
+    skills:     skills,
+    customSkill:'',  // không còn dùng - đã merge vào skills
     isLeader:   !!document.getElementById('slot-leader')?.checked
   };
 }
@@ -478,16 +453,4 @@ function saveTacticsNotes() {
   const tactics = session.tactics || {};
   tactics.notes = ta.value;
   Sessions.updateCurrent({ tactics: tactics });
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// TEAM GROUP CONTROL (called from team header dropdown)
-// ════════════════════════════════════════════════════════════════════════════
-function setTeamGroup(teamIdx, groupId) {
-  if (!isAdmin()) return;
-  const data = loadData();
-  if (!data.currentSession || !data.currentSession.teams[teamIdx]) return;
-  data.currentSession.teams[teamIdx].group = groupId;
-  if (typeof window.saveData === 'function') window.saveData(data); else saveData(data);
-  renderPage('dashboard');
 }

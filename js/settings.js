@@ -32,65 +32,8 @@ function renderSettingsPage() {
       <button class="btn btn-danger cfg-btn-sm" onclick="cfgDeleteClass('${c.id}')">Xóa</button>
     </div>`).join('');
 
-  /* ── Skills ── */
-  const skillRows = s.skills.map(sk => {
-    const imgSrc = loadImageFromStorage('skill_' + sk.id);
-    const thumb  = imgSrc
-      ? `<img src="${imgSrc}" style="width:36px;height:36px;border-radius:6px;object-fit:cover;border:1px solid #333">`
-      : `<div style="width:36px;height:36px;border-radius:6px;background:#1a1a2e;border:1px dashed #444;display:flex;align-items:center;justify-content:center;font-size:16px">🎯</div>`;
-    return `
-    <div class="cfg-row" id="skill-row-${sk.id}">
-      <input class="cfg-input-id" type="text" value="${escHtml(sk.id)}" readonly>
-      <input class="cfg-input-name" type="text" value="${escHtml(sk.name)}" onchange="cfgUpdateSkill('${sk.id}','name',this.value)">
-      <input type="color" value="${sk.color}" onchange="cfgUpdateSkill('${sk.id}','color',this.value)"
-             style="width:44px;height:36px;padding:2px;cursor:pointer;border-radius:4px;border:1px solid #2a2a45;background:#1a1a2e">
-      <div style="width:20px;height:20px;border-radius:4px;background:${sk.color}"></div>
-      ${thumb}
-      <label class="btn btn-outline cfg-btn-sm" style="cursor:pointer">
-        Upload ảnh
-        <input type="file" accept="image/*" style="display:none" onchange="uploadSkillImg('${sk.id}',this)">
-      </label>
-      <button class="btn btn-danger cfg-btn-sm" onclick="cfgDeleteSkill('${sk.id}')">Xóa</button>
-    </div>`;
-  }).join('');
-
-  /* ── Tasks ── */
-  const taskRows = s.tasks.map(t => {
-    const imgSrc = loadImageFromStorage('task_' + t.id);
-    const thumb  = imgSrc
-      ? `<img src="${imgSrc}" style="width:36px;height:36px;border-radius:6px;object-fit:cover;border:1px solid #333">`
-      : `<div style="width:36px;height:36px;border-radius:6px;background:#1a1a2e;border:1px dashed #444;display:flex;align-items:center;justify-content:center;font-size:16px">📦</div>`;
-    return `
-    <div class="cfg-row">
-      <input class="cfg-input-id" type="text" value="${escHtml(t.id)}" readonly>
-      <input class="cfg-input-name" type="text" value="${escHtml(t.name)}" onchange="cfgUpdateTask('${t.id}','name',this.value)">
-      <input type="color" value="${t.color}" onchange="cfgUpdateTask('${t.id}','color',this.value)"
-             style="width:44px;height:36px;padding:2px;cursor:pointer;border-radius:4px;border:1px solid #2a2a45;background:#1a1a2e">
-      <div style="width:20px;height:20px;border-radius:4px;background:${t.color}"></div>
-      <input type="number" value="${t.count||1}" min="1" max="99" style="width:60px;text-align:center"
-             onchange="cfgUpdateTask('${t.id}','count',+this.value)">
-      <input type="checkbox" ${t.required?'checked':''} title="Bắt buộc"
-             onchange="cfgUpdateTask('${t.id}','required',this.checked)"
-             style="width:16px;height:16px;accent-color:var(--accent-gold);cursor:pointer">
-      ${thumb}
-      <label class="btn btn-outline cfg-btn-sm" style="cursor:pointer">
-        Upload ảnh
-        <input type="file" accept="image/*" style="display:none" onchange="uploadTaskImg('${t.id}',this)">
-      </label>
-      <button class="btn btn-danger cfg-btn-sm" onclick="cfgDeleteTask('${t.id}')">Xóa</button>
-    </div>`;
-  }).join('');
-
-  /* ── Groups ── */
-  const groupRows = s.groups.map(g => `
-    <div class="cfg-row">
-      <input class="cfg-input-id" type="text" value="${escHtml(g.id)}" readonly>
-      <input class="cfg-input-name" type="text" value="${escHtml(g.name)}" onchange="cfgUpdateGroup('${g.id}','name',this.value)">
-      <input type="color" value="${g.color}" onchange="cfgUpdateGroup('${g.id}','color',this.value)"
-             style="width:44px;height:36px;padding:2px;cursor:pointer;border-radius:4px;border:1px solid #2a2a45;background:#1a1a2e">
-      <div style="width:20px;height:20px;border-radius:50%;background:${g.color}"></div>
-      <button class="btn btn-danger cfg-btn-sm" onclick="cfgDeleteGroup('${g.id}')">Xóa</button>
-    </div>`).join('');
+  /* ── Skills, Tasks, Groups ĐÃ BỊ LOẠI BỎ — skill nay nhập tự do ở slot,
+        không còn task/nhóm trong app                                    ── */
 
   /* ── Maps ── */
   const mapRows = s.maps.map(m => {
@@ -128,7 +71,7 @@ function renderSettingsPage() {
 
     <div class="page-header">
       <div class="page-title">Cấu Hình</div>
-      <div class="page-subtitle">Quản lý cấu hình: đội hình, class, skill, task, nhóm, bản đồ</div>
+      <div class="page-subtitle">Quản lý cấu hình: đội hình, class, bản đồ</div>
     </div>
 
     <!-- Guild -->
@@ -150,33 +93,6 @@ function renderSettingsPage() {
         <button class="btn btn-cyan" style="padding:6px 14px;font-size:12px" onclick="cfgOpenAddClass()">+ Thêm class</button>
       </div>
       <div>${classRows || '<div style="color:var(--text-muted);padding:12px">Chưa có class nào</div>'}</div>
-    </div>
-
-    <!-- Skills -->
-    <div class="cfg-section">
-      <div class="section-header">
-        <span class="section-title">✨ Danh Sách Skill</span>
-        <button class="btn btn-cyan" style="padding:6px 14px;font-size:12px" onclick="cfgOpenAddSkill()">+ Thêm skill</button>
-      </div>
-      <div>${skillRows || '<div style="color:var(--text-muted);padding:12px">Chưa có skill nào</div>'}</div>
-    </div>
-
-    <!-- Tasks -->
-    <div class="cfg-section">
-      <div class="section-header">
-        <span class="section-title">📦 Danh Sách Task</span>
-        <button class="btn btn-cyan" style="padding:6px 14px;font-size:12px" onclick="cfgOpenAddTask()">+ Thêm task</button>
-      </div>
-      <div>${taskRows || '<div style="color:var(--text-muted);padding:12px">Chưa có task nào</div>'}</div>
-    </div>
-
-    <!-- Groups -->
-    <div class="cfg-section">
-      <div class="section-header">
-        <span class="section-title">👥 Nhóm Chiến</span>
-        <button class="btn btn-cyan" style="padding:6px 14px;font-size:12px" onclick="cfgOpenAddGroup()">+ Thêm nhóm</button>
-      </div>
-      <div>${groupRows || '<div style="color:var(--text-muted);padding:12px">Chưa có nhóm nào</div>'}</div>
     </div>
 
     <!-- Maps -->
@@ -248,157 +164,6 @@ function cfgSubmitAddClass(ov) {
   Settings.addClass({id,name,color}); ov.remove(); showToast('Đã thêm class!'); renderPage('settings');
 }
 
-/* ══════════════════════════════════════════════════════════ SKILL */
-function cfgUpdateSkill(id, field, value) { Settings.updateSkill(id, { [field]: value }); }
-function cfgDeleteSkill(id) {
-  if (!confirmDelete('Xóa skill này?')) return;
-  Settings.deleteSkill(id); showToast('Đã xóa!','error'); renderPage('settings');
-}
-function uploadSkillImg(id, input) {
-  const file = input.files[0]; if(!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    saveImageToStorage('skill_' + id, e.target.result);
-    // Update thumb in DOM without re-render
-    const row = document.getElementById('skill-row-' + id);
-    if (row) {
-      const thumbEl = row.querySelector('img,div[style*="dashed"]');
-      if (thumbEl) {
-        const img = document.createElement('img');
-        img.src = e.target.result;
-        img.style.cssText = 'width:36px;height:36px;border-radius:6px;object-fit:cover;border:1px solid #333';
-        thumbEl.replaceWith(img);
-      }
-    }
-    showToast('Đã upload ảnh skill!');
-  };
-  reader.readAsDataURL(file);
-}
-// Pending image for new skill (set before submit)
-window._pendingSkillImg = null;
-
-function cfgOpenAddSkill() {
-  window._pendingSkillImg = null;
-  openModal(`
-    <h3>+ Thêm Skill</h3>
-    <div class="form-group"><label>Mã skill (không dấu, không cách)</label><input type="text" id="ns-id" placeholder="vd: skill_11"></div>
-    <div class="form-group"><label>Tên skill</label><input type="text" id="ns-name" placeholder="vd: Thiên Lôi"></div>
-    <div class="form-group"><label>Màu</label><input type="color" id="ns-color" value="#F59E0B" style="width:100%;height:40px"></div>
-    <div class="form-group">
-      <label>Ảnh skill (tuỳ chọn)</label>
-      <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
-        <div id="ns-img-preview" style="width:56px;height:56px;border-radius:8px;background:#1a1a2e;border:2px dashed #444;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">🎯</div>
-        <label class="btn btn-outline" style="cursor:pointer;padding:8px 16px">
-          📁 Chọn ảnh
-          <input type="file" accept="image/*" style="display:none" onchange="previewNewSkillImg(this)">
-        </label>
-        <button class="btn btn-danger" style="padding:6px 10px;font-size:12px" onclick="clearNewSkillImg()">✕</button>
-      </div>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove();window._pendingSkillImg=null;">Hủy</button>
-      <button class="btn btn-gold" onclick="cfgSubmitAddSkill(this.closest('.modal-overlay'))">Thêm Skill</button>
-    </div>`);
-}
-
-function previewNewSkillImg(input) {
-  const file = input.files[0]; if(!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    window._pendingSkillImg = e.target.result;
-    const preview = document.getElementById('ns-img-preview');
-    if (preview) {
-      preview.innerHTML = `<img src="${e.target.result}" style="width:52px;height:52px;border-radius:7px;object-fit:cover">`;
-      preview.style.border = '2px solid var(--accent-gold)';
-    }
-  };
-  reader.readAsDataURL(file);
-}
-
-function clearNewSkillImg() {
-  window._pendingSkillImg = null;
-  const preview = document.getElementById('ns-img-preview');
-  if (preview) {
-    preview.innerHTML = '🎯';
-    preview.style.border = '2px dashed #444';
-  }
-}
-
-function cfgSubmitAddSkill(ov) {
-  const id    = document.getElementById('ns-id').value.trim().replace(/\s+/g,'_').toLowerCase();
-  const name  = document.getElementById('ns-name').value.trim();
-  const color = document.getElementById('ns-color').value;
-  if(!id||!name){ showToast('Điền đầy đủ!','error'); return; }
-  Settings.addSkill({id, name, color});
-  // Save pending image if any
-  if (window._pendingSkillImg) {
-    saveImageToStorage('skill_' + id, window._pendingSkillImg);
-    window._pendingSkillImg = null;
-  }
-  ov.remove(); showToast('Đã thêm skill!'); renderPage('settings');
-}
-
-/* ══════════════════════════════════════════════════════════ TASK */
-function cfgUpdateTask(id, field, value) { Settings.updateTask(id, { [field]: value }); }
-function cfgDeleteTask(id) {
-  if (!confirmDelete('Xóa task này?')) return;
-  Settings.deleteTask(id); showToast('Đã xóa!','error'); renderPage('settings');
-}
-function uploadTaskImg(id, input) {
-  const file = input.files[0]; if(!file) return;
-  const reader = new FileReader();
-  reader.onload = e => { saveImageToStorage('task_' + id, e.target.result); showToast('Đã upload ảnh task!'); renderPage('settings'); };
-  reader.readAsDataURL(file);
-}
-function cfgOpenAddTask() {
-  openModal(`
-    <h3>+ Thêm Task</h3>
-    <div class="form-group"><label>Mã task</label><input type="text" id="nt-id" placeholder="vd: vat_tu_2"></div>
-    <div class="form-group"><label>Tên task</label><input type="text" id="nt-name" placeholder="vd: Vật tư 2"></div>
-    <div class="form-group"><label>Số lượng</label><input type="number" id="nt-count" value="1" min="1"></div>
-    <div class="form-group"><label>Màu</label><input type="color" id="nt-color" value="#F97316" style="width:100%;height:40px"></div>
-    <div class="modal-actions">
-      <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Hủy</button>
-      <button class="btn btn-gold" onclick="cfgSubmitAddTask(this.closest('.modal-overlay'))">Thêm</button>
-    </div>`);
-}
-function cfgSubmitAddTask(ov) {
-  const id=document.getElementById('nt-id').value.trim().replace(/\s+/g,'_').toLowerCase();
-  const name=document.getElementById('nt-name').value.trim();
-  const count=+document.getElementById('nt-count').value||1;
-  const color=document.getElementById('nt-color').value;
-  if(!id||!name){showToast('Điền đầy đủ!','error');return;}
-  Settings.addTask({id,name,count,color}); ov.remove(); showToast('Đã thêm task!'); renderPage('settings');
-}
-
-/* ══════════════════════════════════════════════════════════ GROUP */
-function cfgUpdateGroup(id, field, value) {
-  const data = loadData();
-  const idx  = data.settings.groups.findIndex(g => g.id === id);
-  if (idx !== -1) { data.settings.groups[idx][field] = value; saveData(data); }
-}
-function cfgDeleteGroup(id) {
-  if (!confirmDelete('Xóa nhóm này?')) return;
-  Settings.deleteGroup(id); showToast('Đã xóa!','error'); renderPage('settings');
-}
-function cfgOpenAddGroup() {
-  openModal(`
-    <h3>+ Thêm Nhóm</h3>
-    <div class="form-group"><label>Mã nhóm</label><input type="text" id="ng-id" placeholder="vd: group_5"></div>
-    <div class="form-group"><label>Tên nhóm</label><input type="text" id="ng-name" placeholder="vd: Nhóm 5"></div>
-    <div class="form-group"><label>Màu</label><input type="color" id="ng-color" value="#3399ff" style="width:100%;height:40px"></div>
-    <div class="modal-actions">
-      <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Hủy</button>
-      <button class="btn btn-gold" onclick="cfgSubmitAddGroup(this.closest('.modal-overlay'))">Thêm</button>
-    </div>`);
-}
-function cfgSubmitAddGroup(ov) {
-  const id=document.getElementById('ng-id').value.trim().replace(/\s+/g,'_');
-  const name=document.getElementById('ng-name').value.trim();
-  const color=document.getElementById('ng-color').value;
-  if(!id||!name){showToast('Điền đầy đủ!','error');return;}
-  Settings.addGroup({id,name,color}); ov.remove(); showToast('Đã thêm nhóm!'); renderPage('settings');
-}
 
 /* ══════════════════════════════════════════════════════════ MAP */
 function cfgUpdateMap(id, field, value) { Settings.updateMap(id, { [field]: value }); }
