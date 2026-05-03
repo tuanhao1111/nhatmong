@@ -164,20 +164,24 @@ function buildMemberForm(m={}, selfEdit=false) {
       </div>
     </label>`).join('');
 
-  // Skill grid (chọn 1)
+  // Skill grid (multi-select - chọn nhiều)
+  // Backwards compat: hỗ trợ cả m.skills (mới, array) lẫn m.skill (cũ, single)
+  const memberSkills = Array.isArray(m.skills) ? m.skills : (m.skill ? [m.skill] : []);
   const skillGrid = settings.skills.length === 0
     ? '<div style="color:var(--text-muted);font-size:12px">Chưa có skill. Thêm ở Cấu Hình.</div>'
-    : `<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px" id="skill-grid">
+    : `<div style="margin-bottom:6px;font-size:11px;color:var(--text-secondary)">💡 Có thể chọn nhiều kỹ năng (click để bật/tắt)</div>
+       <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px" id="skill-grid">
         ${settings.skills.map(sk => {
           const img    = loadImageFromStorage('skill_' + sk.id);
-          const active = m.skill === sk.id;
+          const active = memberSkills.includes(sk.id);
           return `<label style="cursor:pointer">
-            <input type="radio" name="mf-skill" value="${sk.id}" ${active?'checked':''} style="display:none">
+            <input type="checkbox" name="mf-skill" value="${sk.id}" ${active?'checked':''} style="display:none">
             <div class="skill-opt" data-id="${sk.id}" style="
               text-align:center;padding:6px 4px;border-radius:8px;
               border:2px solid ${active?sk.color:'#2a2a45'};
               background:${active?sk.color+'18':'#0f0f1e'};
-              transition:all 0.15s;cursor:pointer">
+              transition:all 0.15s;cursor:pointer;position:relative">
+              ${active ? `<div style="position:absolute;top:2px;right:2px;background:${sk.color};color:#0a0a0f;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">✓</div>` : ''}
               ${img
                 ? `<img src="${img}" style="width:44px;height:44px;border-radius:6px;object-fit:cover;display:block;margin:0 auto 4px">`
                 : `<div style="width:44px;height:44px;border-radius:6px;background:${sk.color}33;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;font-size:20px">✨</div>`}
@@ -264,26 +268,39 @@ function initFormPickers() {
       });
     });
   });
-  // Skill
-  document.querySelectorAll('input[name="mf-skill"]').forEach(radio=>{
-    radio.closest('label').addEventListener('click', ()=>{
-      const id = radio.value;
-      const sk = Settings.get().skills.find(s=>s.id===id);
-      document.querySelectorAll('.skill-opt').forEach(opt=>{
-        const s2 = Settings.get().skills.find(s=>s.id===opt.dataset.id);
-        const active = opt.dataset.id === id;
-        opt.style.border     = `2px solid ${active&&sk?sk.color:'#2a2a45'}`;
-        opt.style.background = active&&sk ? sk.color+'18' : '#0f0f1e';
+  // Skill (multi-select)
+  document.querySelectorAll('input[name="mf-skill"]').forEach(cb=>{
+    cb.closest('label').addEventListener('click', ()=>{
+      // Defer 1 tick để cb.checked đã update
+      setTimeout(()=>{
+        const id = cb.value;
+        const sk = Settings.get().skills.find(s=>s.id===id);
+        const opt = document.querySelector('.skill-opt[data-id="'+id+'"]');
+        if (!opt || !sk) return;
+        const active = cb.checked;
+        opt.style.border     = `2px solid ${active?sk.color:'#2a2a45'}`;
+        opt.style.background = active ? sk.color+'18' : '#0f0f1e';
         const nameEl = opt.querySelector('div:last-child');
-        if (nameEl) nameEl.style.color = active&&s2 ? s2.color : 'var(--text-secondary)';
-      });
+        if (nameEl) nameEl.style.color = active ? sk.color : 'var(--text-secondary)';
+        // Toggle check badge
+        const oldBadge = opt.querySelector('div[data-badge]');
+        if (active && !oldBadge) {
+          const badge = document.createElement('div');
+          badge.setAttribute('data-badge','1');
+          badge.style.cssText = `position:absolute;top:2px;right:2px;background:${sk.color};color:#0a0a0f;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700`;
+          badge.textContent = '✓';
+          opt.appendChild(badge);
+        } else if (!active && oldBadge) {
+          oldBadge.remove();
+        }
+      }, 5);
     });
   });
 }
 
 function getMemberFormValues() {
   const combatRadio = document.querySelector('input[name="mf-combat-role"]:checked');
-  const skillRadio  = document.querySelector('input[name="mf-skill"]:checked');
+  const skillsChecked = [...document.querySelectorAll('input[name="mf-skill"]:checked')].map(el=>el.value);
   const taskChecked = [...document.querySelectorAll('input[name="mf-task"]:checked')].map(el=>el.value);
   return {
     name:       document.getElementById('mf-name')?.value.trim()  || '',
@@ -292,7 +309,8 @@ function getMemberFormValues() {
     group:      document.getElementById('mf-group')?.value        || '',
     power:      parseInt(document.getElementById('mf-power')?.value)||0,
     combatRole: combatRadio?.value || '',
-    skill:      skillRadio?.value  || '',
+    skills:     skillsChecked,        // array - mới
+    skill:      skillsChecked[0] || '', // backwards compat: skill đầu = skill chính
     tasks:      taskChecked,
     note:       document.getElementById('mf-note')?.value.trim()  || ''
   };

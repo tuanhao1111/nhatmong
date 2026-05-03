@@ -115,7 +115,8 @@ const Members = {
       class:      m.class      || '',
       power:      m.power      || 0,
       combatRole: m.combatRole || '',
-      skill:      m.skill      || '',
+      skill:      m.skill      || (m.skills && m.skills[0]) || '',
+      skills:     Array.isArray(m.skills) ? m.skills : (m.skill ? [m.skill] : []),
       tasks:      m.tasks      || [],
       group:      m.group      || '',
       role:       m.role       || 'member',
@@ -202,15 +203,62 @@ const Sessions = {
     if (customMarkers !== undefined) data.currentSession.tactics.customMarkers = customMarkers;
     if (typeof window.saveData === 'function') window.saveData(data); else saveData(data);
   },
-  assignMember(teamIdx, slotIdx, memberId, isReserve=false) {
+  assignMember(teamIdx, slotIdx, memberId, isReserve=false, extra={}) {
     const data = loadData();
     if (!data.currentSession) return false;
     const member = data.members.find(m => m.id===memberId);
     if (!member) return false;
-    const info = { id:memberId, name:member.name, inGameName:member.inGameName,
-      class:member.class, combatRole:member.combatRole, skill:member.skill };
+    const info = {
+      id: memberId,
+      name: member.name,
+      inGameName: member.inGameName,
+      class: member.class,
+      combatRole: extra.combatRole || member.combatRole,
+      // Backward compat: giữ field skill (single) và thêm skills (array)
+      skill: member.skill,
+      skills: extra.skills || (member.skill ? [member.skill] : []),
+      customSkill: extra.customSkill || '',
+      isLeader: !!extra.isLeader,
+      isCustom: false  // member từ DB
+    };
     if (isReserve) data.currentSession.reserve[slotIdx] = info;
     else data.currentSession.teams[teamIdx].slots[slotIdx] = info;
+    if (typeof window.saveData === 'function') window.saveData(data); else saveData(data);
+    return true;
+  },
+  /**
+   * Gán slot bằng "thành viên tạm" - admin tự gõ thông tin, không lưu vào DB
+   * custom = { name, class, combatRole, skills:[], customSkill, isLeader }
+   */
+  assignCustom(teamIdx, slotIdx, custom={}, isReserve=false) {
+    const data = loadData();
+    if (!data.currentSession) return false;
+    const info = {
+      id: 'custom_' + Date.now().toString(36) + Math.random().toString(36).substr(2,4),
+      name: custom.name || '',
+      inGameName: custom.name || '',
+      class: custom.class || '',
+      combatRole: custom.combatRole || '',
+      skill: (custom.skills && custom.skills[0]) || '',
+      skills: custom.skills || [],
+      customSkill: custom.customSkill || '',
+      isLeader: !!custom.isLeader,
+      isCustom: true  // member tạm, không trong DB
+    };
+    if (isReserve) data.currentSession.reserve[slotIdx] = info;
+    else data.currentSession.teams[teamIdx].slots[slotIdx] = info;
+    if (typeof window.saveData === 'function') window.saveData(data); else saveData(data);
+    return true;
+  },
+  /** Sửa skill/leader/role của slot có sẵn (không đổi member) */
+  updateSlot(teamIdx, slotIdx, isReserve, patch) {
+    const data = loadData();
+    if (!data.currentSession) return false;
+    const slot = isReserve
+      ? data.currentSession.reserve[slotIdx]
+      : data.currentSession.teams[teamIdx].slots[slotIdx];
+    if (!slot) return false;
+    Object.assign(slot, patch);
     if (typeof window.saveData === 'function') window.saveData(data); else saveData(data);
     return true;
   },

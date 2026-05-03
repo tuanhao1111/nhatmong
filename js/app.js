@@ -110,31 +110,51 @@ function initDashboardStyles() {
   const style = document.createElement('style');
   style.id = 'dashboard-styles';
   style.textContent = `
-    .teams-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px; }
+    /* ────── TEAMS GRID — 2-3 cột tùy màn hình ────── */
+    .teams-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:14px; }
+    @media (max-width:780px) { .teams-grid { grid-template-columns:1fr; } }
+
     .team-card  { background:var(--bg-card);border:1px solid var(--border-color);border-radius:10px;overflow:hidden; }
-    .team-header{ padding:8px 10px;background:#0c0c1c;border-bottom:1px solid var(--border-color);display:flex;align-items:center;gap:6px; }
+    .team-header{ padding:10px 12px;background:linear-gradient(180deg,#0f0f1e,#0a0a18);border-bottom:1px solid var(--border-color);display:flex;align-items:center;gap:8px;flex-wrap:wrap; }
     .team-label { font-size:14px;font-weight:700; }
-    .team-count { font-size:11px; }
-    .team-group-select { font-size:10px;background:transparent;border:none;color:var(--text-secondary);padding:2px 4px;cursor:pointer;flex:1; }
-    .slots-list { padding:6px;display:flex;flex-direction:column;gap:4px; }
-    .slot { border-radius:6px;font-size:11px;transition:all 0.15s;border-left:4px solid transparent;overflow:hidden; }
-    .slot.empty { padding:7px 10px;background:#0c0c1c;color:var(--text-muted);border:1px dashed #2a2a40;display:flex;justify-content:space-between;align-items:center; }
-    .slot.empty:hover { border-color:var(--accent-gold);color:var(--accent-gold); }
-    .slot.filled { padding:6px 10px;background:#111124;cursor:pointer; }
-    .slot.filled:hover { background:#1a1a35; }
-    .slot-top  { display:flex;justify-content:space-between;align-items:center;margin-bottom:2px; }
-    .slot-role-icon { font-size:13px;line-height:1; }
-    .slot-num  { font-size:9px;color:var(--text-muted); }
-    .slot-name { font-weight:700;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
-    .slot-meta { display:flex;gap:6px;margin-top:2px;align-items:center; }
-    .slot-skill-img { width:16px;height:16px;border-radius:3px;object-fit:cover; }
-    .slot-plus { font-size:14px; }
+    .team-count { font-size:11px;color:var(--text-muted);margin-left:auto;padding:2px 8px;background:#0a0a18;border-radius:10px;border:1px solid var(--border-color); }
+    .team-group-select { font-size:11px;background:#0c0c1a;border:1px solid var(--border-color);color:var(--text-secondary);padding:3px 6px;cursor:pointer;border-radius:4px;max-width:120px; }
+
+    /* ────── SLOTS — Excel-style 3-cột rõ ràng ────── */
+    .slots-list { padding:0; }
+    .slot-row { display:grid;grid-template-columns:36px 1.4fr 1fr;align-items:stretch;border-bottom:1px solid #1a1a2e;transition:background 0.12s;min-height:46px; }
+    .slot-row:last-child { border-bottom:none; }
+    .slot-row.filled { cursor:pointer; }
+    .slot-row.filled:hover { background:rgba(240,192,64,0.05); }
+
+    /* Cột STT */
+    .slot-num-cell { display:flex;align-items:center;justify-content:center;background:#08080f;color:var(--text-secondary);font-weight:700;font-size:13px;font-family:'Cinzel',serif;border-right:1px solid #1a1a2e; }
+    .slot-num-cell.muted { color:var(--text-muted); }
+
+    /* Cột tên (background màu class) */
+    .slot-name-cell { display:flex;flex-direction:column;justify-content:center;padding:6px 10px;border-right:1px solid #1a1a2e;min-width:0; }
+    .slot-name-cell.empty-cell { background:#0a0a14;color:var(--text-muted);font-size:12px;font-style:italic;justify-content:center; }
+    .slot-name-main { font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2; }
+    .slot-name-cls  { font-size:10px;opacity:0.75;font-weight:600;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+
+    /* Cột info (skill trên + role dưới) */
+    .slot-info-cell { display:flex;flex-direction:column;justify-content:center;padding:5px 10px;background:#0a0a14;min-width:0; }
+    .slot-info-cell.empty-cell { background:#08080f; }
+    .slot-info-skills { display:flex;flex-wrap:wrap;gap:3px;align-items:center;line-height:1.2;min-height:14px; }
+    .slot-skill-chip { font-size:10px;font-weight:600;padding:1px 6px;border-radius:8px;background:rgba(240,192,64,0.12);color:var(--accent-gold);border:1px solid rgba(240,192,64,0.3);white-space:nowrap; }
+    .slot-info-role  { font-size:10px;font-weight:700;line-height:1.3;margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap; }
+    .slot-leader-badge { font-size:9px;font-weight:900;padding:1px 6px;border-radius:8px;background:linear-gradient(135deg,#f0c040,#e8a020);color:#0a0a0f;border:1px solid #f0c040;letter-spacing:0.5px;text-shadow:0 1px 0 rgba(255,255,255,0.3); }
+
+    .slot-row.empty:hover .slot-name-cell.empty-cell { color:var(--accent-gold); }
+
+    /* ────── RESERVE (giữ layout cũ — gọn hơn) ────── */
     .reserve-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px; }
     .reserve-slot { padding:8px 10px;border-radius:6px;font-size:11px;transition:all 0.15s; }
     .reserve-slot.empty { background:#0c0c1c;border:1px dashed #2a2a40;display:flex;justify-content:space-between;align-items:center;color:var(--text-muted); }
     .reserve-slot.empty:hover { border-color:var(--accent-cyan);color:var(--accent-cyan); }
     .reserve-slot.filled { background:#111124;border:1px solid #1e1e38;cursor:pointer; }
     .reserve-slot.filled:hover { background:#1a1a35; }
+
     .member-pick-item { padding:10px 12px;background:#0f0f1e;border:1px solid var(--border-color);border-radius:8px;cursor:pointer;transition:all 0.15s; }
     .member-pick-item:hover { border-color:var(--accent-gold);background:#1a1a2e; }
     .cfg-section { background:var(--bg-card);border:1px solid var(--border-color);border-radius:10px;padding:20px;margin-bottom:20px; }
