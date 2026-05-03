@@ -287,7 +287,9 @@ function renderAssignCustomForm(ti, si, isReserve, settings) {
       <div>
         <label style="display:block;font-size:12px;color:var(--text-secondary);margin-bottom:4px">Tên hiển thị</label>
         <input type="text" id="custom-name" placeholder="Tên ingame hoặc nickname"
+          oninput="checkCustomNameDup()"
           style="width:100%;padding:8px 12px;background:#0c0c1a;border:1px solid var(--border-color);color:var(--text-primary);border-radius:6px;font-size:13px">
+        <div id="custom-name-warn" style="display:none;margin-top:6px;padding:8px 10px;background:rgba(224,80,80,0.12);border:1px solid rgba(224,80,80,0.45);border-radius:6px;font-size:12px;color:#ff7070;line-height:1.4"></div>
       </div>
 
       <div>
@@ -302,14 +304,100 @@ function renderAssignCustomForm(ti, si, isReserve, settings) {
     </div>
 
     <div class="modal-actions">
-      <button class="btn btn-gold" onclick="doAssignCustom(${ti}, ${si}, ${isReserve}, this.closest('.modal-overlay'))">✓ Tạo & Xếp slot</button>
+      <button class="btn btn-gold" id="custom-submit-btn" onclick="doAssignCustom(${ti}, ${si}, ${isReserve}, this.closest('.modal-overlay'))">✓ Tạo & Xếp slot</button>
     </div>
   `;
+}
+
+/* So khớp tên: lowercase + trim + collapse khoảng trắng */
+function _normName(s) {
+  return (s || '').toString().toLowerCase().trim().replace(/\s+/g, ' ');
+}
+
+/**
+ * Tìm xem tên có trùng với ai trong DB hoặc slot không.
+ * Trả về { type: 'db'|'slot', label: string, matchedName: string } hoặc null.
+ */
+function findCustomNameMatch(rawName) {
+  const norm = _normName(rawName);
+  if (!norm) return null;
+
+  // Chỉ match theo inGameName (tên ingame).
+  // Với member tạm: name === inGameName (lúc tạo) nên cũng được bao phủ.
+
+  // 1. Check DB members
+  const allMembers = Members.getAll();
+  for (const m of allMembers) {
+    if (_normName(m.inGameName) === norm) {
+      const display = m.inGameName || m.name;
+      return { type:'db', label:`Trùng với thành viên "${display}" trong Danh Sách`, matchedName: display };
+    }
+  }
+
+  // 2. Check ai đã ở trong slot session hiện tại (kể cả custom/tạm)
+  const session = Sessions.getCurrent();
+  if (session) {
+    for (let ti=0; ti<session.teams.length; ti++) {
+      const slots = session.teams[ti].slots || [];
+      for (let si=0; si<slots.length; si++) {
+        const s = slots[si];
+        if (s && _normName(s.inGameName) === norm) {
+          const display = s.inGameName || s.name;
+          return { type:'slot', label:`Trùng với người ở T${ti+1} Slot #${si+1} ("${display}")`, matchedName: display };
+        }
+      }
+    }
+    for (let si=0; si<(session.reserve || []).length; si++) {
+      const s = session.reserve[si];
+      if (s && _normName(s.inGameName) === norm) {
+        const display = s.inGameName || s.name;
+        return { type:'slot', label:`Trùng với người ở Dự bị #${si+1} ("${display}")`, matchedName: display };
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Realtime kiểm tra tên — gọi qua oninput của input.
+ * Hiện/ẩn warn box, enable/disable nút submit.
+ */
+function checkCustomNameDup() {
+  const inp  = document.getElementById('custom-name');
+  const warn = document.getElementById('custom-name-warn');
+  const btn  = document.getElementById('custom-submit-btn');
+  if (!inp || !warn || !btn) return;
+
+  const match = findCustomNameMatch(inp.value);
+  if (match) {
+    warn.style.display = 'block';
+    warn.innerHTML = `<strong>⚠ Tên đã tồn tại</strong><br>${escHtml(match.label)}.<br><span style="color:#ffb060">Hãy đổi tên khác hoặc dùng tab "Chọn từ Thành Viên".</span>`;
+    inp.style.borderColor = '#e05050';
+    btn.disabled = true;
+    btn.style.opacity = '0.45';
+    btn.style.cursor = 'not-allowed';
+  } else {
+    warn.style.display = 'none';
+    warn.textContent = '';
+    inp.style.borderColor = '';
+    btn.disabled = false;
+    btn.style.opacity = '';
+    btn.style.cursor = '';
+  }
 }
 
 function doAssignCustom(ti, si, isReserve, ov) {
   const name = document.getElementById('custom-name')?.value.trim();
   if (!name) { showToast('⚠ Cần nhập tên hiển thị', 'error'); return; }
+
+  // Double-check trùng tên (phòng race condition)
+  const match = findCustomNameMatch(name);
+  if (match) {
+    showToast('❌ ' + match.label, 'error', 4500);
+    return;
+  }
+
   const cls  = document.getElementById('custom-class')?.value || '';
   const extra = readSlotEditFields();
   Sessions.assignCustom(ti, si, {
