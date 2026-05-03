@@ -15,6 +15,7 @@ var FIREBASE_CONFIG = {
 var _db = null, _guildRef = null, _usersRef = null;
 var _unsubGuild = null, _unsubUsers = null;
 var _fbOk = false;
+var _isSyncing = false;
 
 function fbInit() {
   if (typeof firebase === 'undefined') { setTimeout(fbInit, 800); return; }
@@ -44,13 +45,15 @@ function _listenGuild() {
   if (_unsubGuild) _unsubGuild();
   _unsubGuild = _guildRef.onSnapshot(function(snap) {
     if (!snap.exists) return;
+    if (_isSyncing) return; // đang push local lên, bỏ qua update từ server
     var remote = snap.data();
     var localTs = 0;
     try { localTs = (JSON.parse(localStorage.getItem(DB_KEY))||{}).updatedAt||0; } catch(e){}
-    if ((remote.updatedAt||0) > localTs) {
+    var remoteTs = remote.updatedAt || 0;
+    if (remoteTs > localTs) {
       try { localStorage.setItem(DB_KEY, JSON.stringify(remote)); } catch(e){}
-      _badge(true, _t(remote.updatedAt));
-      console.log('[FB] Guild data updated from server');
+      _badge(true, _t(remoteTs));
+      console.log('[FB] ⬇ Data mới từ server:', _t(remoteTs), '>', _t(localTs));
       if (window.currentPage && typeof renderPage === 'function' && !document.querySelector('.modal-overlay')) {
         setTimeout(function(){ renderPage(window.currentPage); }, 200);
       }
@@ -135,12 +138,23 @@ function _updateRoleUI(newRole) {
 }
 
 window.saveData = function(data) {
+  // QUAN TRỌNG: luôn set updatedAt trước khi lưu
+  // để _listenGuild không override bằng data cũ từ Firebase
+  var ts = Date.now();
+  var dataWithTs = Object.assign({}, data, { updatedAt: ts });
   var ok = false;
-  try { localStorage.setItem(DB_KEY, JSON.stringify(data)); ok = true; } catch(e){}
+  try { localStorage.setItem(DB_KEY, JSON.stringify(dataWithTs)); ok = true; } catch(e){}
   if (_fbOk && _guildRef && _isAdmin()) {
-    _guildRef.set(Object.assign({}, data, { updatedAt: Date.now() }))
-      .then(function(){ _badge(true, _t(Date.now())); })
-      .catch(function(e){ console.error('[FB] Save error:', e); });
+    _isSyncing = true;
+    _guildRef.set(dataWithTs)
+      .then(function(){
+        _isSyncing = false;
+        _badge(true, _t(ts));
+      })
+      .catch(function(e){
+        _isSyncing = false;
+        console.error('[FB] Save error:', e);
+      });
   }
   return ok;
 };
