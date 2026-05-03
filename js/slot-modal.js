@@ -119,6 +119,9 @@ function openAssignModal(teamIdx, slotIdx, isReserve) {
   openModal(tabHtml, null, true);
   // Inject styles for tabs nếu chưa có
   ensureAssignStyles();
+  // Bind các sự kiện cho field "Vai trò chiến đấu" + "Leader" trong tab Custom
+  // (tab DB không có các field này, nhưng bind không hại vì querySelector sẽ rỗng)
+  bindSlotEditFieldEvents();
   // Bind search
   setTimeout(() => {
     const search = document.getElementById('assign-search');
