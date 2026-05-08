@@ -7,6 +7,8 @@ const PAGES = {
   members:   { label:'Thành Viên',  icon:'👥', render: renderMembersPage   },
   sessions:  { label:'Lịch Sử',     icon:'📜', render: renderSessionsPage  },
   movies:    { label:'Xem Phim',    icon:'🎬', render: renderMoviesPage    },
+  gacha:     { label:'Gacha',       icon:'🎰', render: renderGachaPage     },
+  minigames: { label:'Mini Game',   icon:'🎲', render: renderMinigamesPage },
   settings:  { label:'Cấu Hình',    icon:'⚙',  render: renderSettingsPage, adminOnly:true },
   accounts:  { label:'Tài Khoản',   icon:'🔑', render: renderAccountsPage, adminOnly:true }
 };

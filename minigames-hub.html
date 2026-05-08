@@ -1,0 +1,4833 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sòng Bạc Giang Hồ · Bang Hội Nhất Mộng</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=Cinzel:wght@500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- Firebase SDK v10 (compat mode) -->
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+  <script>
+    // Firebase config — Nhất Mộng project
+    // Khi tích hợp vào Nhất Mộng app sẵn có và đã initializeApp() rồi → MGFirebase
+    // sẽ tự dùng app hiện có, đoạn này không bị conflict.
+    if (typeof firebase !== 'undefined' && (!firebase.apps || firebase.apps.length === 0)) {
+      firebase.initializeApp({
+        apiKey: "AIzaSyBszK09g8sHvufGNrFwDDgcw6rolV37KSA",
+        authDomain: "nhatmongdata.firebaseapp.com",
+        projectId: "nhatmongdata",
+        storageBucket: "nhatmongdata.firebasestorage.app",
+        messagingSenderId: "814787062547",
+        appId: "1:814787062547:web:c4ca571227c5a5555688e6",
+        measurementId: "G-WH87JWSQGF",
+      });
+    }
+  </script>
+
+  <style>
+    /* ═══════════════════════════════════════════════════════════════════
+       MINI-GAMES HUB — Sòng Bạc Giang Hồ
+       Theme: Tửu Quán Giang Hồ (đỏ son + cam đèn lồng + nâu đen)
+       Tất cả style scope vào .mg-hub
+       ═══════════════════════════════════════════════════════════════════ */
+
+    .mg-hub {
+      /* Đêm tửu quán */
+      --night-deep:   #1a0f0a;
+      --night-mid:    #251610;
+      --night-soft:   #321e15;
+      --night-mist:   #3d2820;
+      --twilight:     #4a3025;
+
+      /* Đỏ son */
+      --crimson-deep: #6b1a14;
+      --crimson:      #a02828;
+      --crimson-fire: #cc3838;
+      --crimson-glow: #e85050;
+      --vermilion:    #d94a3d;
+
+      /* Đèn lồng + đồng cổ */
+      --lantern-warm: #ffb86b;
+      --lantern-glow: #ffd28c;
+      --bronze:       #b8893f;
+      --bronze-bright:#dba85a;
+      --bronze-deep:  #8a6328;
+
+      /* Kiếm khí */
+      --steel-bright: #f5ede0;
+      --steel-soft:   #d8c9a8;
+
+      /* Text */
+      --text-bright:  #faf0dc;
+      --text-soft:    #e8d8b8;
+      --text-dim:     #b8a080;
+      --text-faint:   #7a6850;
+    }
+
+    .mg-hub * { box-sizing: border-box; }
+
+    /* Standalone body */
+    body.standalone-mg {
+      margin: 0;
+      padding: 0;
+      background: #1a0f0a;
+      color: #faf0dc;
+      font-family: 'Be Vietnam Pro', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       MAIN WRAPPER
+       ═══════════════════════════════════════════════════════════════════ */
+    .mg-hub {
+      position: relative;
+      background:
+        radial-gradient(ellipse 50% 30% at 50% 0%, rgba(255, 184, 107, 0.22) 0%, transparent 65%),
+        radial-gradient(ellipse 35% 30% at 90% 25%, rgba(255, 184, 107, 0.15) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 85% 90%, rgba(204, 56, 56, 0.18) 0%, transparent 60%),
+        radial-gradient(ellipse 40% 35% at 8% 85%, rgba(184, 137, 63, 0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 80% 25% at 50% 100%, rgba(160, 40, 40, 0.15) 0%, transparent 70%),
+        linear-gradient(180deg, #1a0f0a 0%, #251610 35%, #321e15 70%, #251610 100%);
+      color: var(--text-bright);
+      font-family: 'Be Vietnam Pro', sans-serif;
+      font-size: 16.5px;
+      line-height: 1.6;
+      padding: 2rem 1.5rem 4rem;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Tro tàn nền (decoration) */
+    .mg-hub::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        radial-gradient(2px 2px at 12% 18%, rgba(255, 210, 140, 0.65), transparent),
+        radial-gradient(1.5px 1.5px at 28% 72%, rgba(255, 184, 107, 0.5), transparent),
+        radial-gradient(2px 2px at 47% 32%, rgba(232, 80, 80, 0.4), transparent),
+        radial-gradient(1px 1px at 64% 58%, rgba(255, 210, 140, 0.55), transparent),
+        radial-gradient(2.5px 2.5px at 78% 18%, rgba(255, 184, 107, 0.5), transparent),
+        radial-gradient(1.5px 1.5px at 88% 72%, rgba(184, 137, 63, 0.6), transparent),
+        radial-gradient(1px 1px at 35% 88%, rgba(255, 210, 140, 0.5), transparent),
+        radial-gradient(2px 2px at 92% 42%, rgba(232, 80, 80, 0.45), transparent);
+      pointer-events: none;
+      z-index: 0;
+      animation: emberGlow 4s ease-in-out infinite alternate;
+    }
+
+    @keyframes emberGlow {
+      from { opacity: 0.5; }
+      to   { opacity: 0.95; }
+    }
+
+    .mg-hub > * { position: relative; z-index: 1; }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       HEADER
+       ═══════════════════════════════════════════════════════════════════ */
+    .mg-header {
+      max-width: 1200px;
+      margin: 0 auto 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+      padding: 1rem 0;
+      border-bottom: 1px solid rgba(255, 184, 107, 0.18);
+      flex-wrap: wrap;
+    }
+
+    .mg-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+    }
+
+    .mg-brand-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--crimson-deep), var(--crimson-fire));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      box-shadow: 0 4px 16px rgba(204, 56, 56, 0.4);
+      border: 1px solid var(--lantern-warm);
+    }
+
+    .mg-brand-text {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .mg-brand-name {
+      font-family: 'Manrope', sans-serif;
+      font-weight: 800;
+      font-size: 1.4rem;
+      background: linear-gradient(135deg, var(--lantern-glow), var(--lantern-warm), var(--vermilion));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.02em;
+      line-height: 1;
+    }
+
+    .mg-brand-sub {
+      font-family: 'Cinzel', serif;
+      color: var(--text-dim);
+      font-size: 0.72rem;
+      letter-spacing: 0.2em;
+      margin-top: 0.25rem;
+      text-transform: uppercase;
+    }
+
+    .mg-nick {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: rgba(37, 22, 16, 0.6);
+      backdrop-filter: blur(6px);
+      padding: 0.5rem 0.8rem 0.5rem 1rem;
+      border: 1px solid rgba(255, 184, 107, 0.3);
+      border-radius: 999px;
+    }
+
+    .mg-nick-label {
+      color: var(--text-dim);
+      font-size: 0.85rem;
+    }
+
+    .mg-nick-input {
+      background: transparent;
+      border: none;
+      color: var(--lantern-glow);
+      font-family: 'Manrope', sans-serif;
+      font-weight: 600;
+      font-size: 0.95rem;
+      width: 120px;
+      outline: none;
+    }
+
+    .mg-nick-input::placeholder {
+      color: var(--text-faint);
+    }
+
+    .mg-nick-edit {
+      background: var(--bronze);
+      color: var(--night-deep);
+      border: none;
+      border-radius: 999px;
+      padding: 0.3rem 0.7rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .mg-nick-edit:hover {
+      background: var(--lantern-warm);
+    }
+
+    .mg-back-btn {
+      background: rgba(204, 56, 56, 0.15);
+      border: 1px solid var(--crimson-fire);
+      color: var(--lantern-warm);
+      padding: 0.55rem 1rem;
+      border-radius: 6px;
+      font-family: 'Manrope', sans-serif;
+      font-weight: 600;
+      font-size: 0.9rem;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: none; /* hiện khi vào game */
+    }
+
+    .mg-back-btn:hover {
+      background: var(--crimson);
+      color: var(--text-bright);
+      transform: translateX(-3px);
+    }
+
+    .mg-back-btn.show { display: inline-block; }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       HUB - Game cards
+       ═══════════════════════════════════════════════════════════════════ */
+    .mg-hub-section {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .mg-hub-intro {
+      text-align: center;
+      margin-bottom: 3rem;
+      padding: 1rem;
+    }
+
+    .mg-hub-intro-label {
+      display: inline-block;
+      background: linear-gradient(135deg, var(--crimson-deep), var(--crimson-fire));
+      color: var(--text-bright);
+      padding: 0.35rem 1.1rem;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+
+    .mg-hub-intro h1 {
+      font-family: 'Manrope', sans-serif;
+      font-weight: 800;
+      font-size: clamp(2.5rem, 6vw, 4.2rem);
+      margin: 0 0 0.5rem;
+      background: linear-gradient(135deg, var(--lantern-glow), var(--lantern-warm), var(--vermilion));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+      filter: drop-shadow(0 0 24px rgba(255, 184, 107, 0.4));
+    }
+
+    .mg-hub-intro p {
+      color: var(--text-soft);
+      font-size: clamp(1rem, 2vw, 1.15rem);
+      max-width: 620px;
+      margin: 0 auto;
+      font-weight: 400;
+      line-height: 1.6;
+    }
+
+    .mg-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+      gap: 1.4rem;
+    }
+
+    .mg-card {
+      background:
+        linear-gradient(180deg, rgba(255, 184, 107, 0.06) 0%, rgba(204, 56, 56, 0.04) 100%),
+        rgba(37, 22, 16, 0.7);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 184, 107, 0.22);
+      border-radius: 8px;
+      padding: 1.6rem 1.4rem;
+      cursor: pointer;
+      transition: all 0.35s cubic-bezier(0.2, 0.9, 0.3, 1);
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 18px rgba(13, 10, 31, 0.4);
+    }
+
+    .mg-card::before {
+      content: '';
+      position: absolute;
+      top: -2px;
+      left: -100%;
+      width: 70%;
+      height: calc(100% + 4px);
+      background: linear-gradient(90deg, transparent, rgba(255, 244, 214, 0.12), transparent);
+      transform: skewX(-25deg);
+      transition: left 0.8s ease;
+      pointer-events: none;
+    }
+
+    .mg-card:hover::before {
+      left: 150%;
+    }
+
+    .mg-card:hover {
+      transform: translateY(-6px);
+      border-color: var(--lantern-warm);
+      box-shadow:
+        0 12px 36px rgba(204, 56, 56, 0.3),
+        0 0 0 1px var(--lantern-warm),
+        inset 0 0 30px rgba(255, 184, 107, 0.06);
+    }
+
+    .mg-card.disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      filter: saturate(0.5);
+    }
+
+    .mg-card.disabled:hover {
+      transform: none;
+      border-color: rgba(255, 184, 107, 0.22);
+      box-shadow: 0 4px 18px rgba(13, 10, 31, 0.4);
+    }
+
+    .mg-card.disabled::before { display: none; }
+
+    .mg-card-icon {
+      font-size: 3rem;
+      line-height: 1;
+      margin-bottom: 0.8rem;
+      display: inline-block;
+      filter: drop-shadow(0 0 12px rgba(255, 184, 107, 0.4));
+      transition: transform 0.3s;
+    }
+
+    .mg-card:hover:not(.disabled) .mg-card-icon {
+      transform: scale(1.1) rotate(-5deg);
+    }
+
+    .mg-card-title {
+      font-family: 'Manrope', sans-serif;
+      font-weight: 700;
+      font-size: 1.4rem;
+      color: var(--lantern-glow);
+      margin: 0 0 0.4rem;
+      letter-spacing: -0.01em;
+    }
+
+    .mg-card-subtitle {
+      font-family: 'Cinzel', serif;
+      font-size: 0.72rem;
+      color: var(--vermilion);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      margin-bottom: 0.7rem;
+    }
+
+    .mg-card-desc {
+      color: var(--text-soft);
+      font-size: 0.95rem;
+      line-height: 1.55;
+      margin-bottom: 1rem;
+    }
+
+    .mg-card-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-top: 0.6rem;
+    }
+
+    .mg-card-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      background: rgba(255, 184, 107, 0.1);
+      color: var(--lantern-warm);
+      border: 1px solid rgba(255, 184, 107, 0.3);
+      padding: 0.18rem 0.55rem;
+      border-radius: 999px;
+      font-size: 0.78rem;
+    }
+
+    .mg-card-tag.coming {
+      background: rgba(184, 137, 63, 0.12);
+      color: var(--text-dim);
+      border-color: rgba(184, 137, 63, 0.3);
+    }
+
+    .mg-card-tag.live {
+      background: rgba(204, 56, 56, 0.18);
+      color: var(--lantern-glow);
+      border-color: var(--crimson-fire);
+    }
+
+    .mg-card-tag.closed {
+      background: rgba(122, 104, 80, 0.15);
+      color: var(--text-faint);
+      border-color: rgba(122, 104, 80, 0.4);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       ADMIN BADGE & CONTROLS
+       ═══════════════════════════════════════════════════════════════════ */
+    .mg-admin-badge {
+      display: none;
+      align-items: center;
+      gap: 0.4rem;
+      background: linear-gradient(135deg, var(--bronze-deep), var(--bronze));
+      color: var(--night-deep);
+      padding: 0.4rem 0.85rem;
+      border-radius: 999px;
+      font-family: 'Cinzel', serif;
+      font-weight: 600;
+      font-size: 0.78rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      box-shadow: 0 2px 10px rgba(184, 137, 63, 0.4);
+      border: 1px solid var(--lantern-warm);
+    }
+
+    .mg-admin-badge.show { display: inline-flex; }
+
+    .mg-admin-badge::before {
+      content: '👑';
+      font-size: 0.95rem;
+    }
+
+    /* Sync badge — trạng thái Firebase */
+    .mg-sync-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(37, 22, 16, 0.7);
+      border: 1px solid rgba(255, 184, 107, 0.25);
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      font-family: 'Be Vietnam Pro', sans-serif;
+      font-size: 0.78rem;
+      color: var(--text-soft);
+      backdrop-filter: blur(4px);
+    }
+
+    .mg-sync-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-faint);
+      box-shadow: 0 0 4px var(--text-faint);
+      transition: all 0.3s;
+      animation: syncPulse 1.5s ease-in-out infinite;
+    }
+
+    .mg-sync-badge.online .mg-sync-dot {
+      background: #6cd66c;
+      box-shadow: 0 0 8px #6cd66c;
+    }
+
+    .mg-sync-badge.offline .mg-sync-dot {
+      background: var(--text-faint);
+      box-shadow: none;
+      animation: none;
+    }
+
+    .mg-sync-badge.error .mg-sync-dot {
+      background: var(--crimson-glow);
+      box-shadow: 0 0 8px var(--crimson-glow);
+      animation: none;
+    }
+
+    @keyframes syncPulse {
+      0%, 100% { opacity: 0.6; transform: scale(0.85); }
+      50%      { opacity: 1; transform: scale(1.15); }
+    }
+
+    /* Toggle ở mỗi card (chỉ admin thấy) */
+    .mg-card-admin {
+      position: absolute;
+      top: 0.7rem;
+      right: 0.7rem;
+      display: none;
+      align-items: center;
+      gap: 0.45rem;
+      z-index: 5;
+    }
+
+    .mg-card-admin.show { display: inline-flex; }
+
+    .mg-card-admin-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(13, 10, 31, 0.85);
+      border: 1px solid rgba(255, 184, 107, 0.4);
+      border-radius: 999px;
+      padding: 0.3rem 0.7rem 0.3rem 0.45rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      backdrop-filter: blur(4px);
+    }
+
+    .mg-card-admin-toggle:hover {
+      border-color: var(--lantern-warm);
+      background: rgba(13, 10, 31, 0.95);
+    }
+
+    .mg-card-admin-toggle input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .mg-card-admin-track {
+      position: relative;
+      width: 28px;
+      height: 16px;
+      background: rgba(122, 104, 80, 0.4);
+      border-radius: 999px;
+      transition: all 0.25s;
+      flex-shrink: 0;
+    }
+
+    .mg-card-admin-thumb {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 10px;
+      height: 10px;
+      background: var(--text-dim);
+      border-radius: 50%;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .mg-card-admin-toggle input:checked + .mg-card-admin-track {
+      background: linear-gradient(135deg, var(--crimson), var(--crimson-fire));
+    }
+
+    .mg-card-admin-toggle input:checked + .mg-card-admin-track .mg-card-admin-thumb {
+      left: 14px;
+      background: var(--lantern-glow);
+      box-shadow: 0 0 6px var(--lantern-warm);
+    }
+
+    .mg-card-admin-label {
+      font-family: 'Be Vietnam Pro', sans-serif;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-soft);
+      letter-spacing: 0.04em;
+    }
+
+    .mg-card-admin-toggle input:checked ~ .mg-card-admin-label {
+      color: var(--lantern-glow);
+    }
+
+    /* Card đang đóng — overlay khóa */
+    .mg-card.closed::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(13, 10, 31, 0.65);
+      backdrop-filter: grayscale(0.7) blur(0.5px);
+      pointer-events: none;
+      border-radius: inherit;
+      z-index: 2;
+    }
+
+    .mg-card-closed-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      z-index: 3;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.25s;
+    }
+
+    .mg-card.closed .mg-card-closed-overlay {
+      opacity: 1;
+    }
+
+    .mg-card-closed-icon {
+      font-size: 2.4rem;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));
+    }
+
+    .mg-card-closed-text {
+      font-family: 'Manrope', sans-serif;
+      font-weight: 700;
+      color: var(--lantern-warm);
+      font-size: 0.95rem;
+      letter-spacing: 0.05em;
+      text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+    }
+
+    /* Toast thông báo */
+    .mg-toast {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(120%);
+      background: linear-gradient(135deg, var(--crimson-deep), var(--crimson));
+      color: var(--text-bright);
+      padding: 0.85rem 1.5rem;
+      border-radius: 999px;
+      font-family: 'Be Vietnam Pro', sans-serif;
+      font-weight: 500;
+      font-size: 0.95rem;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.4);
+      border: 1px solid var(--lantern-warm);
+      opacity: 0;
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      z-index: 1500;
+      pointer-events: none;
+      max-width: 90%;
+      text-align: center;
+    }
+
+    .mg-toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       GAME SCREEN (chung)
+       ═══════════════════════════════════════════════════════════════════ */
+    .mg-screen {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: none;
+    }
+
+    .mg-screen.active {
+      display: block;
+      animation: screenIn 0.5s ease-out;
+    }
+
+    @keyframes screenIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .mg-screen-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .mg-screen-title {
+      font-family: 'Manrope', sans-serif;
+      font-weight: 800;
+      font-size: clamp(2rem, 5vw, 3rem);
+      background: linear-gradient(135deg, var(--lantern-glow), var(--vermilion));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      margin: 0 0 0.4rem;
+      filter: drop-shadow(0 0 18px rgba(255, 184, 107, 0.35));
+    }
+
+    .mg-screen-sub {
+      color: var(--text-soft);
+      font-size: 1rem;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       GAME 1: VÒNG QUAY MAY MẮN
+       ═══════════════════════════════════════════════════════════════════ */
+    .mg-wheel-stage {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 2rem;
+      align-items: center;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    @media (min-width: 880px) {
+      .mg-wheel-stage {
+        grid-template-columns: 1.4fr 1fr;
+        gap: 2.5rem;
+      }
+    }
+
+    .mg-wheel-wrap {
+      position: relative;
+      width: 100%;
+      max-width: 560px;
+      margin: 0 auto;
+      aspect-ratio: 1;
+      cursor: pointer; /* click anywhere on wheel to spin */
+    }
+
+    /* Khung vàng quanh wheel */
+    .mg-wheel-frame {
+      position: absolute;
+      inset: -8px;
+      border-radius: 50%;
+      background:
+        conic-gradient(
+          from 0deg,
+          var(--bronze-deep), var(--bronze-bright),
+          var(--bronze-deep), var(--bronze-bright),
+          var(--bronze-deep), var(--bronze-bright),
+          var(--bronze-deep), var(--bronze-bright),
+          var(--bronze-deep)
+        );
+      box-shadow:
+        0 0 30px rgba(255, 184, 107, 0.5),
+        inset 0 0 16px rgba(0, 0, 0, 0.5);
+      animation: frameSpin 30s linear infinite;
+    }
+
+    @keyframes frameSpin {
+      from { transform: rotate(0deg);   }
+      to   { transform: rotate(360deg); }
+    }
+
+    /* Wheel chính - SVG */
+    .mg-wheel-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      transition: transform 5.5s cubic-bezier(0.18, 0.85, 0.25, 1);
+      filter: drop-shadow(0 0 20px rgba(0, 0, 0, 0.6));
+      z-index: 1;
+    }
+
+    /* Đinh nháy quanh viền */
+    .mg-wheel-pegs {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .mg-wheel-pegs i {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 8px;
+      height: 8px;
+      margin: -4px 0 0 -4px;
+      background: radial-gradient(circle, var(--lantern-glow), var(--bronze));
+      border-radius: 50%;
+      box-shadow: 0 0 6px var(--lantern-warm);
+      transform-origin: center center;
+    }
+
+    /* Mũi tên chỉ trỏ ở đỉnh */
+    .mg-wheel-pointer {
+      position: absolute;
+      top: -18px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 22px solid transparent;
+      border-right: 22px solid transparent;
+      border-top: 38px solid var(--vermilion);
+      filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5)) drop-shadow(0 0 12px var(--crimson-fire));
+      z-index: 4;
+    }
+
+    .mg-wheel-pointer::after {
+      content: '';
+      position: absolute;
+      top: -38px;
+      left: -10px;
+      width: 20px;
+      height: 14px;
+      background: var(--vermilion);
+      border-radius: 3px;
+      box-shadow: 0 0 8px var(--crimson-fire);
+    }
+
+    /* Tâm nút quay */
+    .mg-wheel-hub {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 90px;
+      height: 90px;
+      background:
+        radial-gradient(circle at 30% 30%, var(--lantern-glow), var(--lantern-warm) 40%, var(--bronze) 100%);
+      border-radius: 50%;
+      border: 3px solid var(--bronze-deep);
+      box-shadow:
+        0 4px 18px rgba(0, 0, 0, 0.5),
+        inset 0 -3px 10px rgba(0, 0, 0, 0.3),
+        inset 0 3px 6px rgba(255, 244, 214, 0.6);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Manrope', sans-serif;
+      font-weight: 800;
+      font-size: 0.95rem;
+      color: var(--night-deep);
+      letter-spacing: 0.08em;
+      z-index: 3;
+      transition: transform 0.15s;
+      text-transform: uppercase;
+    }
+
+    .mg-wheel-hub:hover:not(:disabled) {
+      transform: translate(-50%, -50%) scale(1.06);
+    }
+
+    .mg-wheel-hub:active:not(:disabled) {
+      transform: translate(-50%, -50%) scale(0.94);
+    }
+
+    .mg-wheel-hub:disabled {
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+
+    /* Side panel: ô danh sách + result */
+    .mg-wheel-side {
+      display: flex;
+      flex-direction: column;
+      gap: 1.4rem;
+    }
+
+    /* ─── Input panel (textarea + actions) ─── */
+    .mg-wheel-input-card {
+      background:
+        linear-gradient(135deg, rgba(255, 184, 107, 0.06), rgba(204, 56, 56, 0.04)),
+        rgba(37, 22, 16, 0.7);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 184, 107, 0.25);
+      border-radius: 8px;
+      padding: 1.2rem 1.3rem 1rem;
+      box-shadow: 0 4px 18px rgba(13, 10, 31, 0.4);
+    }
+
+    .mg-wheel-input-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.6rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .mg-wheel-input-header h4 {
+      font-family: 'Manrope', sans-serif;
+      font-weight: 700;
+      color: var(--lantern-warm);
+      margin: 0;
+      font-size: 1.05rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .mg-wheel-input-header h4::before {
+      content: '⚔';
+      color: var(--crimson-fire);
+      font-size: 0.95rem;
+    }
+
+    .mg-wheel-input-count {
+      font-family: 'Be Vietnam Pro', sans-serif;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+    }
+
+    .mg-wheel-input-count strong {
+      color: var(--lantern-glow);
+      font-family: 'Manrope', sans-serif;
+      font-weight: 700;
+      margin-right: 0.2rem;
+    }
+
+    .mg-wheel-input-hint {
+      color: var(--text-faint);
+      font-size: 0.83rem;
+      margin: 0 0 0.7rem;
+      line-height: 1.5;
+    }
+
+    .mg-wheel-input {
+      width: 100%;
+      min-height: 240px;
+      max-height: 380px;
+      padding: 0.7rem 0.85rem;
+      background: rgba(13, 10, 31, 0.55);
+      border: 1px solid rgba(255, 184, 107, 0.22);
+      border-radius: 5px;
+      color: var(--text-bright);
+      font-family: 'Manrope', sans-serif;
+      font-weight: 500;
+      font-size: 0.95rem;
+      line-height: 1.65;
+      resize: vertical;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .mg-wheel-input:focus {
+      outline: none;
+      border-color: var(--lantern-warm);
+      box-shadow: 0 0 0 2px rgba(255, 184, 107, 0.15);
+    }
+
+    .mg-wheel-input::placeholder {
+      color: var(--text-faint);
+      font-style: italic;
+    }
+
+    .mg-wheel-input::-webkit-scrollbar { width: 6px; }
+    .mg-wheel-input::-webkit-scrollbar-track { background: rgba(13, 10, 31, 0.5); }
+    .mg-wheel-input::-webkit-scrollbar-thumb { background: rgba(255, 184, 107, 0.3); border-radius: 3px; }
+
+    .mg-wheel-input-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.8rem;
+    }
+
+    .mg-wheel-btn-ghost {
+      padding: 0.45rem 0.9rem;
+      background: transparent;
+      border: 1px solid rgba(255, 184, 107, 0.3);
+      border-radius: 999px;
+      color: var(--text-soft);
+      font-family: 'Be Vietnam Pro', sans-serif;
+      font-weight: 500;
+      font-size: 0.83rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .mg-wheel-btn-ghost:hover:not(:disabled) {
+      background: rgba(255, 184, 107, 0.12);
+      color: var(--lantern-glow);
+      border-color: var(--lantern-warm);
+    }
+
+    .mg-wheel-btn-ghost.danger:hover:not(:disabled) {
+      background: rgba(204, 56, 56, 0.18);
+      color: var(--text-bright);
+      border-color: var(--crimson-fire);
+    }
+
+    .mg-wheel-btn-ghost:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* Toggle "Tự xóa người trúng" */
+    .mg-wheel-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      padding: 0.45rem 0.9rem 0.45rem 0.6rem;
+      border: 1px solid rgba(255, 184, 107, 0.3);
+      border-radius: 999px;
+      background: transparent;
+      transition: all 0.2s;
+      user-select: none;
+    }
+
+    .mg-wheel-toggle:hover {
+      background: rgba(255, 184, 107, 0.08);
+      border-color: var(--lantern-warm);
+    }
+
+    .mg-wheel-toggle input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .mg-wheel-toggle-track {
+      position: relative;
+      width: 32px;
+      height: 18px;
+      background: rgba(13, 10, 31, 0.7);
+      border: 1px solid rgba(255, 184, 107, 0.35);
+      border-radius: 999px;
+      transition: all 0.25s;
+      flex-shrink: 0;
+    }
+
+    .mg-wheel-toggle-thumb {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 12px;
+      height: 12px;
+      background: var(--text-dim);
+      border-radius: 50%;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .mg-wheel-toggle input:checked + .mg-wheel-toggle-track {
+      background: linear-gradient(135deg, var(--crimson-deep), var(--crimson-fire));
+      border-color: var(--lantern-warm);
+      box-shadow: 0 0 8px rgba(204, 56, 56, 0.4);
+    }
+
+    .mg-wheel-toggle input:checked + .mg-wheel-toggle-track .mg-wheel-toggle-thumb {
+      left: 16px;
+      background: var(--lantern-glow);
+      box-shadow: 0 0 6px var(--lantern-warm);
+    }
+
+    .mg-wheel-toggle-label {
+      font-family: 'Be Vietnam Pro', sans-serif;
+      font-size: 0.83rem;
+      color: var(--text-soft);
+    }
+
+    .mg-wheel-toggle:hover .mg-wheel-toggle-label {
+      color: var(--lantern-glow);
+    }
+
+    .mg-wheel-history {
+      background: rgba(37, 22, 16, 0.4);
+      border: 1px solid rgba(255, 184, 107, 0.15);
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+    }
+
+    .mg-wheel-history h4 {
+      font-family: 'Manrope', sans-serif;
+      font-weight: 600;
+      color: var(--text-dim);
+      margin: 0 0 0.5rem;
+      font-size: 0.85rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .mg-wheel-history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      max-height: 100px;
+      overflow-y: auto;
+    }
+
+    .mg-wheel-history-list::-webkit-scrollbar { width: 5px; }
+    .mg-wheel-history-list::-webkit-scrollbar-thumb { background: rgba(204, 56, 56, 0.3); border-radius: 3px; }
+
+    .mg-wheel-history-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.82rem;
+      color: var(--text-soft);
+    }
+
+    .mg-wheel-history-item .ico { width: 18px; text-align: center; }
+    .mg-wheel-history-item .when { color: var(--text-faint); margin-left: auto; font-size: 0.75rem; }
+
+    .mg-wheel-history-empty {
+      color: var(--text-faint);
+      font-style: italic;
+      font-size: 0.85rem;
+      padding: 0.4rem 0;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       MODAL kết quả
+       ═══════════════════════════════════════════════════════════════════ */
+    .mg-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(13, 10, 31, 0.85);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(6px);
+      animation: fadeIn 0.4s ease;
+    }
+
+    .mg-modal-backdrop.show { display: flex; }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .mg-modal {
+      background:
+        radial-gradient(ellipse at top, rgba(255, 184, 107, 0.22) 0%, transparent 70%),
+        radial-gradient(ellipse at bottom, rgba(204, 56, 56, 0.18) 0%, transparent 70%),
+        var(--night-mid);
+      border: 2px solid var(--lantern-warm);
+      border-radius: 8px;
+      padding: 2.5rem 2.2rem 2rem;
+      max-width: 480px;
+      width: 92%;
+      text-align: center;
+      position: relative;
+      box-shadow: 0 0 80px rgba(255, 184, 107, 0.3);
+      animation: modalRise 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+      overflow: hidden;
+    }
+
+    @keyframes modalRise {
+      from { opacity: 0; transform: translateY(30px) scale(0.85); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .mg-modal-icon {
+      font-size: 4.5rem;
+      line-height: 1;
+      margin-bottom: 0.7rem;
+      animation: modalIconPop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;
+      filter: drop-shadow(0 0 24px var(--lantern-warm));
+    }
+
+    @keyframes modalIconPop {
+      from { opacity: 0; transform: scale(0.3) rotate(-30deg); }
+      to   { opacity: 1; transform: scale(1) rotate(0); }
+    }
+
+    .mg-modal-flourish {
+      font-family: 'Cinzel', serif;
+      color: var(--vermilion);
+      letter-spacing: 0.3em;
+      font-size: 0.85rem;
+      margin-bottom: 0.6rem;
+      text-transform: uppercase;
+    }
+
+    .mg-modal-title {
+      font-family: 'Manrope', sans-serif;
+      font-weight: 800;
+      font-size: clamp(1.7rem, 4.5vw, 2.4rem);
+      color: var(--lantern-glow);
+      letter-spacing: -0.01em;
+      line-height: 1.15;
+      margin: 0 0 0.8rem;
+      text-shadow:
+        0 0 14px rgba(255, 184, 107, 0.7),
+        0 0 28px rgba(255, 184, 107, 0.4);
+    }
+
+    .mg-modal-desc {
+      color: var(--text-soft);
+      font-size: 1rem;
+      line-height: 1.55;
+      margin-bottom: 1.5rem;
+    }
+
+    .mg-modal-close {
+      background: linear-gradient(135deg, var(--crimson-deep), var(--crimson));
+      border: 1px solid var(--lantern-warm);
+      border-radius: 4px;
+      color: var(--lantern-glow);
+      padding: 0.7rem 2rem;
+      font-family: 'Manrope', sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(160, 40, 40, 0.4);
+    }
+
+    .mg-modal-close:hover {
+      background: linear-gradient(135deg, var(--crimson), var(--crimson-fire));
+      transform: translateY(-2px);
+      color: var(--text-bright);
+    }
+
+    /* Mini fireworks trong modal */
+    .mg-modal-confetti {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .mg-modal-confetti i {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      animation: confettiBurst 1.4s ease-out forwards;
+    }
+
+    @keyframes confettiBurst {
+      0%   { opacity: 0; transform: translate(-50%, -50%) rotate(var(--angle)) translateX(0) scale(0.5); }
+      15%  { opacity: 1; }
+      80%  { opacity: 0.8; }
+      100% { opacity: 0; transform: translate(-50%, -50%) rotate(var(--angle)) translateX(var(--dist)) scale(1.3); }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       GAME 2: ĐUA VỊT GIANG HỒ
+       ═══════════════════════════════════════════════════════════════════ */
+    .mg-duck-stage {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .mg-duck-section-title {
+      font-family: 'Manrope', sans-serif;
+      font-weight: 700;
+      color: var(--lantern-glow);
+      font-size: 1.3rem;
+      margin: 0 0 0.4rem;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .mg-duck-section-title::before {
+      content: '⚔';
+      color: var(--crimson-fire);
+      font-size: 0.95rem;
+    }
+
+    .mg-duck-hint {
+      color: var(--text-soft);
+      font-size: 0.95rem;
+      margin: 0 0 1.5rem;
+    }
+
+    .mg-duck-setup {
+      background:
+        linear-gradient(135deg, rgba(255, 184, 107, 0.06), rgba(204, 56, 56, 0.04)),
+        rgba(37, 22, 16, 0.7);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 184, 107, 0.25);
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 6px 24px rgba(13, 10, 31, 0.4);
+    }
+
+    .mg-duck-setup-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    @media (min-width: 720px) {
+      .mg-duck-setup-grid {
+        grid-template-columns: 1fr 2fr;
+      }
+    }
+
+    .mg-duck-label {
+      display: block;
+      font-family: 'Manrope', sans-serif;
+      font-weight: 600;
+      color: var(--lantern-warm);
+      font-size: 0.95rem;
+      margin-bottom: 0.6rem;
+      letter-spacing: 0.02em;
+    }
+
+    .mg-duck-num-row {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .mg-duck-num-btn {
+      flex: 1;
+      padding: 0.85rem 0;
+      background: rgba(13, 10, 31, 0.55);
+      border: 1px solid rgba(255, 184, 107, 0.22);
+      border-radius: 6px;
+      color: var(--text-soft);
+      font-family: 'Manrope', sans-serif;
+      font-weight: 700;
+      font-size: 1.3rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .mg-duck-num-btn:hover {
+      border-color: var(--lantern-warm);
+      color: var(--lantern-glow);
+    }
+
+    .mg-duck-num-btn.active {
+      background: linear-gradient(135deg, var(--crimson-deep), var(--crimson-fire));
+      border-color: var(--lantern-warm);
+      color: var(--text-bright);
+      box-shadow: 0 4px 14px rgba(204, 56, 56, 0.4);
+    }
+
+    /* Ô input tự do số vịt */
+    .mg-duck-num-custom {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      margin-top: 0.7rem;
+    }
+
+    .mg-duck-num-custom-label {
+      font-size: 0.85rem;
+      color: var(--text-dim);
+    }
+
+    .mg-duck-num-input {
+      width: 80px;
+      padding: 0.5rem 0.7rem;
+      background: rgba(13, 10, 31, 0.55);
+      border: 1px solid rgba(255, 184, 107, 0.22);
+      border-radius: 4px;
+      color: var(--text-bright);
+      font-family: 'Manrope', sans-serif;
+      font-weight: 600;
+      font-size: 1rem;
+      text-align: center;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .mg-duck-num-input:focus {
+      outline: none;
+      border-color: var(--lantern-warm);
+      box-shadow: 0 0 0 2px rgba(255, 184, 107, 0.15);
+    }
+
+    /* Bối cảnh đường đua */
+    .mg-duck-scene-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+    }
+
+    .mg-duck-scene-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.7rem 0.4rem;
+      background: rgba(13, 10, 31, 0.55);
+      border: 1px solid rgba(255, 184, 107, 0.22);
+      border-radius: 6px;
+      color: var(--text-soft);
+      cursor: pointer;
+      transition: all 0.25s;
+    }
+
+    .mg-duck-scene-btn:hover {
+      border-color: var(--lantern-warm);
+      color: var(--lantern-glow);
+      transform: translateY(-2px);
+    }
+
+    .mg-duck-scene-btn.active {
+      background: linear-gradient(135deg, var(--crimson-deep), var(--crimson-fire));
+      border-color: var(--lantern-warm);
+      color: var(--text-bright);
+      box-shadow: 0 4px 14px rgba(204, 56, 56, 0.35);
+    }
+
+    .mg-duck-scene-icon {
+      font-size: 1.7rem;
+      filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4));
+    }
+
+    .mg-duck-scene-name {
+      font-family: 'Be Vietnam Pro', sans-serif;
+      font-weight: 500;
+      font-size: 0.85rem;
+      letter-spacing: 0.01em;
+    }
+
+    .mg-duck-names {
+      width: 100%;
+      min-height: 160px;
+      max-height: 280px;
+      padding: 0.7rem 0.85rem;
+      background: rgba(13, 10, 31, 0.55);
+      border: 1px solid rgba(255, 184, 107, 0.22);
+      border-radius: 6px;
+      color: var(--text-bright);
+      font-family: 'Manrope', sans-serif;
+      font-weight: 500;
+      font-size: 0.95rem;
+      line-height: 1.65;
+      resize: vertical;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      margin-bottom: 0.5rem;
+    }
+
+    .mg-duck-names:focus {
+      outline: none;
+      border-color: var(--lantern-warm);
+      box-shadow: 0 0 0 2px rgba(255, 184, 107, 0.15);
+    }
+
+    .mg-duck-names::placeholder {
+      color: var(--text-faint);
+      font-style: italic;
+    }
+
+    .mg-duck-btn-ghost {
+      padding: 0.45rem 0.95rem;
+      background: transparent;
+      border: 1px solid rgba(255, 184, 107, 0.3);
+      border-radius: 999px;
+      color: var(--text-soft);
+      font-family: 'Be Vietnam Pro', sans-serif;
+      font-weight: 500;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .mg-duck-btn-ghost:hover:not(:disabled) {
+      background: rgba(255, 184, 107, 0.12);
+      color: var(--lantern-glow);
+      border-color: var(--lantern-warm);
+    }
+
+    .mg-duck-setup-actions {
+      display: flex;
+      justify-content: center;
+      margin-top: 1.5rem;
+    }
+
+    .mg-duck-btn-primary {
+      padding: 0.95rem 2.2rem;
+      background: linear-gradient(135deg, var(--crimson-deep), var(--crimson-fire));
+      border: 1px solid var(--lantern-warm);
+      border-radius: 6px;
+      color: var(--text-bright);
+      font-family: 'Manrope', sans-serif;
+      font-weight: 700;
+      font-size: 1.05rem;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: all 0.25s;
+      box-shadow: 0 6px 18px rgba(204, 56, 56, 0.4);
+    }
+
+    .mg-duck-btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(204, 56, 56, 0.55);
+      background: linear-gradient(135deg, var(--crimson), var(--crimson-glow));
+    }
+
+    .mg-duck-btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* ─── Race track ─── */
+    /* ─────────────────────────────────────────────────────────────────
+       Race track — base + scene-aware backdrops
+       ───────────────────────────────────────────────────────────────── */
+    .mg-duck-track {
+      position: relative;
+      border: 2px solid rgba(255, 184, 107, 0.3);
+      border-radius: 14px;
+      padding: 1.8rem 1.2rem 1.5rem;
+      overflow: hidden;
+      box-shadow: 0 10px 32px rgba(13, 10, 31, 0.55), inset 0 0 30px rgba(0,0,0,0.25);
+      min-height: 380px;
+      isolation: isolate;
+    }
+
+    /* Backdrop scenes — thay đổi theo data-scene attribute */
+    .mg-duck-scene-bg {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Scene: FOREST — rừng ban ngày */
+    .mg-duck-track[data-scene="forest"] {
+      background:
+        /* Đất nâu đáy */
+        linear-gradient(180deg,
+          #87ceeb 0%,         /* trời xanh */
+          #b8d8e8 40%,        /* trời nhạt */
+          #90c4a8 55%,        /* đồng cỏ xa */
+          #6da890 70%,        /* cỏ gần */
+          #4a7868 100%        /* đất đáy */
+        );
+    }
+    .mg-duck-track[data-scene="forest"] .mg-duck-scene-bg::before {
+      /* Mặt trời */
+      content: '☀';
+      position: absolute;
+      top: 6%;
+      right: 8%;
+      font-size: 4rem;
+      color: #fff4d6;
+      filter: drop-shadow(0 0 30px #ffd28c) drop-shadow(0 0 60px rgba(255, 220, 140, 0.6));
+      animation: sunGlow 4s ease-in-out infinite;
+    }
+    .mg-duck-track[data-scene="forest"] .mg-duck-scene-bg::after {
+      /* Hàng cây phía xa */
+      content: '🌲🌳🌲🌳🌲🌳🌲🌳🌲🌳🌲🌳🌲🌳🌲🌳';
+      position: absolute;
+      bottom: 22%;
+      left: 0;
+      right: 0;
+      font-size: 1.6rem;
+      letter-spacing: 0.2em;
+      text-align: center;
+      filter: brightness(0.7) drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+      pointer-events: none;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    /* Scene: SUNSET — hoàng hôn */
+    .mg-duck-track[data-scene="sunset"] {
+      background:
+        linear-gradient(180deg,
+          #2a1845 0%,         /* tím đêm trên cao */
+          #4a2a55 15%,        /* tím */
+          #d4654a 35%,        /* cam đỏ */
+          #ff9d5c 50%,        /* cam mặt trời */
+          #ffb87a 60%,        /* cam phản chiếu mặt nước */
+          #c87856 80%,        /* nước phản chiếu cam */
+          #6b3a2a 100%        /* nước tối đáy */
+        );
+    }
+    .mg-duck-track[data-scene="sunset"] .mg-duck-scene-bg::before {
+      /* Mặt trời lớn lặn */
+      content: '';
+      position: absolute;
+      top: 28%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 110px;
+      height: 110px;
+      background: radial-gradient(circle, #ffe7a8 0%, #ffb86b 40%, #ff7846 70%, transparent 100%);
+      border-radius: 50%;
+      filter: blur(2px);
+      box-shadow: 0 0 80px #ffb86b, 0 0 140px rgba(255, 120, 70, 0.6);
+      animation: sunGlow 5s ease-in-out infinite;
+    }
+    .mg-duck-track[data-scene="sunset"] .mg-duck-scene-bg::after {
+      /* Núi xa silhouette */
+      content: '';
+      position: absolute;
+      bottom: 32%;
+      left: 0;
+      right: 0;
+      height: 50px;
+      background:
+        linear-gradient(180deg, transparent 0%, rgba(50, 30, 21, 0.7) 100%),
+        linear-gradient(135deg, transparent 0%, transparent 12%, #3a2a45 12%, #3a2a45 18%, transparent 18%, transparent 32%, #3a2a45 32%, #3a2a45 42%, transparent 42%, transparent 60%, #3a2a45 60%, #3a2a45 72%, transparent 72%, transparent 84%, #3a2a45 84%, #3a2a45 92%, transparent 92%);
+      clip-path: polygon(0 100%, 5% 60%, 12% 100%, 18% 50%, 25% 100%, 32% 40%, 40% 100%, 48% 55%, 55% 100%, 62% 35%, 70% 100%, 78% 50%, 85% 100%, 92% 45%, 100% 100%);
+    }
+
+    /* Scene: BAMBOO — sân tre trúc */
+    .mg-duck-track[data-scene="bamboo"] {
+      background:
+        linear-gradient(180deg,
+          #1a3530 0%,         /* trời đêm xanh đậm */
+          #2a4a3a 25%,
+          #3d5e4a 45%,        /* lá tre xanh */
+          #4a5a3a 60%,
+          #5a4a2a 80%,
+          #3a2a1a 100%        /* sân đất */
+        );
+    }
+    .mg-duck-track[data-scene="bamboo"] .mg-duck-scene-bg {
+      background:
+        /* Tre 2 bên */
+        linear-gradient(90deg,
+          #4a6845 0%, #4a6845 5%, transparent 5%, transparent 8%,
+          #4a6845 8%, #4a6845 12%, transparent 12%
+        ) left top / 12% 100% no-repeat,
+        linear-gradient(90deg,
+          transparent 0%, transparent 88%,
+          #4a6845 88%, #4a6845 92%, transparent 92%, transparent 95%,
+          #4a6845 95%, #4a6845 100%
+        ) right top / 12% 100% no-repeat;
+    }
+    .mg-duck-track[data-scene="bamboo"] .mg-duck-scene-bg::before {
+      /* Đèn lồng treo phía trên */
+      content: '🏮     🏮     🏮     🏮     🏮';
+      position: absolute;
+      top: 5%;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 1.5rem;
+      filter: drop-shadow(0 0 12px #ff8a3a) drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+      letter-spacing: 0.3em;
+      animation: lanternSwing 3s ease-in-out infinite;
+    }
+    .mg-duck-track[data-scene="bamboo"] .mg-duck-scene-bg::after {
+      /* Mái ngói trên cùng */
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 18px;
+      background: repeating-linear-gradient(90deg,
+        #6b1a14 0px, #6b1a14 6px,
+        #a02828 6px, #a02828 12px);
+      border-bottom: 2px solid var(--lantern-warm);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+
+    @keyframes sunGlow {
+      0%, 100% { filter: drop-shadow(0 0 30px #ffd28c) drop-shadow(0 0 60px rgba(255, 220, 140, 0.6)); }
+      50%      { filter: drop-shadow(0 0 50px #ffd28c) drop-shadow(0 0 90px rgba(255, 220, 140, 0.8)); }
+    }
+
+    @keyframes lanternSwing {
+      0%, 100% { transform: translateX(-3px) rotate(-2deg); }
+      50%      { transform: translateX(3px) rotate(2deg); }
+    }
+
+    /* Mây trôi (decorative cho mọi scene) */
+    .mg-duck-cloud {
+      position: absolute;
+      color: rgba(255, 255, 255, 0.85);
+      font-size: 2.5rem;
+      pointer-events: none;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      animation: cloudDrift 35s linear infinite;
+      z-index: 0;
+    }
+
+    @keyframes cloudDrift {
+      from { transform: translateX(-100px); }
+      to   { transform: translateX(calc(100vw + 100px)); }
+    }
+
+    /* Thú cổ vũ — đặt 2 bên đường đua phía dưới */
+    .mg-duck-spectator {
+      position: absolute;
+      bottom: 8px;
+      font-size: 1.5rem;
+      pointer-events: none;
+      z-index: 4;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+      animation: spectatorJump 0.6s ease-in-out infinite alternate;
+    }
+
+    @keyframes spectatorJump {
+      from { transform: translateY(0); }
+      to   { transform: translateY(-8px); }
+    }
+
+    /* Đường đích */
+    .mg-duck-finish-line {
+      position: absolute;
+      top: 1.8rem;
+      bottom: 1.5rem;
+      right: 2.5rem;
+      width: 6px;
+      background: repeating-linear-gradient(
+        180deg,
+        #fff4d6 0,
+        #fff4d6 12px,
+        #1a0f0a 12px,
+        #1a0f0a 24px
+      );
+      box-shadow: 0 0 16px var(--lantern-warm), inset 0 0 0 1px rgba(0,0,0,0.4);
+      z-index: 3;
+      border-radius: 3px;
+    }
+
+    .mg-duck-finish-line span {
+      position: absolute;
+      top: -32px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'Cinzel', serif;
+      font-weight: 700;
+      color: var(--lantern-glow);
+      font-size: 0.85rem;
+      letter-spacing: 0.3em;
+      text-shadow: 0 0 12px var(--lantern-warm), 0 2px 4px rgba(0,0,0,0.6);
+      background: rgba(13, 10, 31, 0.7);
+      padding: 0.25rem 0.7rem;
+      border-radius: 3px;
+      border: 1px solid var(--lantern-warm);
+    }
+
+    /* Lanes — line nước trong suốt cho thấy backdrop */
+    .mg-duck-lanes {
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      position: relative;
+      z-index: 1;
+      margin-top: 0.3rem;
+    }
+
+    .mg-duck-lane {
+      position: relative;
+      height: 46px;
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(2px);
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      box-shadow: inset 0 2px 5px rgba(0,0,0,0.25);
+      overflow: hidden;
+    }
+
+    .mg-duck-lane::before {
+      /* gợn nước trong lane */
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        90deg,
+        transparent 0,
+        transparent 28px,
+        rgba(255, 255, 255, 0.1) 28px,
+        rgba(255, 255, 255, 0.1) 30px
+      );
+      animation: waterRipple 8s linear infinite;
+    }
+
+    @keyframes waterRipple {
+      from { background-position: 0 0; }
+      to   { background-position: -60px 0; }
+    }
+
+    .mg-duck-lane-name {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-family: 'Manrope', sans-serif;
+      font-weight: 700;
+      font-size: 0.8rem;
+      color: var(--text-bright);
+      letter-spacing: 0.02em;
+      z-index: 1;
+      pointer-events: none;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.95), 0 0 8px rgba(0,0,0,0.7);
+      max-width: 32%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      background: rgba(13, 10, 31, 0.55);
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      backdrop-filter: blur(2px);
+    }
+
+    .mg-duck {
+      position: absolute;
+      top: 50%;
+      left: 1.5rem;
+      width: 42px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      z-index: 2;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+      will-change: transform;
+      transform: translate(-50%, -50%);
+      transition: filter 0.3s;
+    }
+
+    /* Bobbing — vịt lắc nhẹ trong khi đua */
+    .mg-duck.bobbing {
+      animation: duckBob 0.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes duckBob {
+      from { transform: translate(-50%, -50%) rotate(-3deg) translateY(0); }
+      to   { transform: translate(-50%, -65%) rotate(3deg) translateY(-2px); }
+    }
+
+    /* Vịt thắng (top 1) */
+    .mg-duck.winner {
+      animation: duckWinner 0.6s ease-in-out infinite alternate;
+      filter: drop-shadow(0 0 24px var(--lantern-warm)) drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    }
+
+    @keyframes duckWinner {
+      from { transform: translate(-50%, -50%) scale(1.1) rotate(-5deg); }
+      to   { transform: translate(-50%, -80%) scale(1.5) rotate(5deg); }
+    }
+
+    /* Vịt top 2-3 */
+    .mg-duck.podium {
+      filter: drop-shadow(0 0 14px rgba(255, 184, 107, 0.7)) drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    }
+
+    /* Race info & button */
+    .mg-duck-race-info {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-top: 1.2rem;
+      padding: 0 0.4rem;
+      flex-wrap: wrap;
+    }
+
+    .mg-duck-status {
+      font-family: 'Manrope', sans-serif;
+      font-weight: 600;
+      color: var(--lantern-warm);
+      font-size: 1.05rem;
+    }
+
+    .mg-duck-status.running {
+      color: var(--lantern-glow);
+      animation: statusPulse 0.8s ease-in-out infinite;
+    }
+
+    @keyframes statusPulse {
+      0%, 100% { opacity: 0.85; }
+      50%      { opacity: 1; }
+    }
+
+    .mg-duck-status.win {
+      color: var(--vermilion);
+      font-size: 1.2rem;
+    }
+
+    /* ─── Ready overlay (trước khi bắt đầu race) ─── */
+    .mg-duck-ready-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      background: rgba(13, 10, 31, 0.65);
+      backdrop-filter: blur(4px);
+      z-index: 10;
+      animation: readyFadeIn 0.4s ease;
+    }
+
+    @keyframes readyFadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    .mg-duck-start-race-btn {
+      padding: 1.1rem 2.6rem;
+      background: linear-gradient(135deg, var(--crimson-deep), var(--crimson-fire));
+      border: 2px solid var(--lantern-warm);
+      border-radius: 999px;
+      color: var(--text-bright);
+      font-family: 'Manrope', sans-serif;
+      font-weight: 800;
+      font-size: 1.35rem;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: all 0.25s;
+      box-shadow:
+        0 8px 24px rgba(204, 56, 56, 0.55),
+        0 0 0 3px rgba(255, 184, 107, 0.2);
+      animation: startBtnPulse 1.6s ease-in-out infinite;
+    }
+
+    @keyframes startBtnPulse {
+      0%, 100% { box-shadow: 0 8px 24px rgba(204, 56, 56, 0.55), 0 0 0 3px rgba(255, 184, 107, 0.2); }
+      50%      { box-shadow: 0 12px 36px rgba(204, 56, 56, 0.7), 0 0 0 8px rgba(255, 184, 107, 0.15); }
+    }
+
+    .mg-duck-start-race-btn:hover {
+      transform: translateY(-3px) scale(1.04);
+      background: linear-gradient(135deg, var(--crimson), var(--crimson-glow));
+    }
+
+    .mg-duck-ready-hint {
+      color: var(--text-soft);
+      font-size: 0.95rem;
+      margin: 0;
+    }
+
+    /* Countdown overlay 3-2-1 */
+    .mg-duck-countdown {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 11;
+    }
+
+    .mg-duck-countdown-num {
+      font-family: 'Manrope', sans-serif;
+      font-weight: 800;
+      font-size: 12rem;
+      line-height: 1;
+      color: var(--lantern-glow);
+      text-shadow:
+        0 0 30px var(--lantern-warm),
+        0 0 60px var(--vermilion),
+        0 4px 12px rgba(0,0,0,0.6);
+      animation: countdownPop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+
+    @keyframes countdownPop {
+      0%   { opacity: 0; transform: scale(2.5); }
+      30%  { opacity: 1; transform: scale(0.85); }
+      60%  { transform: scale(1.05); }
+      80%  { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(0.7); }
+    }
+
+    /* ─── Podium top 3 ─── */
+    .mg-duck-podium {
+      margin-top: 1.5rem;
+      padding: 1.6rem 1.4rem 1.8rem;
+      background:
+        linear-gradient(135deg, rgba(255, 184, 107, 0.1), rgba(204, 56, 56, 0.06)),
+        rgba(37, 22, 16, 0.85);
+      border: 1px solid var(--lantern-warm);
+      border-radius: 12px;
+      text-align: center;
+      box-shadow: 0 8px 28px rgba(204, 56, 56, 0.3);
+      animation: podiumFadeIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes podiumFadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .mg-duck-podium-title {
+      font-family: 'Manrope', sans-serif;
+      font-weight: 800;
+      color: var(--lantern-glow);
+      font-size: 1.5rem;
+      letter-spacing: -0.01em;
+      margin: 0 0 1.2rem;
+      text-shadow: 0 0 14px rgba(255, 184, 107, 0.5);
+    }
+
+    .mg-duck-podium-row {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      gap: 0.8rem;
+      margin: 0 auto;
+      max-width: 600px;
+    }
+
+    .mg-duck-podium-spot {
+      flex: 1;
+      max-width: 180px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .mg-duck-podium-rank {
+      font-size: 2.8rem;
+      line-height: 1;
+      filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));
+    }
+
+    .mg-duck-podium-name {
+      font-family: 'Manrope', sans-serif;
+      font-weight: 700;
+      color: var(--text-bright);
+      font-size: 0.95rem;
+      line-height: 1.25;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .mg-duck-podium-time {
+      font-family: 'Be Vietnam Pro', sans-serif;
+      color: var(--text-dim);
+      font-size: 0.8rem;
+    }
+
+    .mg-duck-podium-block {
+      width: 100%;
+      border-radius: 6px 6px 0 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Manrope', sans-serif;
+      font-weight: 800;
+      font-size: 1.4rem;
+      color: var(--night-deep);
+      border: 1px solid;
+    }
+
+    .mg-duck-podium-spot.rank-1 .mg-duck-podium-block {
+      height: 90px;
+      background: linear-gradient(180deg, #ffe7a8, #dba85a);
+      border-color: #b8893f;
+      box-shadow: 0 0 24px rgba(255, 184, 107, 0.5);
+    }
+    .mg-duck-podium-spot.rank-2 .mg-duck-podium-block {
+      height: 65px;
+      background: linear-gradient(180deg, #d8d8d8, #888);
+      border-color: #555;
+    }
+    .mg-duck-podium-spot.rank-3 .mg-duck-podium-block {
+      height: 50px;
+      background: linear-gradient(180deg, #d8a878, #8a5028);
+      border-color: #5a3018;
+    }
+
+    /* Order on display: rank-2, rank-1, rank-3 (giữ thứ tự DOM 1-2-3) → dùng order */
+    .mg-duck-podium-spot.rank-2 { order: 1; }
+    .mg-duck-podium-spot.rank-1 { order: 2; }
+    .mg-duck-podium-spot.rank-3 { order: 3; }
+
+
+    /* ═══════════════════════════════════════════════════════════════════
+       GAME 3: MỞ HÒM BÍ MẬT
+       ═══════════════════════════════════════════════════════════════════ */
+    .mg-chest-stage {
+      max-width: 820px;
+      margin: 0 auto;
+    }
+
+    /* ─── Setup phase ─── */
+    .mg-chest-setup {
+      background:
+        linear-gradient(135deg, rgba(255, 184, 107, 0.06), rgba(204, 56, 56, 0.04)),
+        rgba(37, 22, 16, 0.7);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 184, 107, 0.25);
+      border-radius: 12px;
+      padding: 2rem 1.8rem;
+      box-shadow: 0 6px 24px rgba(13, 10, 31, 0.4);
+    }
+
+    .mg-chest-setup-grid {
+      margin-bottom: 1.5rem;
+    }
+
+    .mg-chest-rewards {
+      margin-bottom: 1.2rem;
+      padding: 1.2rem 1.3rem;
+      background: rgba(13, 10, 31, 0.4);
+      border: 1px solid rgba(255, 184, 107, 0.18);
+      border-radius: 8px;
+    }
+
+    .mg-chest-rewards-title {
+      font-family: 'Manrope', sans-serif;
+      font-weight: 700;
+      color: var(--lantern-warm);
+      font-size: 1rem;
+      margin: 0 0 0.9rem;
+      letter-spacing: 0.02em;
+    }
+
+    .mg-chest-reward-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.7rem 0;
+      border-bottom: 1px dashed rgba(255, 184, 107, 0.12);
+    }
+
+    .mg-chest-reward-row:last-child {
+      border-bottom: none;
+    }
+
+    .mg-chest-reward-info {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      flex: 1;
+    }
+
+    .mg-chest-reward-icon {
+      font-size: 1.8rem;
+      width: 36px;
+      text-align: center;
+      filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4));
+    }
+
+    .mg-chest-reward-text {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+
+    .mg-chest-reward-text strong {
+      font-family: 'Manrope', sans-serif;
+      font-weight: 700;
+      color: var(--text-bright);
+      font-size: 0.95rem;
+    }
+
+    .mg-chest-reward-text span {
+      font-family: 'Be Vietnam Pro', sans-serif;
+      font-size: 0.82rem;
+      color: var(--text-dim);
+    }
+
+    .mg-chest-reward-input {
+      width: 70px;
+      padding: 0.5rem 0.6rem;
+      background: rgba(13, 10, 31, 0.7);
+      border: 1px solid rgba(255, 184, 107, 0.3);
+      border-radius: 6px;
+      color: var(--lantern-glow);
+      font-family: 'Manrope', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+      text-align: center;
+    }
+
+    .mg-chest-reward-input:focus {
+      outline: none;
+      border-color: var(--lantern-warm);
+      box-shadow: 0 0 0 2px rgba(255, 184, 107, 0.15);
+    }
+
+    .mg-chest-reward-empty-count {
+      font-family: 'Manrope', sans-serif;
+      font-weight: 700;
+      color: var(--text-soft);
+      font-size: 1.1rem;
+      width: 70px;
+      text-align: center;
+      padding: 0.5rem 0.6rem;
+      background: rgba(13, 10, 31, 0.4);
+      border: 1px dashed rgba(255, 184, 107, 0.2);
+      border-radius: 6px;
+    }
+
+    /* ─── Game phase ─── */
+    .mg-chest-info {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      margin-bottom: 1.6rem;
+      flex-wrap: wrap;
+    }
+
+    .mg-chest-info-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(37, 22, 16, 0.7);
+      border: 1px solid rgba(255, 184, 107, 0.25);
+      border-radius: 999px;
+      padding: 0.55rem 1rem 0.55rem 0.7rem;
+      backdrop-filter: blur(4px);
+    }
+
+    .mg-chest-info-item.score {
+      border-color: var(--lantern-warm);
+      background: linear-gradient(135deg, rgba(255, 184, 107, 0.18), rgba(184, 137, 63, 0.12));
+      box-shadow: 0 0 14px rgba(255, 184, 107, 0.2);
+    }
+
+    .mg-chest-info-item.score .mg-chest-info-count {
+      color: var(--lantern-glow);
+      font-size: 1.3rem;
+    }
+
+    .mg-chest-info-item.score.positive .mg-chest-info-count {
+      color: #88e088;
+      text-shadow: 0 0 8px rgba(136, 224, 136, 0.4);
+    }
+
+    .mg-chest-info-item.score.negative .mg-chest-info-count {
+      color: var(--crimson-glow);
+      text-shadow: 0 0 8px rgba(232, 80, 80, 0.4);
+    }
+
+    .mg-chest-info-icon {
+      font-size: 1.4rem;
+      filter: drop-shadow(0 1px 3px rgba(0,0,0,0.5));
+    }
+
+    .mg-chest-info-label {
+      font-family: 'Be Vietnam Pro', sans-serif;
+      font-size: 0.88rem;
+      color: var(--text-soft);
+    }
+
+    .mg-chest-info-count {
+      font-family: 'Manrope', sans-serif;
+      font-weight: 800;
+      color: var(--lantern-glow);
+      font-size: 1.05rem;
+      min-width: 18px;
+      text-align: center;
+    }
+
+    .mg-chest-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      max-width: 540px;
+      margin: 0 auto;
+    }
+
+    .mg-chest-grid[data-cols="4"] {
+      grid-template-columns: repeat(4, 1fr);
+      max-width: 660px;
+    }
+
+    .mg-chest {
+      position: relative;
+      aspect-ratio: 1;
+      background:
+        linear-gradient(135deg, rgba(255, 184, 107, 0.08), rgba(204, 56, 56, 0.05)),
+        rgba(37, 22, 16, 0.85);
+      border: 2px solid var(--bronze);
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3.2rem;
+      transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow:
+        0 6px 18px rgba(13, 10, 31, 0.5),
+        inset 0 -3px 6px rgba(0,0,0,0.3),
+        inset 0 2px 4px rgba(255, 184, 107, 0.2);
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+      user-select: none;
+    }
+
+    .mg-chest:hover:not(.opened):not(.disabled) {
+      transform: translateY(-4px) scale(1.03);
+      border-color: var(--lantern-warm);
+      box-shadow:
+        0 10px 28px rgba(204, 56, 56, 0.4),
+        0 0 0 1px var(--lantern-warm),
+        inset 0 -3px 6px rgba(0,0,0,0.3),
+        inset 0 2px 4px rgba(255, 184, 107, 0.3);
+    }
+
+    .mg-chest.disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .mg-chest.opened {
+      cursor: default;
+      animation: chestOpen 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+
+    @keyframes chestOpen {
+      0%   { transform: scale(1) rotate(0); }
+      40%  { transform: scale(1.15) rotate(-3deg); }
+      70%  { transform: scale(0.95) rotate(2deg); }
+      100% { transform: scale(1) rotate(0); }
+    }
+
+    .mg-chest.opened.treasure {
+      background:
+        radial-gradient(circle at center, rgba(255, 244, 214, 0.4), rgba(255, 184, 107, 0.15)),
+        rgba(37, 22, 16, 0.85);
+      border-color: var(--lantern-glow);
+      box-shadow:
+        0 0 30px rgba(255, 184, 107, 0.6),
+        0 8px 24px rgba(204, 56, 56, 0.3),
+        inset 0 0 20px rgba(255, 184, 107, 0.2);
+    }
+
+    .mg-chest.opened.coin {
+      background:
+        radial-gradient(circle at center, rgba(220, 168, 90, 0.3), rgba(184, 137, 63, 0.15)),
+        rgba(37, 22, 16, 0.85);
+      border-color: var(--bronze-bright);
+      box-shadow:
+        0 0 20px rgba(220, 168, 90, 0.4),
+        0 6px 18px rgba(160, 110, 50, 0.25);
+    }
+
+    .mg-chest.opened.snake {
+      background:
+        radial-gradient(circle at center, rgba(232, 80, 80, 0.3), rgba(107, 26, 20, 0.15)),
+        rgba(37, 22, 16, 0.85);
+      border-color: var(--crimson-fire);
+    }
+
+    .mg-chest.opened.empty {
+      opacity: 0.45;
+      filter: grayscale(0.5);
+    }
+
+    .mg-chest-num {
+      position: absolute;
+      top: 6px;
+      left: 8px;
+      font-family: 'Manrope', sans-serif;
+      font-weight: 700;
+      font-size: 0.78rem;
+      color: var(--text-faint);
+    }
+
+    .mg-chest-content {
+      animation: chestContentReveal 0.5s ease-out 0.2s both;
+    }
+
+    @keyframes chestContentReveal {
+      from { opacity: 0; transform: scale(0.4) rotate(-20deg); }
+      to   { opacity: 1; transform: scale(1) rotate(0); }
+    }
+
+    /* Floating +N / -N điểm khi mở */
+    .mg-chest-delta {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'Manrope', sans-serif;
+      font-weight: 800;
+      font-size: 1.5rem;
+      pointer-events: none;
+      animation: deltaFloat 1.6s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+      z-index: 5;
+      text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+    }
+
+    .mg-chest-delta.positive { color: #88e088; }
+    .mg-chest-delta.negative { color: var(--crimson-glow); }
+    .mg-chest-delta.zero     { color: var(--text-dim); }
+
+    @keyframes deltaFloat {
+      0%   { opacity: 0; transform: translateX(-50%) translateY(10px) scale(0.6); }
+      20%  { opacity: 1; transform: translateX(-50%) translateY(-8px) scale(1.3); }
+      80%  { opacity: 1; transform: translateX(-50%) translateY(-40px) scale(1); }
+      100% { opacity: 0; transform: translateX(-50%) translateY(-60px) scale(0.9); }
+    }
+
+    /* ─── History ─── */
+    .mg-chest-history {
+      margin-top: 1.6rem;
+      padding: 1rem 1.2rem;
+      background: rgba(37, 22, 16, 0.5);
+      border: 1px solid rgba(255, 184, 107, 0.18);
+      border-radius: 8px;
+    }
+
+    .mg-chest-history-title {
+      font-family: 'Manrope', sans-serif;
+      font-weight: 600;
+      color: var(--lantern-warm);
+      font-size: 0.95rem;
+      margin: 0 0 0.7rem;
+      letter-spacing: 0.02em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .mg-chest-history-title::before {
+      content: '📜';
+      font-size: 0.95rem;
+    }
+
+    .mg-chest-history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+
+    .mg-chest-history-list::-webkit-scrollbar { width: 5px; }
+    .mg-chest-history-list::-webkit-scrollbar-thumb { background: rgba(204, 56, 56, 0.3); border-radius: 3px; }
+
+    .mg-chest-history-item {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.4rem 0.6rem;
+      background: rgba(13, 10, 31, 0.4);
+      border-radius: 6px;
+      font-size: 0.88rem;
+      color: var(--text-soft);
+      animation: historyAppear 0.4s ease;
+    }
+
+    @keyframes historyAppear {
+      from { opacity: 0; transform: translateX(-10px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    .mg-chest-history-item .ico {
+      font-size: 1.2rem;
+      width: 22px;
+      text-align: center;
+    }
+
+    .mg-chest-history-item .turn {
+      font-family: 'Manrope', sans-serif;
+      font-weight: 700;
+      color: var(--text-dim);
+      width: 24px;
+    }
+
+    .mg-chest-history-item .name { flex: 1; }
+
+    .mg-chest-history-item .delta {
+      font-family: 'Manrope', sans-serif;
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+
+    .mg-chest-history-item .delta.positive { color: #88e088; }
+    .mg-chest-history-item .delta.negative { color: var(--crimson-glow); }
+    .mg-chest-history-item .delta.zero     { color: var(--text-dim); }
+
+    .mg-chest-history-empty {
+      color: var(--text-faint);
+      font-style: italic;
+      font-size: 0.85rem;
+      padding: 0.4rem 0.5rem;
+      text-align: center;
+    }
+
+    .mg-chest-actions {
+      display: flex;
+      justify-content: center;
+      gap: 0.8rem;
+      margin-top: 1.6rem;
+      flex-wrap: wrap;
+    }
+    /* ═══════════════════════════════════════════════════════════════════
+       RESPONSIVE
+       ═══════════════════════════════════════════════════════════════════ */
+    @media (max-width: 600px) {
+      .mg-hub { padding: 1.2rem 0.8rem 3rem; font-size: 15.5px; }
+      .mg-header { gap: 0.8rem; padding: 0.8rem 0; margin-bottom: 1.5rem; }
+      .mg-brand-icon { width: 42px; height: 42px; font-size: 1.5rem; }
+      .mg-brand-name { font-size: 1.15rem; }
+      .mg-nick-input { width: 90px; font-size: 0.88rem; }
+      .mg-grid { grid-template-columns: 1fr; gap: 1rem; }
+      .mg-card { padding: 1.3rem 1.2rem; }
+      .mg-wheel-input { min-height: 180px; }
+      .mg-modal { padding: 2rem 1.4rem 1.6rem; }
+
+      /* Duck */
+      .mg-duck-setup { padding: 1.4rem 1.1rem; }
+      .mg-duck-track { padding: 1rem 0.7rem; min-height: 320px; }
+      .mg-duck-finish-line { right: 1.8rem; }
+      .mg-duck-lane { height: 40px; }
+      .mg-duck { width: 36px; height: 36px; font-size: 1.6rem; }
+      .mg-duck-lane-name { font-size: 0.7rem; max-width: 28%; }
+      .mg-duck-scene-row { grid-template-columns: 1fr; }
+      .mg-duck-scene-btn { flex-direction: row; gap: 0.6rem; padding: 0.55rem 0.7rem; }
+      .mg-duck-countdown-num { font-size: 7rem; }
+      .mg-duck-podium-block { font-size: 1.1rem; }
+      .mg-duck-podium-spot.rank-1 .mg-duck-podium-block { height: 70px; }
+      .mg-duck-podium-spot.rank-2 .mg-duck-podium-block { height: 50px; }
+      .mg-duck-podium-spot.rank-3 .mg-duck-podium-block { height: 38px; }
+      .mg-duck-podium-rank { font-size: 2rem; }
+      .mg-duck-start-race-btn { padding: 0.85rem 1.6rem; font-size: 1.1rem; }
+
+      /* Chest */
+      .mg-chest-grid { gap: 0.6rem; max-width: 100%; }
+      .mg-chest { font-size: 2.4rem; }
+      .mg-chest-info { gap: 0.6rem; }
+      .mg-chest-info-item { padding: 0.4rem 0.7rem 0.4rem 0.5rem; }
+      .mg-chest-info-label { font-size: 0.78rem; }
+      .mg-chest-setup { padding: 1.4rem 1.1rem; }
+      .mg-chest-reward-row { flex-wrap: wrap; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .mg-hub::before,
+      .mg-wheel-frame,
+      .mg-modal-confetti i,
+      .mg-modal-icon,
+      .mg-duck.bobbing,
+      .mg-duck.winner,
+      .mg-duck-cloud,
+      .mg-duck-spectator,
+      .mg-duck-podium,
+      .mg-duck-countdown-num,
+      .mg-duck-start-race-btn,
+      .mg-chest.opened,
+      .mg-chest-delta { animation: none !important; }
+    }
+  </style>
+</head>
+
+<body class="standalone-mg">
+  <main class="mg-hub" id="mgHub">
+    <!-- ═══════════════ HEADER ═══════════════ -->
+    <header class="mg-header">
+      <div class="mg-brand">
+        <div class="mg-brand-icon">⚔</div>
+        <div class="mg-brand-text">
+          <span class="mg-brand-name">Sòng Bạc Giang Hồ</span>
+          <span class="mg-brand-sub">Bang Hội Nhất Mộng</span>
+        </div>
+      </div>
+
+      <button class="mg-back-btn" id="mgBackBtn">← Về Sòng Bạc</button>
+
+      <span class="mg-admin-badge" id="mgAdminBadge">Bang Trưởng</span>
+      <span class="mg-sync-badge" id="mgSyncBadge" title="Trạng thái đồng bộ với Firebase">
+        <span class="mg-sync-dot"></span>
+        <span class="mg-sync-text">Đang kết nối...</span>
+      </span>
+
+      <div class="mg-nick">
+        <span class="mg-nick-label">Hiệp khách:</span>
+        <input
+          type="text"
+          class="mg-nick-input"
+          id="mgNickInput"
+          maxlength="20"
+          placeholder="Nhập tên..."
+        />
+        <button class="mg-nick-edit" id="mgNickEdit">Lưu</button>
+      </div>
+    </header>
+
+    <!-- ═══════════════ HUB - Game cards ═══════════════ -->
+    <section class="mg-hub-section" id="mgHubSection">
+      <div class="mg-hub-intro">
+        <span class="mg-hub-intro-label">Khu vui chơi · Bang Nhất Mộng</span>
+        <h1>Chọn Cuộc Vui</h1>
+        <p>Bốn cánh cửa đợi hiệp khách. Quay vòng may rủi, đua vịt giữa bến, mở hòm bí mật hay so tài kéo búa bao — chọn lấy một cuộc, kẻ thắng được vinh danh, kẻ thua thì… chuyện thường ở bang.</p>
+      </div>
+
+      <div class="mg-grid">
+        <!-- 1. Vòng Quay May Mắn -->
+        <!-- 1. Vòng Quay May Mắn -->
+        <div class="mg-card" data-game="wheel">
+          <div class="mg-card-admin" data-admin-for="wheel">
+            <label class="mg-card-admin-toggle" title="Mở/đóng game">
+              <input type="checkbox" class="mg-card-admin-input" data-game-toggle="wheel" />
+              <span class="mg-card-admin-track"><span class="mg-card-admin-thumb"></span></span>
+              <span class="mg-card-admin-label">Mở</span>
+            </label>
+          </div>
+          <div class="mg-card-closed-overlay">
+            <span class="mg-card-closed-icon">🔒</span>
+            <span class="mg-card-closed-text">Bang Trưởng đã khóa</span>
+          </div>
+          <span class="mg-card-icon">🎯</span>
+          <h3 class="mg-card-title">Vòng Quay May Mắn</h3>
+          <div class="mg-card-subtitle">Lucky Spin</div>
+          <p class="mg-card-desc">Nhập danh sách tên, quay vòng để chọn ngẫu nhiên. Dùng để bốc thăm, chia phe, chọn tướng — hoặc xem ai phải đi mua bún bò.</p>
+          <div class="mg-card-meta" data-meta-for="wheel">
+            <span class="mg-card-tag live">● Đang mở</span>
+            <span class="mg-card-tag">Tự nhập tên</span>
+            <span class="mg-card-tag">Quay ngẫu nhiên</span>
+          </div>
+        </div>
+
+        <!-- 2. Đua Vịt -->
+        <div class="mg-card" data-game="duck">
+          <div class="mg-card-admin" data-admin-for="duck">
+            <label class="mg-card-admin-toggle" title="Mở/đóng game">
+              <input type="checkbox" class="mg-card-admin-input" data-game-toggle="duck" />
+              <span class="mg-card-admin-track"><span class="mg-card-admin-thumb"></span></span>
+              <span class="mg-card-admin-label">Mở</span>
+            </label>
+          </div>
+          <div class="mg-card-closed-overlay">
+            <span class="mg-card-closed-icon">🔒</span>
+            <span class="mg-card-closed-text">Bang Trưởng đã khóa</span>
+          </div>
+          <span class="mg-card-icon">🦆</span>
+          <h3 class="mg-card-title">Đua Vịt Giang Hồ</h3>
+          <div class="mg-card-subtitle">Duck Race</div>
+          <p class="mg-card-desc">Tám con vịt, một đường đua. Chọn vịt cược lấy danh, kẻ về đích đầu là vịt vương.</p>
+          <div class="mg-card-meta" data-meta-for="duck">
+            <span class="mg-card-tag live">● Đang mở</span>
+            <span class="mg-card-tag">Multiplayer</span>
+            <span class="mg-card-tag">2-8 người</span>
+          </div>
+        </div>
+
+        <!-- 3. Mở Hòm -->
+        <div class="mg-card" data-game="chest">
+          <div class="mg-card-admin" data-admin-for="chest">
+            <label class="mg-card-admin-toggle" title="Mở/đóng game">
+              <input type="checkbox" class="mg-card-admin-input" data-game-toggle="chest" />
+              <span class="mg-card-admin-track"><span class="mg-card-admin-thumb"></span></span>
+              <span class="mg-card-admin-label">Mở</span>
+            </label>
+          </div>
+          <div class="mg-card-closed-overlay">
+            <span class="mg-card-closed-icon">🔒</span>
+            <span class="mg-card-closed-text">Bang Trưởng đã khóa</span>
+          </div>
+          <span class="mg-card-icon">🎃</span>
+          <h3 class="mg-card-title">Mở Hòm Bí Mật</h3>
+          <div class="mg-card-subtitle">Mystery Chest</div>
+          <p class="mg-card-desc">Chín hòm trên bàn, một có báu vật, một có rắn độc. Đoán đúng, lấy hết. Đoán sai, mất hết.</p>
+          <div class="mg-card-meta" data-meta-for="chest">
+            <span class="mg-card-tag live">● Đang mở</span>
+            <span class="mg-card-tag">Multiplayer</span>
+            <span class="mg-card-tag">2+ người</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════ GAME 1: VÒNG QUAY MAY MẮN ═══════════════ -->
+    <section class="mg-screen" id="mgWheelScreen">
+      <div class="mg-screen-header">
+        <h2 class="mg-screen-title">Vòng Quay May Mắn</h2>
+        <p class="mg-screen-sub">Nhập danh sách tên ở bên phải, click vào vòng quay để chọn ngẫu nhiên.</p>
+      </div>
+
+      <div class="mg-wheel-stage">
+        <!-- Wheel -->
+        <div class="mg-wheel-wrap">
+          <div class="mg-wheel-frame"></div>
+          <div class="mg-wheel-pointer"></div>
+          <svg class="mg-wheel-svg" id="mgWheelSvg" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+            <!-- Slices được render bằng JS -->
+          </svg>
+          <div class="mg-wheel-pegs" id="mgWheelPegs"></div>
+          <button class="mg-wheel-hub" id="mgWheelSpinBtn">Quay</button>
+        </div>
+
+        <!-- Side panel: nhập tên + lịch sử -->
+        <div class="mg-wheel-side">
+          <div class="mg-wheel-input-card">
+            <div class="mg-wheel-input-header">
+              <h4>Danh sách tên</h4>
+              <span class="mg-wheel-input-count">
+                <strong id="mgWheelCount">0</strong> tên
+              </span>
+            </div>
+            <p class="mg-wheel-input-hint">Mỗi dòng một tên. Nhập xong tự động cập nhật vòng quay.</p>
+            <textarea
+              class="mg-wheel-input"
+              id="mgWheelNamesInput"
+              spellcheck="false"
+              placeholder="Hiệp Khách 1&#10;Hiệp Khách 2&#10;Hiệp Khách 3&#10;..."
+            ></textarea>
+            <div class="mg-wheel-input-actions">
+              <button class="mg-wheel-btn-ghost" id="mgWheelClearBtn">Xóa hết</button>
+              <button class="mg-wheel-btn-ghost" id="mgWheelShuffleBtn">Xáo trộn</button>
+              <label class="mg-wheel-toggle" title="Người trúng sẽ tự động bị xóa khỏi danh sách sau khi quay">
+                <input type="checkbox" id="mgWheelAutoRemove" checked />
+                <span class="mg-wheel-toggle-track">
+                  <span class="mg-wheel-toggle-thumb"></span>
+                </span>
+                <span class="mg-wheel-toggle-label">Tự xóa người trúng</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="mg-wheel-history">
+            <h4>Lịch sử quay gần đây</h4>
+            <div class="mg-wheel-history-list" id="mgWheelHistory">
+              <div class="mg-wheel-history-empty">Chưa có lượt quay nào</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════ GAME 2: ĐUA VỊT GIANG HỒ ═══════════════ -->
+    <section class="mg-screen" id="mgDuckScreen">
+      <div class="mg-screen-header">
+        <h2 class="mg-screen-title">Đua Vịt Giang Hồ</h2>
+        <p class="mg-screen-sub">Tám con vịt, một đường đua, kẻ về đích đầu là vịt vương.</p>
+      </div>
+
+      <div class="mg-duck-stage">
+        <!-- Setup phase -->
+        <div class="mg-duck-setup" id="mgDuckSetup">
+          <h3 class="mg-duck-section-title">Chuẩn bị đường đua</h3>
+          <p class="mg-duck-hint">Chọn số vịt và đặt tên (hoặc bấm "Random tên" để máy tự đặt). Mỗi dòng = 1 vịt.</p>
+
+          <div class="mg-duck-setup-grid">
+            <div>
+              <label class="mg-duck-label">Số vịt tham gia</label>
+              <div class="mg-duck-num-row" id="mgDuckNumRow">
+                <button class="mg-duck-num-btn" data-num="4">4</button>
+                <button class="mg-duck-num-btn active" data-num="6">6</button>
+                <button class="mg-duck-num-btn" data-num="8">8</button>
+                <button class="mg-duck-num-btn" data-num="10">10</button>
+              </div>
+              <div class="mg-duck-num-custom">
+                <span class="mg-duck-num-custom-label">Hoặc nhập tự do:</span>
+                <input
+                  type="number"
+                  class="mg-duck-num-input"
+                  id="mgDuckNumInput"
+                  min="2"
+                  max="20"
+                  placeholder="2-20"
+                />
+              </div>
+
+              <label class="mg-duck-label" style="margin-top: 1.4rem;">Bối cảnh đường đua</label>
+              <div class="mg-duck-scene-row" id="mgDuckSceneRow">
+                <button class="mg-duck-scene-btn active" data-scene="forest">
+                  <span class="mg-duck-scene-icon">🌳</span>
+                  <span class="mg-duck-scene-name">Rừng ban ngày</span>
+                </button>
+                <button class="mg-duck-scene-btn" data-scene="sunset">
+                  <span class="mg-duck-scene-icon">🌅</span>
+                  <span class="mg-duck-scene-name">Hoàng hôn</span>
+                </button>
+                <button class="mg-duck-scene-btn" data-scene="bamboo">
+                  <span class="mg-duck-scene-icon">🏯</span>
+                  <span class="mg-duck-scene-name">Sân tre trúc</span>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label class="mg-duck-label">Tên các vịt</label>
+              <textarea
+                class="mg-duck-names"
+                id="mgDuckNames"
+                spellcheck="false"
+                placeholder="Mỗi dòng một tên..."
+              ></textarea>
+              <button class="mg-duck-btn-ghost" id="mgDuckRandomNames">🎲 Random tên giang hồ</button>
+            </div>
+          </div>
+
+          <div class="mg-duck-setup-actions">
+            <button class="mg-duck-btn-primary" id="mgDuckStartBtn">
+              🚀 Bắt đầu đua
+            </button>
+          </div>
+        </div>
+
+        <!-- Race phase -->
+        <div class="mg-duck-race" id="mgDuckRace" style="display: none;">
+          <div class="mg-duck-track" id="mgDuckTrack" data-scene="forest">
+            <!-- Backdrop scene-aware: được render bởi JS theo scene chọn -->
+            <div class="mg-duck-scene-bg" id="mgDuckSceneBg"></div>
+
+            <!-- Lanes -->
+            <div class="mg-duck-lanes" id="mgDuckLanes"></div>
+
+            <!-- Đường đích -->
+            <div class="mg-duck-finish-line">
+              <span>ĐÍCH</span>
+            </div>
+
+            <!-- Overlay "Sẵn sàng" trước khi start -->
+            <div class="mg-duck-ready-overlay" id="mgDuckReadyOverlay">
+              <button class="mg-duck-start-race-btn" id="mgDuckStartRaceBtn">
+                🏁 Bấm để xuất phát
+              </button>
+              <p class="mg-duck-ready-hint">Sẵn sàng đếm ngược 3 - 2 - 1...</p>
+            </div>
+
+            <!-- Overlay countdown -->
+            <div class="mg-duck-countdown" id="mgDuckCountdown" style="display: none;"></div>
+          </div>
+
+          <div class="mg-duck-race-info" id="mgDuckRaceInfo">
+            <span class="mg-duck-status" id="mgDuckStatus">⏳ Chuẩn bị xuất phát...</span>
+            <button class="mg-duck-btn-ghost" id="mgDuckResetBtn">⬅ Quay lại</button>
+          </div>
+
+          <!-- Podium top 3 (hiện sau khi race xong) -->
+          <div class="mg-duck-podium" id="mgDuckPodium" style="display: none;">
+            <h3 class="mg-duck-podium-title">🏆 Bảng vinh danh</h3>
+            <div class="mg-duck-podium-row" id="mgDuckPodiumRow"></div>
+            <button class="mg-duck-btn-primary" id="mgDuckRaceAgainBtn" style="margin-top: 1.2rem;">
+              🔄 Đua lại
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════ GAME 3: MỞ HÒM BÍ MẬT ═══════════════ -->
+    <section class="mg-screen" id="mgChestScreen">
+      <div class="mg-screen-header">
+        <h2 class="mg-screen-title">Mở Hòm Bí Mật</h2>
+        <p class="mg-screen-sub">Mỗi lượt được mở tối đa 5 hòm. Báu vật cộng điểm, rắn độc trừ điểm. Tổng điểm cao = thắng!</p>
+      </div>
+
+      <div class="mg-chest-stage">
+        <!-- Setup phase: admin config -->
+        <div class="mg-chest-setup" id="mgChestSetup">
+          <h3 class="mg-duck-section-title">Bày bàn hòm</h3>
+          <p class="mg-duck-hint">Chọn số hòm trên bàn và phân bổ phần thưởng. Còn lại là hòm trống.</p>
+
+          <div class="mg-chest-setup-grid">
+            <div>
+              <label class="mg-duck-label">Số hòm</label>
+              <div class="mg-duck-num-row" id="mgChestNumRow">
+                <button class="mg-duck-num-btn active" data-num="9">9</button>
+                <button class="mg-duck-num-btn" data-num="12">12</button>
+                <button class="mg-duck-num-btn" data-num="16">16</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="mg-chest-rewards">
+            <h4 class="mg-chest-rewards-title">Phần thưởng trong hòm</h4>
+            <div class="mg-chest-reward-row">
+              <div class="mg-chest-reward-info">
+                <span class="mg-chest-reward-icon">💎</span>
+                <div class="mg-chest-reward-text">
+                  <strong>Báu vật lớn</strong>
+                  <span>+10 điểm mỗi hòm</span>
+                </div>
+              </div>
+              <input
+                type="number"
+                class="mg-chest-reward-input"
+                id="mgChestTreasureCount"
+                min="0"
+                max="5"
+                value="1"
+              />
+            </div>
+            <div class="mg-chest-reward-row">
+              <div class="mg-chest-reward-info">
+                <span class="mg-chest-reward-icon">🪙</span>
+                <div class="mg-chest-reward-text">
+                  <strong>Báu vật nhỏ</strong>
+                  <span>+5 điểm mỗi hòm</span>
+                </div>
+              </div>
+              <input
+                type="number"
+                class="mg-chest-reward-input"
+                id="mgChestCoinCount"
+                min="0"
+                max="8"
+                value="2"
+              />
+            </div>
+            <div class="mg-chest-reward-row">
+              <div class="mg-chest-reward-info">
+                <span class="mg-chest-reward-icon">🐍</span>
+                <div class="mg-chest-reward-text">
+                  <strong>Bẫy rắn độc</strong>
+                  <span>−5 điểm mỗi hòm</span>
+                </div>
+              </div>
+              <input
+                type="number"
+                class="mg-chest-reward-input"
+                id="mgChestSnakeCount"
+                min="0"
+                max="5"
+                value="2"
+              />
+            </div>
+            <div class="mg-chest-reward-row empty">
+              <div class="mg-chest-reward-info">
+                <span class="mg-chest-reward-icon">·</span>
+                <div class="mg-chest-reward-text">
+                  <strong>Hòm trống</strong>
+                  <span>0 điểm — phần còn lại tự động</span>
+                </div>
+              </div>
+              <span class="mg-chest-reward-empty-count" id="mgChestEmptyCount">4</span>
+            </div>
+          </div>
+
+          <div class="mg-duck-setup-actions">
+            <button class="mg-duck-btn-primary" id="mgChestStartBtn">
+              🎲 Vào sòng — bắt đầu chơi
+            </button>
+          </div>
+        </div>
+
+        <!-- Game phase -->
+        <div class="mg-chest-game" id="mgChestGame" style="display: none;">
+          <div class="mg-chest-info">
+            <div class="mg-chest-info-item score">
+              <span class="mg-chest-info-icon">💯</span>
+              <span class="mg-chest-info-label">Điểm</span>
+              <span class="mg-chest-info-count" id="mgChestScore">0</span>
+            </div>
+            <div class="mg-chest-info-item">
+              <span class="mg-chest-info-icon">🎯</span>
+              <span class="mg-chest-info-label">Lượt còn</span>
+              <span class="mg-chest-info-count" id="mgChestTurnsLeft">5</span>
+            </div>
+            <div class="mg-chest-info-item">
+              <span class="mg-chest-info-icon">📦</span>
+              <span class="mg-chest-info-label">Đã mở</span>
+              <span class="mg-chest-info-count" id="mgChestOpened">0</span>
+            </div>
+          </div>
+
+          <div class="mg-chest-grid" id="mgChestGrid"></div>
+
+          <div class="mg-chest-history">
+            <h4 class="mg-chest-history-title">Lịch sử mở</h4>
+            <div class="mg-chest-history-list" id="mgChestHistory">
+              <div class="mg-chest-history-empty">Chưa mở hòm nào</div>
+            </div>
+          </div>
+
+          <div class="mg-chest-actions">
+            <button class="mg-duck-btn-ghost" id="mgChestBackBtn">⬅ Quay lại bày bàn</button>
+            <button class="mg-duck-btn-primary" id="mgChestEndBtn">⏹ Kết thúc lượt chơi</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <!-- Modal kết quả -->
+  <div class="mg-modal-backdrop" id="mgModal">
+    <div class="mg-modal">
+      <div class="mg-modal-confetti" id="mgModalConfetti"></div>
+      <div class="mg-modal-icon" id="mgModalIcon">🎯</div>
+      <div class="mg-modal-flourish">⚔ ◈ ⚔</div>
+      <div class="mg-modal-title" id="mgModalTitle">—</div>
+      <div class="mg-modal-desc" id="mgModalDesc"></div>
+      <button class="mg-modal-close" id="mgModalClose">Đóng</button>
+    </div>
+  </div>
+
+  <!-- Toast notification -->
+  <div class="mg-toast" id="mgToast">—</div>
+
+  <script>
+    /* ═══════════════════════════════════════════════════════════════════
+       MINI-GAMES HUB — Logic
+       Modular: mỗi game là 1 module riêng để dễ tách sau
+       ═══════════════════════════════════════════════════════════════════ */
+    (function MiniGamesHub() {
+      'use strict';
+
+      // ═══════════════════════════════════════════════════════════════════
+      // ADMIN ROLE — Đọc từ query param khi nhúng vào Nhất Mộng (?admin=1)
+      // Nếu không có query param thì mặc định false (an toàn).
+      // ═══════════════════════════════════════════════════════════════════
+      const isAdmin = (function() {
+        try {
+          const params = new URLSearchParams(window.location.search);
+          return params.get('admin') === '1';
+        } catch (e) { return false; }
+      })();
+
+      // ─── Storage adapter (sẵn sàng swap Firestore) ───────────────────
+      const STORAGE_KEY = 'mg_nhatmong_v1';
+      const Storage = {
+        load() {
+          try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            return raw ? JSON.parse(raw) : null;
+          } catch (e) { return null; }
+        },
+        save(data) {
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+          } catch (e) {}
+        },
+      };
+
+      // ═══════════════════════════════════════════════════════════════════
+      // FIREBASE ADAPTER (MGFirebase)
+      //
+      // Dùng để sync GameStatus + (Phase 4) multiplayer rooms qua Firestore.
+      // Khi nhúng vào Nhất Mộng, gọi:
+      //   MGFirebase.init({
+      //     apiKey: "...",
+      //     authDomain: "...",
+      //     projectId: "...",
+      //     storageBucket: "...",
+      //     messagingSenderId: "...",
+      //     appId: "...",
+      //   });
+      //
+      // Hoặc nếu Nhất Mộng đã có sẵn `firebase.app()` → MGFirebase tự dùng.
+      //
+      // FIRESTORE STRUCTURE:
+      //   minigames/
+      //     status              → { wheel: bool, duck: bool, chest: bool }
+      //     rooms/
+      //       {roomId}          → state phòng multiplayer (Phase 4)
+      //
+      // FIRESTORE RULES gợi ý (paste vào Firebase Console):
+      //   match /minigames/status {
+      //     allow read: if request.auth != null;
+      //     allow write: if request.auth != null
+      //                  && get(/databases/$(database)/documents/users/$(request.auth.uid))
+      //                       .data.role == "admin";
+      //   }
+      //   match /minigames/rooms/{roomId} {
+      //     allow read, write: if request.auth != null;
+      //   }
+      //
+      // Nếu Firebase chưa init → adapter trả về null, GameStatus tự fallback localStorage.
+      // ═══════════════════════════════════════════════════════════════════
+      const MGFirebase = (function() {
+        let app = null;        // firebase app instance
+        let db = null;         // firestore instance
+        let isReady = false;   // đã init thành công chưa
+        let unsubscribers = []; // các unsubscribe functions để cleanup
+
+        // Kiểm tra Firebase SDK đã load chưa (compat hoặc modular)
+        function detectFirebase() {
+          // Compat SDK (v8 style: window.firebase)
+          if (typeof window.firebase !== 'undefined' && window.firebase.firestore) {
+            return 'compat';
+          }
+          // Modular SDK v9+ (cần import động) — Phase sau
+          return null;
+        }
+
+        function init(config) {
+          const mode = detectFirebase();
+          if (!mode) {
+            console.warn('[MGFirebase] Firebase SDK chua duoc load. Can them firebase-app-compat.js va firebase-firestore-compat.js truoc file nay. Tam fallback localStorage.');
+            return false;
+          }
+
+          try {
+            // Compat mode
+            if (window.firebase.apps && window.firebase.apps.length > 0) {
+              // Đã có app khởi tạo từ Nhất Mộng → dùng chung
+              app = window.firebase.app();
+            } else if (config) {
+              app = window.firebase.initializeApp(config);
+            } else {
+              console.warn('[MGFirebase] Không có config và cũng không có app sẵn. Bỏ qua.');
+              return false;
+            }
+            db = window.firebase.firestore(app);
+            isReady = true;
+            console.log('[MGFirebase] Initialized successfully.');
+            return true;
+          } catch (e) {
+            console.error('[MGFirebase] Init failed:', e);
+            isReady = false;
+            return false;
+          }
+        }
+
+        // Subscribe game status với realtime listener
+        function subscribeGameStatus(callback) {
+          if (!isReady) return null;
+          try {
+            const docRef = db.collection('minigames').doc('status');
+            const unsub = docRef.onSnapshot(snapshot => {
+              if (snapshot.exists) {
+                callback(snapshot.data());
+              } else {
+                callback(null); // chưa có document
+              }
+            }, err => {
+              console.error('[MGFirebase] subscribeGameStatus error:', err);
+            });
+            unsubscribers.push(unsub);
+            return unsub;
+          } catch (e) {
+            console.error('[MGFirebase] subscribeGameStatus failed:', e);
+            return null;
+          }
+        }
+
+        // Admin set game status → push lên Firestore
+        async function pushGameStatus(status) {
+          if (!isReady) return false;
+          try {
+            await db.collection('minigames').doc('status').set(status, { merge: true });
+            return true;
+          } catch (e) {
+            console.error('[MGFirebase] pushGameStatus failed:', e);
+            return false;
+          }
+        }
+
+        // Cleanup tất cả listeners
+        function cleanup() {
+          unsubscribers.forEach(u => { try { u(); } catch (e) {} });
+          unsubscribers = [];
+        }
+
+        return {
+          init,
+          isReady: () => isReady,
+          subscribeGameStatus,
+          pushGameStatus,
+          cleanup,
+          // Hooks cho Phase 4 multiplayer rooms (chưa implement)
+          // createRoom, joinRoom, subscribeRoom, sendAction
+        };
+      })();
+
+      // Expose globally để Nhất Mộng có thể gọi MGFirebase.init(config)
+      window.MGFirebase = MGFirebase;
+
+      // Tự động init nếu đã có firebase.app() từ <script> ngoài (head)
+      // → kết nối Firestore, GameStatus tự sync realtime giữa các máy.
+      // Nếu không có Firebase SDK → tự fallback localStorage (chạy bình thường offline).
+      MGFirebase.init();
+
+      // Update sync badge (sau khi DOM ready)
+      function updateSyncBadge() {
+        const $badge = document.getElementById('mgSyncBadge');
+        if (!$badge) return;
+        const $text = $badge.querySelector('.mg-sync-text');
+        $badge.classList.remove('online', 'offline', 'error');
+        if (MGFirebase.isReady()) {
+          $badge.classList.add('online');
+          $text.textContent = 'Đang đồng bộ';
+          $badge.title = 'Đã kết nối Firebase — trạng thái game đồng bộ giữa các máy';
+        } else {
+          $badge.classList.add('offline');
+          $text.textContent = 'Chế độ offline';
+          $badge.title = 'Không có Firebase — trạng thái chỉ lưu trên máy này';
+        }
+      }
+      // Defer 1 tick để chắc DOM render xong
+      setTimeout(updateSyncBadge, 0);
+
+      // ═══════════════════════════════════════════════════════════════════
+      // GAME STATUS — Mở/đóng từng game.
+      // Tự động chọn backend: Firebase (nếu init) hoặc localStorage (fallback).
+      // Khi admin toggle:
+      //   - Firebase mode: push lên Firestore → mọi máy sync qua onSnapshot
+      //   - Local mode: chỉ lưu trên máy admin
+      // ═══════════════════════════════════════════════════════════════════
+      const GAME_STATUS_KEY = 'mg_nhatmong_game_status_v1';
+      const DEFAULT_STATUS = {
+        wheel: true,
+        duck:  true,
+        chest: true,
+      };
+
+      const GameStatus = {
+        // localStorage backend (fallback)
+        loadLocal() {
+          try {
+            const raw = localStorage.getItem(GAME_STATUS_KEY);
+            return raw ? { ...DEFAULT_STATUS, ...JSON.parse(raw) } : { ...DEFAULT_STATUS };
+          } catch (e) { return { ...DEFAULT_STATUS }; }
+        },
+        saveLocal(status) {
+          try {
+            localStorage.setItem(GAME_STATUS_KEY, JSON.stringify(status));
+          } catch (e) {}
+        },
+
+        // Init: thử Firebase trước, fallback localStorage
+        init() {
+          if (MGFirebase.isReady()) {
+            // Firebase mode — subscribe realtime
+            MGFirebase.subscribeGameStatus(status => {
+              if (status) {
+                gameStatus = { ...DEFAULT_STATUS, ...status };
+              } else {
+                gameStatus = { ...DEFAULT_STATUS };
+              }
+              this.notify(gameStatus);
+            });
+            // Initial value: load local cache trong khi đợi Firebase first snapshot
+            return this.loadLocal();
+          }
+          // Local mode
+          return this.loadLocal();
+        },
+
+        // Save (gọi khi admin toggle)
+        save(status) {
+          if (MGFirebase.isReady()) {
+            // Firebase mode → push lên cloud
+            MGFirebase.pushGameStatus(status);
+            // Vẫn cache local để load nhanh lần sau
+            this.saveLocal(status);
+          } else {
+            this.saveLocal(status);
+          }
+        },
+
+        _listeners: [],
+        subscribe(fn) {
+          this._listeners.push(fn);
+        },
+        notify(status) {
+          this._listeners.forEach(fn => fn(status));
+        },
+      };
+
+      let gameStatus = GameStatus.init();
+
+      function setGameStatus(gameId, isOpen) {
+        gameStatus[gameId] = isOpen;
+        GameStatus.save(gameStatus);
+        // Local mode → notify ngay; Firebase mode → onSnapshot sẽ tự notify khi server confirm
+        if (!MGFirebase.isReady()) {
+          GameStatus.notify(gameStatus);
+        }
+      }
+
+
+      // ─── State chung ─────────────────────────────────────────────────
+      let state = {
+        nickname: '',
+        wheel: { history: [] },
+      };
+
+      function loadState() {
+        const data = Storage.load();
+        if (data) {
+          state.nickname = data.nickname || '';
+          state.wheel = data.wheel || { history: [] };
+        }
+      }
+
+      function saveState() {
+        Storage.save(state);
+      }
+
+      // ─── DOM refs ────────────────────────────────────────────────────
+      const $hubSection   = document.getElementById('mgHubSection');
+      const $backBtn      = document.getElementById('mgBackBtn');
+      const $nickInput    = document.getElementById('mgNickInput');
+      const $nickEditBtn  = document.getElementById('mgNickEdit');
+      const $adminBadge   = document.getElementById('mgAdminBadge');
+      const $toast        = document.getElementById('mgToast');
+      const $modal        = document.getElementById('mgModal');
+      const $modalIcon    = document.getElementById('mgModalIcon');
+      const $modalTitle   = document.getElementById('mgModalTitle');
+      const $modalDesc    = document.getElementById('mgModalDesc');
+      const $modalClose   = document.getElementById('mgModalClose');
+      const $modalConfetti= document.getElementById('mgModalConfetti');
+
+      // ─── Util ────────────────────────────────────────────────────────
+      function escapeHtml(s) {
+        return String(s)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function fmtTime(ts) {
+        const d = new Date(ts);
+        return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+      }
+
+      // ─── Nickname ────────────────────────────────────────────────────
+      function initNickname() {
+        $nickInput.value = state.nickname;
+        $nickInput.placeholder = state.nickname ? '' : 'Nhập tên...';
+
+        $nickEditBtn.addEventListener('click', () => {
+          state.nickname = $nickInput.value.trim();
+          saveState();
+          // Visual feedback
+          $nickEditBtn.textContent = '✓';
+          setTimeout(() => { $nickEditBtn.textContent = 'Lưu'; }, 1000);
+        });
+
+        $nickInput.addEventListener('keydown', e => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            $nickEditBtn.click();
+            $nickInput.blur();
+          }
+        });
+      }
+
+      // ─── Routing — Hub <-> Game screen ───────────────────────────────
+      const screens = {}; // { gameId: $element }
+
+      // Game nào cần nickname (multiplayer)? Tất cả game offline single-machine → KHÔNG cần nick.
+      // Khi nâng lên multiplayer Firebase (Phase 3), thêm vào set này.
+      // Tất cả game offline → KHÔNG cần nick. Khi nâng multiplayer Phase 4,
+      // thêm 'duck', 'chest' vào set này.
+      const GAMES_NEED_NICK = new Set([]);
+
+      function setNickVisible(visible) {
+        const $nick = document.querySelector('.mg-nick');
+        if ($nick) $nick.style.display = visible ? '' : 'none';
+      }
+
+      function registerScreen(gameId, $el) {
+        screens[gameId] = $el;
+      }
+
+      function gotoHub() {
+        $hubSection.style.display = '';
+        $backBtn.classList.remove('show');
+        Object.values(screens).forEach(s => s.classList.remove('active'));
+        // Ở Hub: ẩn ô nick (chỉ hiện khi vào game multiplayer)
+        setNickVisible(false);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      function gotoGame(gameId) {
+        if (!screens[gameId]) return;
+        // Game đang đóng → block vào (admin vẫn vào được để test)
+        if (!gameStatus[gameId] && !isAdmin) {
+          showToast('Bang Trưởng đã tạm khóa game này');
+          return;
+        }
+        $hubSection.style.display = 'none';
+        $backBtn.classList.add('show');
+        Object.entries(screens).forEach(([id, s]) => {
+          s.classList.toggle('active', id === gameId);
+        });
+        // Hiện ô nick nếu game cần
+        setNickVisible(GAMES_NEED_NICK.has(gameId));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      $backBtn.addEventListener('click', gotoHub);
+
+      // ─── Toast helper ────────────────────────────────────────────────
+      let toastTimer = null;
+      function showToast(msg, duration = 2400) {
+        if (!$toast) return;
+        $toast.textContent = msg;
+        $toast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          $toast.classList.remove('show');
+        }, duration);
+      }
+
+      // ─── Render trạng thái card (open/closed) ────────────────────────
+      function renderCardStatus() {
+        document.querySelectorAll('.mg-card').forEach(card => {
+          const gameId = card.dataset.game;
+          const isOpen = gameStatus[gameId];
+          // Card không phải `.disabled` (chưa làm) — nó dùng `.closed` cho admin tắt
+          if (!card.classList.contains('disabled')) {
+            card.classList.toggle('closed', !isOpen);
+          }
+
+          // Update meta tag "Đang mở" / "Đang khóa"
+          const $meta = card.querySelector(`[data-meta-for="${gameId}"]`);
+          if ($meta) {
+            const $liveTag = $meta.querySelector('.mg-card-tag.live, .mg-card-tag.closed, .mg-card-tag.coming');
+            if ($liveTag && !$liveTag.classList.contains('coming')) {
+              if (isOpen) {
+                $liveTag.className = 'mg-card-tag live';
+                $liveTag.textContent = '● Đang mở';
+              } else {
+                $liveTag.className = 'mg-card-tag closed';
+                $liveTag.textContent = '🔒 Đang khóa';
+              }
+            }
+          }
+
+          // Update toggle checkbox
+          const $toggleInput = card.querySelector(`[data-game-toggle="${gameId}"]`);
+          if ($toggleInput && !$toggleInput.disabled) {
+            $toggleInput.checked = isOpen;
+            // Cập nhật label
+            const $label = $toggleInput.closest('.mg-card-admin-toggle')
+              .querySelector('.mg-card-admin-label');
+            if ($label) $label.textContent = isOpen ? 'Mở' : 'Đóng';
+          }
+        });
+      }
+
+      // ─── Render admin UI (badge + card toggles) ──────────────────────
+      function renderAdminUI() {
+        if (isAdmin) {
+          $adminBadge.classList.add('show');
+          document.querySelectorAll('.mg-card-admin').forEach(el => {
+            el.classList.add('show');
+          });
+        } else {
+          $adminBadge.classList.remove('show');
+          document.querySelectorAll('.mg-card-admin').forEach(el => {
+            el.classList.remove('show');
+          });
+        }
+      }
+
+      // ─── Bind cards: click để vào game (nếu đang mở) ─────────────────
+      document.querySelectorAll('.mg-card').forEach(card => {
+        // Card disabled (chưa làm xong) → click → toast "Sắp ra mắt"
+        card.addEventListener('click', (e) => {
+          // Tránh trigger khi click vào toggle admin
+          if (e.target.closest('.mg-card-admin')) return;
+
+          const gameId = card.dataset.game;
+          if (card.classList.contains('disabled')) {
+            showToast('Game này chưa làm xong, sắp ra mắt!');
+            return;
+          }
+          if (!gameStatus[gameId]) {
+            showToast(isAdmin
+              ? 'Game đang khóa — bạn (Bang Trưởng) vẫn vào được để test'
+              : 'Bang Trưởng đã tạm khóa game này');
+            // Admin vẫn cho vào để test
+            if (!isAdmin) return;
+          }
+          gotoGame(gameId);
+        });
+      });
+
+      // ─── Bind admin toggles ──────────────────────────────────────────
+      document.querySelectorAll('[data-game-toggle]').forEach(input => {
+        input.addEventListener('change', (e) => {
+          e.stopPropagation();
+          const gameId = input.dataset.gameToggle;
+          setGameStatus(gameId, input.checked);
+          showToast(input.checked
+            ? `✓ Đã mở "${getGameName(gameId)}"`
+            : `🔒 Đã đóng "${getGameName(gameId)}"`);
+        });
+        // Tránh trigger card click khi click vào label
+        input.closest('.mg-card-admin-toggle').addEventListener('click', (e) => {
+          e.stopPropagation();
+        });
+      });
+
+      function getGameName(gameId) {
+        const names = {
+          wheel: 'Vòng Quay May Mắn',
+          duck:  'Đua Vịt Giang Hồ',
+          chest: 'Mở Hòm Bí Mật',
+        };
+        return names[gameId] || gameId;
+      }
+
+      // Subscribe to status changes (để render khi sync từ Firebase trong tương lai)
+      GameStatus.subscribe((status) => {
+        gameStatus = status;
+        renderCardStatus();
+      });
+
+      // ─── Modal ───────────────────────────────────────────────────────
+      function showModal({ icon, title, desc, color }) {
+        $modalIcon.textContent = icon || '🎯';
+        $modalTitle.textContent = title || '—';
+        $modalDesc.textContent = desc || '';
+
+        // Confetti burst
+        $modalConfetti.innerHTML = '';
+        const N = 14;
+        for (let i = 0; i < N; i++) {
+          const angle = (i / N) * 360 + (Math.random() * 30 - 15);
+          const dist = 160 + Math.random() * 120;
+          const colors = ['#ffd28c','#ffb86b','#cc3838','#e85050','#dba85a'];
+          const c = colors[Math.floor(Math.random() * colors.length)];
+          const el = document.createElement('i');
+          el.style.background = c;
+          el.style.boxShadow = `0 0 8px ${c}`;
+          el.style.setProperty('--angle', angle + 'deg');
+          el.style.setProperty('--dist', dist + 'px');
+          el.style.animationDelay = (Math.random() * 0.2) + 's';
+          $modalConfetti.appendChild(el);
+        }
+
+        $modal.classList.add('show');
+      }
+
+      function hideModal() {
+        $modal.classList.remove('show');
+      }
+
+      $modalClose.addEventListener('click', hideModal);
+      $modal.addEventListener('click', e => {
+        if (e.target === $modal) hideModal();
+      });
+
+      // ═══════════════════════════════════════════════════════════════════
+      // GAME: VÒNG QUAY MAY MẮN
+      // ═══════════════════════════════════════════════════════════════════
+      const WheelGame = (function() {
+        // ─── State ───────────────────────────────────────────────────
+        // Mặc định khi mở game: 4 tên ví dụ để wheel không bị trống
+        const DEFAULT_NAMES = [
+          'Hiệp Khách 1',
+          'Hiệp Khách 2',
+          'Hiệp Khách 3',
+          'Hiệp Khách 4',
+        ];
+
+        // Palette tone tửu quán — luân phiên cho các slice
+        // (warm: cam vàng / fire: đỏ son / earth: nâu / bronze: đồng)
+        const SLICE_PALETTE = [
+          { fill: '#ffb86b', text: '#1a0f0a', stroke: '#8a6328' }, // cam đèn lồng
+          { fill: '#cc3838', text: '#faf0dc', stroke: '#6b1a14' }, // đỏ son
+          { fill: '#dba85a', text: '#1a0f0a', stroke: '#8a6328' }, // đồng cổ
+          { fill: '#a02828', text: '#faf0dc', stroke: '#6b1a14' }, // đỏ trầm
+          { fill: '#ffd28c', text: '#1a0f0a', stroke: '#b8893f' }, // vàng nhạt
+          { fill: '#8a6328', text: '#faf0dc', stroke: '#5a3018' }, // nâu đồng
+          { fill: '#e85050', text: '#faf0dc', stroke: '#6b1a14' }, // đỏ rực
+          { fill: '#b8893f', text: '#1a0f0a', stroke: '#5a3018' }, // đồng đậm
+        ];
+
+        let names = [];
+        let isSpinning = false;
+        let currentRotation = 0;
+
+        const $svg          = document.getElementById('mgWheelSvg');
+        const $pegs         = document.getElementById('mgWheelPegs');
+        const $spinBtn      = document.getElementById('mgWheelSpinBtn');
+        const $namesInput   = document.getElementById('mgWheelNamesInput');
+        const $count        = document.getElementById('mgWheelCount');
+        const $clearBtn     = document.getElementById('mgWheelClearBtn');
+        const $shuffleBtn   = document.getElementById('mgWheelShuffleBtn');
+        const $autoRemoveCheckbox = document.getElementById('mgWheelAutoRemove');
+        const $history      = document.getElementById('mgWheelHistory');
+        const $wheelWrap    = $svg.parentElement; // .mg-wheel-wrap
+
+        // Lịch sử (in-memory, không persist theo yêu cầu)
+        let history = [];
+
+        // ─── Parse names từ textarea ────────────────────────────────
+        function parseNames(text) {
+          return text
+            .split(/\r?\n/)
+            .map(s => s.trim())
+            .filter(s => s.length > 0)
+            .slice(0, 200); // giới hạn 200 tên
+        }
+
+        function setNamesFromInput() {
+          names = parseNames($namesInput.value);
+          $count.textContent = names.length;
+          renderWheelSvg();
+          renderPegs();
+          updateSpinButton();
+        }
+
+        function updateSpinButton() {
+          $spinBtn.disabled = names.length < 2 || isSpinning;
+          if (isSpinning) {
+            $spinBtn.textContent = '...';
+          } else if (names.length < 2) {
+            $spinBtn.textContent = 'Cần 2+';
+          } else {
+            $spinBtn.textContent = 'Quay';
+          }
+        }
+
+        // ─── Render Wheel SVG ───────────────────────────────────────
+        function renderWheelSvg() {
+          const N = names.length;
+          const cx = 200, cy = 200, r = 195;
+
+          if (N === 0) {
+            // Wheel rỗng — chỉ vòng tròn xám với hint
+            $svg.innerHTML = `
+              <circle cx="${cx}" cy="${cy}" r="${r}" fill="#251610" stroke="#8a6328" stroke-width="3"/>
+              <text x="${cx}" y="${cy}"
+                    fill="#7a6850"
+                    font-family="Be Vietnam Pro, sans-serif"
+                    font-size="18"
+                    text-anchor="middle"
+                    dominant-baseline="middle">
+                Nhập tên ở bên phải
+              </text>
+            `;
+            return;
+          }
+
+          if (N === 1) {
+            // 1 slice toàn bộ vòng tròn
+            const palette = SLICE_PALETTE[0];
+            $svg.innerHTML = `
+              <circle cx="${cx}" cy="${cy}" r="${r}" fill="${palette.fill}" stroke="${palette.stroke}" stroke-width="3"/>
+              <text x="${cx}" y="${cy}"
+                    fill="${palette.text}"
+                    font-family="Manrope, sans-serif"
+                    font-weight="700"
+                    font-size="22"
+                    text-anchor="middle"
+                    dominant-baseline="middle">
+                ${escapeHtml(names[0])}
+              </text>
+            `;
+            return;
+          }
+
+          const sliceAngle = 360 / N;
+          let svg = '';
+
+          // Render slices
+          names.forEach((name, i) => {
+            const palette = SLICE_PALETTE[i % SLICE_PALETTE.length];
+            const startAngle = i * sliceAngle - 90; // -90 để slice 0 ở trên cùng
+            const endAngle = startAngle + sliceAngle;
+            const startRad = startAngle * Math.PI / 180;
+            const endRad = endAngle * Math.PI / 180;
+            const x1 = cx + r * Math.cos(startRad);
+            const y1 = cy + r * Math.sin(startRad);
+            const x2 = cx + r * Math.cos(endRad);
+            const y2 = cy + r * Math.sin(endRad);
+            const largeArc = sliceAngle > 180 ? 1 : 0;
+
+            const path = `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+            const gradId = `wheelGrad${i}`;
+
+            svg += `
+              <defs>
+                <radialGradient id="${gradId}" cx="50%" cy="50%" r="100%">
+                  <stop offset="0%" stop-color="${palette.fill}" stop-opacity="1"/>
+                  <stop offset="65%" stop-color="${palette.fill}" stop-opacity="0.92"/>
+                  <stop offset="100%" stop-color="${palette.stroke}" stop-opacity="0.95"/>
+                </radialGradient>
+              </defs>
+              <path d="${path}" fill="url(#${gradId})" stroke="#3d2820" stroke-width="1.5"/>
+            `;
+
+            // Text — wheelofnames style: đặt theo radial, đầu chữ ở viền ngoài
+            const midAngle = startAngle + sliceAngle / 2;
+            const midRad = midAngle * Math.PI / 180;
+
+            // Tự động chọn font-size dựa trên slice angle (slice nhỏ → font nhỏ)
+            let fontSize = 18;
+            if (N > 12) fontSize = 14;
+            if (N > 20) fontSize = 12;
+            if (N > 32) fontSize = 10;
+            if (N > 50) fontSize = 8;
+
+            // Cắt tên nếu quá dài (slice nhỏ)
+            const maxChars = N <= 6 ? 22 : N <= 12 ? 18 : N <= 20 ? 14 : 12;
+            let displayName = name;
+            if (displayName.length > maxChars) {
+              displayName = displayName.slice(0, maxChars - 1) + '…';
+            }
+
+            // Vị trí text: từ ~25% bán kính đến ~95% bán kính (theo radial)
+            // Đặt anchor ở giữa text. Dùng <text> với rotate.
+            const textR = r * 0.6; // điểm giữa của text
+            const tx = cx + textR * Math.cos(midRad);
+            const ty = cy + textR * Math.sin(midRad);
+            // Xoay text dọc theo radial line — đầu chữ hướng ra ngoài
+            const textRot = midAngle;
+
+            svg += `
+              <text x="${tx}" y="${ty}"
+                    fill="${palette.text}"
+                    font-family="Manrope, sans-serif"
+                    font-weight="700"
+                    font-size="${fontSize}"
+                    text-anchor="middle"
+                    dominant-baseline="middle"
+                    transform="rotate(${textRot} ${tx} ${ty})"
+                    style="paint-order: stroke; stroke: ${palette.text === '#1a0f0a' ? 'rgba(255,244,214,0.3)' : 'rgba(26,15,10,0.55)'}; stroke-width: 2.5px; stroke-linejoin: round; pointer-events: none;">
+                ${escapeHtml(displayName)}
+              </text>
+            `;
+          });
+
+          // Đường kẻ chia (separator) — chỉ vẽ nếu N <= 32 cho rõ
+          if (N <= 32) {
+            for (let i = 0; i < N; i++) {
+              const angle = i * sliceAngle - 90;
+              const rad = angle * Math.PI / 180;
+              const x = cx + r * Math.cos(rad);
+              const y = cy + r * Math.sin(rad);
+              svg += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#dba85a" stroke-width="1.2" opacity="0.35"/>`;
+            }
+          }
+
+          // Viền ngoài
+          svg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#8a6328" stroke-width="3"/>`;
+
+          $svg.innerHTML = svg;
+        }
+
+        function renderPegs() {
+          // Đinh nháy quanh viền — luôn 12 đinh (decoration tĩnh)
+          const N = 12;
+          let html = '';
+          for (let i = 0; i < N; i++) {
+            const angle = (i / N) * 360;
+            html += `<i style="transform: rotate(${angle}deg) translateX(195px) rotate(-${angle}deg);"></i>`;
+          }
+          $pegs.innerHTML = html;
+        }
+
+        // ─── Render history ─────────────────────────────────────────
+        function renderHistory() {
+          if (history.length === 0) {
+            $history.innerHTML = '<div class="mg-wheel-history-empty">Chưa có lượt quay nào</div>';
+            return;
+          }
+          $history.innerHTML = history.slice(0, 8).map(h => `
+            <div class="mg-wheel-history-item">
+              <span class="ico">🏆</span>
+              <span>${escapeHtml(h.name)}</span>
+              <span class="when">${fmtTime(h.time)}</span>
+            </div>
+          `).join('');
+        }
+
+        // ─── Spin ────────────────────────────────────────────────────
+        function spin() {
+          if (isSpinning) return;
+          if (names.length < 2) return;
+
+          isSpinning = true;
+          updateSpinButton();
+
+          const N = names.length;
+          const sliceAngle = 360 / N;
+
+          // Random pick winner — dùng crypto cho bảo đảm random thật
+          const winnerIdx = secureRandomInt(N);
+          const winnerName = names[winnerIdx];
+
+          // Tính rotation: muốn slice winner dừng đúng ở đỉnh (mũi tên)
+          // Slice 0 ban đầu ở top. Để slice winnerIdx về top → quay -winnerIdx*sliceAngle
+          // + offset random nhỏ trong slice cho tự nhiên (±35% slice)
+          const offset = (Math.random() - 0.5) * sliceAngle * 0.7;
+          const baseTarget = -(winnerIdx * sliceAngle) + offset;
+          // Thêm 5-7 vòng đầy đủ
+          const fullSpins = 5 + Math.floor(Math.random() * 3);
+
+          // Đảm bảo target > currentRotation (luôn quay tiếp tới)
+          let target = currentRotation + fullSpins * 360;
+          // Modulate currentRotation về 0..360 rồi cộng baseTarget
+          const currentMod = ((currentRotation % 360) + 360) % 360;
+          const delta = ((baseTarget - currentMod) % 360 + 360) % 360; // 0..360
+          target = currentRotation + fullSpins * 360 + delta;
+          currentRotation = target;
+
+          $svg.style.transform = `rotate(${currentRotation}deg)`;
+
+          playSpinStartSound();
+
+          setTimeout(() => {
+            isSpinning = false;
+            updateSpinButton();
+
+            // History
+            history.unshift({ name: winnerName, time: Date.now() });
+            if (history.length > 50) history.length = 50;
+            renderHistory();
+
+            // Modal + sound
+            showModal({
+              icon: '🏆',
+              title: winnerName,
+              desc: 'Là người được vận may chọn lần này!',
+            });
+            playSpinResultSound('win');
+
+            // Auto-remove winner nếu checkbox bật
+            if ($autoRemoveCheckbox && $autoRemoveCheckbox.checked) {
+              // Đợi 1 chút cho user kịp nhìn thấy modal trước khi xóa khỏi wheel
+              setTimeout(() => {
+                removeWinnerFromList(winnerName);
+              }, 800);
+            }
+          }, 5550);
+        }
+
+        // Crypto-secure random integer in [0, max)
+        function secureRandomInt(max) {
+          if (window.crypto && window.crypto.getRandomValues) {
+            const arr = new Uint32Array(1);
+            window.crypto.getRandomValues(arr);
+            return arr[0] % max;
+          }
+          return Math.floor(Math.random() * max);
+        }
+
+        // ─── Click trên wheel để quay (như wheelofnames) ────────────
+        function bindWheelClick() {
+          $wheelWrap.addEventListener('click', (e) => {
+            // Tránh trigger khi click vào nút "Quay" (đã có handler riêng)
+            if (e.target === $spinBtn || $spinBtn.contains(e.target)) return;
+            if (isSpinning || names.length < 2) return;
+            spin();
+          });
+        }
+
+        // ─── Actions ─────────────────────────────────────────────────
+        function clearAll() {
+          if (!names.length) return;
+          if (!confirm('Xóa hết danh sách tên?')) return;
+          $namesInput.value = '';
+          setNamesFromInput();
+        }
+
+        function shuffleNames() {
+          if (names.length < 2) return;
+          const shuffled = [...names];
+          for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+          }
+          $namesInput.value = shuffled.join('\n');
+          setNamesFromInput();
+        }
+
+        function removeWinnerFromList(name) {
+          if (!name) return;
+          const idx = names.findIndex(n => n === name);
+          if (idx === -1) return;
+          names.splice(idx, 1);
+          $namesInput.value = names.join('\n');
+          setNamesFromInput();
+        }
+
+        // ─── Init ────────────────────────────────────────────────────
+        function init() {
+          $namesInput.value = DEFAULT_NAMES.join('\n');
+          setNamesFromInput();
+
+          // Listen textarea (debounce nhẹ để không lag khi gõ nhanh)
+          let inputTimer = null;
+          $namesInput.addEventListener('input', () => {
+            clearTimeout(inputTimer);
+            inputTimer = setTimeout(setNamesFromInput, 120);
+          });
+
+          $spinBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            spin();
+          });
+          $clearBtn.addEventListener('click', clearAll);
+          $shuffleBtn.addEventListener('click', shuffleNames);
+
+          bindWheelClick();
+        }
+
+        return { init, $screen: document.getElementById('mgWheelScreen') };
+      })();
+
+      // ═══════════════════════════════════════════════════════════════════
+      // GAME 2: ĐUA VỊT GIANG HỒ
+      // ═══════════════════════════════════════════════════════════════════
+      const DuckGame = (function() {
+        // Pool tên giang hồ — random fill
+        const NAME_POOL = [
+          'Lý Tiểu Vịt', 'Quách Tĩnh Vịt', 'Vịt Sư Phụ', 'Đại Hiệp Vịt',
+          'Vịt Bay Tà Đạo', 'Vịt Cuồng Phong', 'Hắc Y Vịt', 'Bạch Y Vịt',
+          'Vịt Giang Hồ', 'Vịt Lãng Tử', 'Vịt Ẩn Sĩ', 'Vịt Kiếm Khách',
+          'Vịt Chí Tôn', 'Cuồng Vịt', 'Vịt Quá', 'Tiểu Long Vịt',
+          'Vịt Thư Sinh', 'Vịt Thần Tài', 'Vịt Bụi Đời', 'Vịt Tỉ Tỉ',
+        ];
+
+        const DUCK_EMOJIS = ['🦆', '🦆', '🦆', '🦆', '🦆', '🦆', '🦆', '🦆',
+                              '🦆', '🦆', '🦆', '🦆', '🦆', '🦆', '🦆', '🦆',
+                              '🦆', '🦆', '🦆', '🦆'];
+        const DUCK_COLORS = [
+          '#ffb86b', '#cc3838', '#dba85a', '#a02828',
+          '#ffd28c', '#e85050', '#b8893f', '#d94a3d',
+          '#ff8a3a', '#ffa552', '#fff4d6', '#ffe7a8',
+          '#d8a878', '#cc6644', '#aa4422', '#dd9966',
+          '#ddc88a', '#ccaa77', '#bb8855', '#aa7744',
+        ];
+
+        // Scene-specific spectators (positioned at sides)
+        const SCENE_SPECTATORS = {
+          forest: ['🐰','🦊','🐿','🐻','🐺','🦌','🐗','🦝'],
+          sunset: ['🐺','🦊','🦅','🐂','🐎','🐗'],
+          bamboo: ['🐼','🐒','🐅','🦚','🐢','🐉'],
+        };
+
+        const $screen      = document.getElementById('mgDuckScreen');
+        const $setup       = document.getElementById('mgDuckSetup');
+        const $race        = document.getElementById('mgDuckRace');
+        const $numRow      = document.getElementById('mgDuckNumRow');
+        const $numInput    = document.getElementById('mgDuckNumInput');
+        const $sceneRow    = document.getElementById('mgDuckSceneRow');
+        const $namesInput  = document.getElementById('mgDuckNames');
+        const $randomBtn   = document.getElementById('mgDuckRandomNames');
+        const $startBtn    = document.getElementById('mgDuckStartBtn');
+        const $resetBtn    = document.getElementById('mgDuckResetBtn');
+        const $lanes       = document.getElementById('mgDuckLanes');
+        const $status      = document.getElementById('mgDuckStatus');
+        const $track       = document.getElementById('mgDuckTrack');
+        const $sceneBg     = document.getElementById('mgDuckSceneBg');
+        const $readyOverlay= document.getElementById('mgDuckReadyOverlay');
+        const $startRaceBtn= document.getElementById('mgDuckStartRaceBtn');
+        const $countdown   = document.getElementById('mgDuckCountdown');
+        const $podium      = document.getElementById('mgDuckPodium');
+        const $podiumRow   = document.getElementById('mgDuckPodiumRow');
+        const $raceAgainBtn= document.getElementById('mgDuckRaceAgainBtn');
+
+        let duckCount = 6;
+        let scene = 'forest';
+        let ducks = []; // { name, emoji, color, position(0-100), targetPos, finished, finishTime }
+        let raceRunning = false;
+        let raceFrame = null;
+        let raceStartTime = 0;
+        let finishOrder = [];
+
+        // ─── Setup phase: number ─────────────────────────────────────
+        function setDuckCount(n) {
+          n = Math.max(2, Math.min(20, n | 0));
+          duckCount = n;
+          // Update preset buttons
+          $numRow.querySelectorAll('.mg-duck-num-btn').forEach(b => {
+            b.classList.toggle('active', parseInt(b.dataset.num, 10) === n);
+          });
+          // Sync input field
+          if (parseInt($numInput.value, 10) !== n) {
+            $numInput.value = n;
+          }
+          regenerateNamesIfShort();
+        }
+
+        function bindNumControls() {
+          $numRow.querySelectorAll('.mg-duck-num-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+              setDuckCount(parseInt(btn.dataset.num, 10));
+            });
+          });
+          $numInput.addEventListener('input', () => {
+            const v = parseInt($numInput.value, 10);
+            if (!isNaN(v) && v >= 2 && v <= 20) {
+              setDuckCount(v);
+            }
+          });
+          $numInput.addEventListener('blur', () => {
+            // Khi blur, nếu giá trị invalid → reset về duckCount hiện tại
+            const v = parseInt($numInput.value, 10);
+            if (isNaN(v) || v < 2 || v > 20) {
+              $numInput.value = duckCount;
+            }
+          });
+        }
+
+        function bindSceneButtons() {
+          $sceneRow.querySelectorAll('.mg-duck-scene-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+              scene = btn.dataset.scene;
+              $sceneRow.querySelectorAll('.mg-duck-scene-btn').forEach(b =>
+                b.classList.toggle('active', b === btn)
+              );
+            });
+          });
+        }
+
+        function regenerateNamesIfShort() {
+          const cur = $namesInput.value
+            .split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+          if (cur.length < duckCount) {
+            const pool = [...NAME_POOL].sort(() => Math.random() - 0.5);
+            const fill = [];
+            for (let i = 0; i < duckCount; i++) {
+              fill.push(cur[i] || pool[i % pool.length]);
+            }
+            $namesInput.value = fill.join('\n');
+          }
+        }
+
+        function randomNames() {
+          const pool = [...NAME_POOL].sort(() => Math.random() - 0.5);
+          const out = [];
+          for (let i = 0; i < duckCount; i++) {
+            out.push(pool[i % pool.length]);
+          }
+          $namesInput.value = out.join('\n');
+        }
+
+        // ─── Goto race screen ────────────────────────────────────────
+        function gotoRace() {
+          const rawNames = $namesInput.value
+            .split(/\r?\n/).map(s => s.trim()).filter(Boolean)
+            .slice(0, duckCount);
+
+          if (rawNames.length < 2) {
+            showToast('Cần ít nhất 2 vịt để đua!');
+            return;
+          }
+          while (rawNames.length < duckCount) {
+            rawNames.push('Vịt #' + (rawNames.length + 1));
+          }
+
+          ducks = rawNames.map((name, i) => ({
+            name: name,
+            emoji: DUCK_EMOJIS[i % DUCK_EMOJIS.length],
+            color: DUCK_COLORS[i % DUCK_COLORS.length],
+            position: 0,
+            finished: false,
+            finishTime: null,
+          }));
+
+          finishOrder = [];
+
+          // Set scene
+          $track.dataset.scene = scene;
+
+          // Render lanes + ambient (mây + thú)
+          renderLanes();
+          renderAmbient();
+
+          // Show race screen, hide setup
+          $setup.style.display = 'none';
+          $race.style.display = '';
+          $podium.style.display = 'none';
+
+          // Show "ready" overlay với nút bắt đầu
+          $readyOverlay.style.display = '';
+          $countdown.style.display = 'none';
+          $status.className = 'mg-duck-status';
+          $status.style.color = '';
+          $status.textContent = '⏳ Sẵn sàng — bấm "Xuất phát" để bắt đầu';
+        }
+
+        // ─── Render mây + thú cổ vũ theo scene ───────────────────────
+        function renderAmbient() {
+          // Xóa ambient cũ
+          $track.querySelectorAll('.mg-duck-cloud, .mg-duck-spectator').forEach(el => el.remove());
+
+          // Mây trôi (3-4 cụm)
+          if (scene === 'forest' || scene === 'sunset') {
+            const cloudCount = scene === 'forest' ? 3 : 2;
+            for (let i = 0; i < cloudCount; i++) {
+              const cloud = document.createElement('div');
+              cloud.className = 'mg-duck-cloud';
+              cloud.textContent = '☁';
+              cloud.style.top = (5 + Math.random() * 12) + '%';
+              cloud.style.fontSize = (1.8 + Math.random() * 1.5) + 'rem';
+              cloud.style.opacity = 0.55 + Math.random() * 0.35;
+              cloud.style.animationDuration = (28 + Math.random() * 18) + 's';
+              cloud.style.animationDelay = (-Math.random() * 30) + 's';
+              $track.appendChild(cloud);
+            }
+          }
+
+          // Thú cổ vũ — đặt 4-6 con dọc đáy
+          const spectators = SCENE_SPECTATORS[scene] || SCENE_SPECTATORS.forest;
+          const numSpec = 6;
+          for (let i = 0; i < numSpec; i++) {
+            const spec = document.createElement('div');
+            spec.className = 'mg-duck-spectator';
+            spec.textContent = spectators[Math.floor(Math.random() * spectators.length)];
+            // Đặt rải đều theo % từ trái sang phải
+            const left = 6 + i * (88 / numSpec) + (Math.random() * 5 - 2.5);
+            spec.style.left = left + '%';
+            spec.style.animationDelay = (Math.random() * 0.6) + 's';
+            spec.style.fontSize = (1.3 + Math.random() * 0.4) + 'rem';
+            $track.appendChild(spec);
+          }
+        }
+
+        function renderLanes() {
+          let html = '';
+          ducks.forEach((d, i) => {
+            html += `
+              <div class="mg-duck-lane">
+                <span class="mg-duck-lane-name">${escapeHtml(d.name)}</span>
+                <span class="mg-duck" data-idx="${i}" style="color: ${d.color};">${d.emoji}</span>
+              </div>
+            `;
+          });
+          $lanes.innerHTML = html;
+        }
+
+        // ─── Bắt đầu đua: từ Ready → Countdown → Race ───────────────
+        function startRaceFromReady() {
+          $readyOverlay.style.display = 'none';
+          countdownThenGo();
+        }
+
+        function countdownThenGo() {
+          const steps = ['3', '2', '1'];
+          let i = 0;
+          $countdown.style.display = '';
+          $status.className = 'mg-duck-status';
+
+          const tick = () => {
+            if (i < steps.length) {
+              $countdown.innerHTML = `<div class="mg-duck-countdown-num">${steps[i]}</div>`;
+              playDuckCountdownSound();
+              $status.textContent = '⏳ ' + steps[i] + '...';
+              i++;
+              setTimeout(tick, 800);
+            } else {
+              // GO!
+              $countdown.innerHTML = `<div class="mg-duck-countdown-num" style="color: var(--vermilion); font-size: 8rem;">XUẤT PHÁT!</div>`;
+              playDuckGoSound();
+              setTimeout(() => {
+                $countdown.style.display = 'none';
+                $countdown.innerHTML = '';
+              }, 700);
+
+              raceRunning = true;
+              raceStartTime = performance.now();
+              $status.classList.add('running');
+              $status.textContent = '🏁 Đang đua!';
+
+              // Mark all ducks bobbing
+              $lanes.querySelectorAll('.mg-duck').forEach(d => d.classList.add('bobbing'));
+
+              raceFrame = requestAnimationFrame(loop);
+            }
+          };
+          tick();
+        }
+
+        // ─── Race loop ───────────────────────────────────────────────
+        function loop(t) {
+          if (!raceRunning) return;
+
+          ducks.forEach((d, idx) => {
+            if (d.finished) return;
+            // Tốc độ random với biến động mượt hơn
+            const baseSpeed = 0.10 + Math.random() * 0.13;
+            const burst = Math.random() < 0.05 ? 1.7 : 1.0;
+            const lazy = Math.random() < 0.04 ? 0.25 : 1.0;
+            d.position += baseSpeed * burst * lazy;
+
+            if (d.position >= 100) {
+              d.position = 100;
+              d.finished = true;
+              d.finishTime = t - raceStartTime;
+              finishOrder.push(idx);
+
+              if (finishOrder.length === 1) {
+                onFirstWinner();
+              }
+            }
+          });
+
+          renderDuckPositions();
+
+          // Race xong khi đủ top 3 hoặc tất cả vịt về đích
+          const topNeeded = Math.min(3, ducks.length);
+          if (finishOrder.length >= topNeeded || ducks.every(d => d.finished)) {
+            // Cho vài frame nữa để smooth, rồi end
+            if (ducks.every(d => d.finished) || finishOrder.length >= topNeeded) {
+              raceRunning = false;
+              setTimeout(() => onRaceEnd(), 1200);
+              return;
+            }
+          }
+          if (ducks.some(d => !d.finished)) {
+            raceFrame = requestAnimationFrame(loop);
+          }
+        }
+
+        function onFirstWinner() {
+          const winnerIdx = finishOrder[0];
+          const winner = ducks[winnerIdx];
+          $status.classList.remove('running');
+          $status.classList.add('win');
+          $status.textContent = '🏆 ' + winner.name + ' VỀ ĐÍCH ĐẦU TIÊN!';
+          playDuckWinSound();
+          // Mark winner element
+          setTimeout(() => {
+            const $winnerDuck = $lanes.querySelectorAll('.mg-duck')[winnerIdx];
+            if ($winnerDuck) {
+              $winnerDuck.classList.add('winner');
+              $winnerDuck.classList.remove('bobbing');
+            }
+          }, 100);
+        }
+
+        function onRaceEnd() {
+          // Render podium top 3
+          renderPodium();
+          $podium.style.display = '';
+          // Mark top 2-3 ducks với glow
+          finishOrder.slice(1, 3).forEach(idx => {
+            const $d = $lanes.querySelectorAll('.mg-duck')[idx];
+            if ($d) {
+              $d.classList.add('podium');
+              $d.classList.remove('bobbing');
+            }
+          });
+          playDuckFinishSound();
+        }
+
+        function renderPodium() {
+          const topN = Math.min(3, finishOrder.length);
+          let html = '';
+          for (let rank = 1; rank <= topN; rank++) {
+            const idx = finishOrder[rank - 1];
+            if (idx == null) continue;
+            const duck = ducks[idx];
+            const medal = ['🥇','🥈','🥉'][rank - 1];
+            const blockNum = ['1','2','3'][rank - 1];
+            const timeStr = (duck.finishTime / 1000).toFixed(2) + 's';
+            html += `
+              <div class="mg-duck-podium-spot rank-${rank}">
+                <div class="mg-duck-podium-rank">${medal}</div>
+                <div class="mg-duck-podium-name">${escapeHtml(duck.name)}</div>
+                <div class="mg-duck-podium-time">${timeStr}</div>
+                <div class="mg-duck-podium-block">#${blockNum}</div>
+              </div>
+            `;
+          }
+          $podiumRow.innerHTML = html;
+        }
+
+        function renderDuckPositions() {
+          const $duckEls = $lanes.querySelectorAll('.mg-duck');
+          ducks.forEach((d, i) => {
+            const $duck = $duckEls[i];
+            if (!$duck) return;
+            // Position 0-100% → đặt left từ 1.5rem (start) → calc(100% - 4rem) cho finish line ở right: 2.5rem
+            $duck.style.left = `calc(${d.position * 0.94}% + 1.5rem)`;
+          });
+        }
+
+        // ─── Reset / quay lại ────────────────────────────────────────
+        function reset() {
+          if (raceFrame) cancelAnimationFrame(raceFrame);
+          raceRunning = false;
+          ducks = [];
+          finishOrder = [];
+          $race.style.display = 'none';
+          $setup.style.display = '';
+          $lanes.innerHTML = '';
+          $podium.style.display = 'none';
+          $countdown.style.display = 'none';
+          $countdown.innerHTML = '';
+          $readyOverlay.style.display = '';
+          $status.classList.remove('running', 'win');
+          $status.style.color = '';
+          $status.textContent = '⏳ Chuẩn bị xuất phát...';
+        }
+
+        function raceAgain() {
+          // Race lại với cùng setup
+          gotoRace();
+        }
+
+        // ─── Init ────────────────────────────────────────────────────
+        function init() {
+          bindNumControls();
+          bindSceneButtons();
+          $numInput.value = duckCount; // mặc định 6
+          regenerateNamesIfShort();
+          $randomBtn.addEventListener('click', randomNames);
+          $startBtn.addEventListener('click', gotoRace);
+          $startRaceBtn.addEventListener('click', startRaceFromReady);
+          $resetBtn.addEventListener('click', reset);
+          $raceAgainBtn.addEventListener('click', raceAgain);
+        }
+
+        return { init, $screen };
+      })();
+
+
+      // ═══════════════════════════════════════════════════════════════════
+      // GAME 3: MỞ HÒM BÍ MẬT
+      // ═══════════════════════════════════════════════════════════════════
+      const ChestGame = (function() {
+        const $screen        = document.getElementById('mgChestScreen');
+        const $setup         = document.getElementById('mgChestSetup');
+        const $game          = document.getElementById('mgChestGame');
+        const $numRow        = document.getElementById('mgChestNumRow');
+        const $treasureCount = document.getElementById('mgChestTreasureCount');
+        const $coinCount     = document.getElementById('mgChestCoinCount');
+        const $snakeCount    = document.getElementById('mgChestSnakeCount');
+        const $emptyCount    = document.getElementById('mgChestEmptyCount');
+        const $startBtn      = document.getElementById('mgChestStartBtn');
+        const $grid          = document.getElementById('mgChestGrid');
+        const $score         = document.getElementById('mgChestScore');
+        const $turnsLeft     = document.getElementById('mgChestTurnsLeft');
+        const $opened        = document.getElementById('mgChestOpened');
+        const $history       = document.getElementById('mgChestHistory');
+        const $backBtn       = document.getElementById('mgChestBackBtn');
+        const $endBtn        = document.getElementById('mgChestEndBtn');
+
+        // Reward values
+        const REWARD = {
+          treasure: { score:  10, icon: '💎', label: 'Báu vật lớn' },
+          coin:     { score:   5, icon: '🪙', label: 'Báu vật nhỏ' },
+          snake:    { score:  -5, icon: '🐍', label: 'Bẫy rắn độc' },
+          empty:    { score:   0, icon: '·',  label: 'Hòm trống' },
+        };
+        const MAX_TURNS = 5;
+
+        let totalChests = 9;
+        let chests = [];
+        let score = 0;
+        let turns = MAX_TURNS;
+        let history = [];
+        let gameOver = false;
+
+        // ─── Setup helpers ─────────────────────────────────────────
+        function getCounts() {
+          const t = Math.max(0, parseInt($treasureCount.value, 10) || 0);
+          const c = Math.max(0, parseInt($coinCount.value, 10) || 0);
+          const s = Math.max(0, parseInt($snakeCount.value, 10) || 0);
+          return { t, c, s };
+        }
+
+        function updateEmptyCount() {
+          const { t, c, s } = getCounts();
+          let empty = totalChests - t - c - s;
+          if (empty < 0) {
+            // Quá đầy → tự động giảm → highlight đỏ
+            $emptyCount.textContent = empty;
+            $emptyCount.style.color = 'var(--crimson-glow)';
+            $startBtn.disabled = true;
+          } else {
+            $emptyCount.textContent = empty;
+            $emptyCount.style.color = '';
+            $startBtn.disabled = false;
+          }
+        }
+
+        function bindNumButtons() {
+          $numRow.querySelectorAll('.mg-duck-num-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+              totalChests = parseInt(btn.dataset.num, 10);
+              $numRow.querySelectorAll('.mg-duck-num-btn').forEach(b =>
+                b.classList.toggle('active', b === btn)
+              );
+              updateEmptyCount();
+            });
+          });
+        }
+
+        function bindRewardInputs() {
+          [$treasureCount, $coinCount, $snakeCount].forEach(input => {
+            input.addEventListener('input', updateEmptyCount);
+          });
+        }
+
+        // ─── Bắt đầu ván chơi ─────────────────────────────────────
+        function startGame() {
+          const { t, c, s } = getCounts();
+          const empty = totalChests - t - c - s;
+          if (empty < 0) {
+            showToast('Tổng phần thưởng nhiều hơn số hòm! Giảm bớt đi.');
+            return;
+          }
+
+          // Tạo array chests
+          const arr = [];
+          for (let i = 0; i < t; i++) arr.push('treasure');
+          for (let i = 0; i < c; i++) arr.push('coin');
+          for (let i = 0; i < s; i++) arr.push('snake');
+          while (arr.length < totalChests) arr.push('empty');
+
+          // Shuffle
+          for (let i = arr.length - 1; i > 0; i--) {
+            const j = secureRandomInt(i + 1);
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+          }
+
+          chests = arr.map(type => ({ type, opened: false }));
+          score = 0;
+          turns = MAX_TURNS;
+          history = [];
+          gameOver = false;
+
+          // Set grid columns based on chest count
+          if (totalChests === 16) {
+            $grid.dataset.cols = '4';
+          } else {
+            $grid.dataset.cols = '3';
+          }
+
+          $setup.style.display = 'none';
+          $game.style.display = '';
+
+          renderGrid();
+          updateInfo();
+          renderHistory();
+        }
+
+        function secureRandomInt(max) {
+          if (window.crypto && window.crypto.getRandomValues) {
+            const a = new Uint32Array(1);
+            window.crypto.getRandomValues(a);
+            return a[0] % max;
+          }
+          return Math.floor(Math.random() * max);
+        }
+
+        // ─── Render ──────────────────────────────────────────────
+        function renderGrid() {
+          let html = '';
+          chests.forEach((c, i) => {
+            const reward = c.opened ? REWARD[c.type] : null;
+            let icon = '🎁';
+            let cls = 'mg-chest';
+            if (c.opened) {
+              cls += ' opened ' + c.type;
+              icon = reward.icon;
+            }
+            if (gameOver && !c.opened) cls += ' disabled';
+            if (!c.opened && turns <= 0) cls += ' disabled';
+            html += `
+              <div class="${cls}" data-idx="${i}">
+                <span class="mg-chest-num">${i + 1}</span>
+                <span class="mg-chest-content">${icon}</span>
+              </div>
+            `;
+          });
+          $grid.innerHTML = html;
+
+          $grid.querySelectorAll('.mg-chest').forEach(el => {
+            el.addEventListener('click', () => {
+              const idx = parseInt(el.dataset.idx, 10);
+              openChest(idx);
+            });
+          });
+        }
+
+        function openChest(idx) {
+          if (gameOver) return;
+          if (turns <= 0) return;
+          const c = chests[idx];
+          if (!c || c.opened) return;
+
+          c.opened = true;
+          turns--;
+          const reward = REWARD[c.type];
+          score += reward.score;
+
+          // Add to history (most recent first)
+          history.unshift({
+            turn: MAX_TURNS - turns,
+            type: c.type,
+            chestIdx: idx,
+            delta: reward.score,
+          });
+
+          // Re-render grid
+          renderGrid();
+
+          // Floating delta animation
+          const $newChest = $grid.querySelector(`[data-idx="${idx}"]`);
+          if ($newChest) {
+            const delta = document.createElement('div');
+            delta.className = 'mg-chest-delta ' + (reward.score > 0 ? 'positive' : reward.score < 0 ? 'negative' : 'zero');
+            const sign = reward.score > 0 ? '+' : '';
+            delta.textContent = sign + reward.score;
+            $newChest.appendChild(delta);
+            setTimeout(() => delta.remove(), 1700);
+          }
+
+          updateInfo();
+          renderHistory();
+
+          // Sound theo type
+          if (c.type === 'treasure') playChestTreasureSound();
+          else if (c.type === 'coin') playChestCoinSound();
+          else if (c.type === 'snake') playChestSnakeSound();
+          else playChestEmptySound();
+
+          // Game end nếu hết lượt
+          if (turns <= 0) {
+            setTimeout(() => endGame(), 900);
+          }
+        }
+
+        function endGame() {
+          gameOver = true;
+          renderGrid();
+
+          // Reveal tất cả hòm chưa mở (cho thấy chỗ trốn của báu vật)
+          // Optional: làm sau, giờ chỉ disable
+
+          // Modal kết quả
+          let title, desc, icon;
+          if (score >= 20) {
+            icon = '👑';
+            title = score + ' điểm — Đại Cát Đại Lợi!';
+            desc = 'Hiệp khách đoán hòm như thần! Bang trưởng phải kính nể.';
+            playDuckWinSound();
+          } else if (score >= 10) {
+            icon = '🏆';
+            title = score + ' điểm — Thắng lớn';
+            desc = 'Hôm nay vận may đứng về phía ngươi.';
+            playDuckWinSound();
+          } else if (score > 0) {
+            icon = '💰';
+            title = score + ' điểm — Có lãi';
+            desc = 'Cũng được cũng được, không lỗ là tốt rồi.';
+            playChestCoinSound();
+          } else if (score === 0) {
+            icon = '😐';
+            title = '0 điểm — Hòa cả làng';
+            desc = 'Hôm nay không thắng cũng không thua. Coi như đi tham quan.';
+            playChestEmptySound();
+          } else {
+            icon = '💀';
+            title = score + ' điểm — Lỗ chỏng vó';
+            desc = 'Toàn rắn với rắn, về luyện công thêm rồi quay lại.';
+            playChestSnakeSound();
+          }
+
+          showModal({ icon, title, desc });
+        }
+
+        function updateInfo() {
+          $score.textContent = score;
+          $turnsLeft.textContent = turns;
+          $opened.textContent = chests.filter(c => c.opened).length;
+
+          // Color score panel theo dấu
+          const $scoreItem = $score.closest('.mg-chest-info-item');
+          $scoreItem.classList.toggle('positive', score > 0);
+          $scoreItem.classList.toggle('negative', score < 0);
+        }
+
+        function renderHistory() {
+          if (history.length === 0) {
+            $history.innerHTML = '<div class="mg-chest-history-empty">Chưa mở hòm nào</div>';
+            return;
+          }
+          $history.innerHTML = history.slice(0, 10).map(h => {
+            const reward = REWARD[h.type];
+            const sign = h.delta > 0 ? '+' : '';
+            const cls = h.delta > 0 ? 'positive' : h.delta < 0 ? 'negative' : 'zero';
+            return `
+              <div class="mg-chest-history-item">
+                <span class="turn">#${h.turn}</span>
+                <span class="ico">${reward.icon}</span>
+                <span class="name">${reward.label} <span style="opacity:0.6">(hòm ${h.chestIdx + 1})</span></span>
+                <span class="delta ${cls}">${sign}${h.delta}</span>
+              </div>
+            `;
+          }).join('');
+        }
+
+        // ─── Reset / quay lại ────────────────────────────────────
+        function backToSetup() {
+          $game.style.display = 'none';
+          $setup.style.display = '';
+        }
+
+        function endTurnEarly() {
+          if (turns >= MAX_TURNS) {
+            // Chưa mở gì → toast
+            showToast('Bạn chưa mở hòm nào!');
+            return;
+          }
+          if (confirm('Kết thúc lượt chơi và xem điểm?')) {
+            turns = 0;
+            endGame();
+          }
+        }
+
+        function init() {
+          bindNumButtons();
+          bindRewardInputs();
+          updateEmptyCount();
+          $startBtn.addEventListener('click', startGame);
+          $backBtn.addEventListener('click', backToSetup);
+          $endBtn.addEventListener('click', endTurnEarly);
+        }
+
+        return { init, $screen };
+      })();
+
+      // ═══════════════════════════════════════════════════════════════════
+      // GAME 4: SO TÀI TAY ĐÔI (Đấm-Đỡ-Né)
+      // ═══════════════════════════════════════════════════════════════════
+      // GAME 4: VÕ ĐƯỜNG GIANG HỒ (FaceFighter) — UI khung gỗ + 1 nhân vật
+      // ═══════════════════════════════════════════════════════════════════
+      // GAME 4: VÕ ĐƯỜNG GIANG HỒ (FaceFighter Appy style)
+      //   - 1 mặt to giữa khung. Camera switch luân phiên.
+      //   - Mặt tích lũy 6 lớp thương tích theo HP loss.
+      //   - Special meter đầy 100 → unlock combo finisher.
+      // ═══════════════════════════════════════════════════════════════════
+      // GAME 4: VÕ ĐƯỜNG GIANG HỒ (FaceFighter piece-based)
+      //   Port từ source code PattMayne/FaceFighter (Java Android)
+      //   - 3 phase: Builder → Foe Select → Battle
+      //   - Mỗi nhân vật có nhiều FacePiece, mỗi piece HP riêng
+      //   - Turn-based: 1 attack + 1 optional response (2/3 chance AI response)
+      //   - Piece destroyed → biến mất khỏi face. Hết piece → thua.
+      // ═══════════════════════════════════════════════════════════════════
+      // GAME 4: ĐẤU TRƯỜNG GIANG HỒ (Embedded games picker)
+      //   Picker với nhiều game đối kháng/võ thuật từ các platform game online
+      //   Embed qua iframe. Có fallback "Mở tab mới" nếu game chặn embed.
+
+      // ═══════════════════════════════════════════════════════════════════
+      // SOUND (Web Audio)
+      // ═══════════════════════════════════════════════════════════════════
+      let audioCtx = null;
+      function getAudioCtx() {
+        if (audioCtx) return audioCtx;
+        try {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        } catch (e) { audioCtx = null; }
+        return audioCtx;
+      }
+
+      function playTone(opts) {
+        const ctx = getAudioCtx();
+        if (!ctx) return;
+        if (ctx.state === 'suspended') { try { ctx.resume(); } catch (e) {} }
+        const {
+          freq = 440,
+          freqEnd = null,
+          duration = 0.2,
+          type = 'sine',
+          volume = 0.2,
+          delay = 0,
+          attack = 0.005,
+          release = 0.05,
+        } = opts;
+
+        const now = ctx.currentTime + delay;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, now);
+        if (freqEnd != null) {
+          osc.frequency.linearRampToValueAtTime(freqEnd, now + duration);
+        }
+
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(volume, now + attack);
+        gain.gain.linearRampToValueAtTime(volume, now + duration - release);
+        gain.gain.linearRampToValueAtTime(0, now + duration);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + duration + 0.01);
+      }
+
+      function playNoise(opts) {
+        const ctx = getAudioCtx();
+        if (!ctx) return;
+        if (ctx.state === 'suspended') { try { ctx.resume(); } catch (e) {} }
+        const {
+          duration = 0.2,
+          volume = 0.15,
+          delay = 0,
+          highpass = null,
+          lowpass = null,
+        } = opts;
+
+        const now = ctx.currentTime + delay;
+        const bufferSize = Math.floor(ctx.sampleRate * duration);
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+
+        const src = ctx.createBufferSource();
+        src.buffer = buffer;
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(volume, now + 0.005);
+        gain.gain.linearRampToValueAtTime(0, now + duration);
+
+        let lastNode = src;
+        if (highpass) {
+          const hp = ctx.createBiquadFilter();
+          hp.type = 'highpass';
+          hp.frequency.value = highpass;
+          lastNode.connect(hp);
+          lastNode = hp;
+        }
+        if (lowpass) {
+          const lp = ctx.createBiquadFilter();
+          lp.type = 'lowpass';
+          lp.frequency.value = lowpass;
+          lastNode.connect(lp);
+          lastNode = lp;
+        }
+        lastNode.connect(gain);
+        gain.connect(ctx.destination);
+        src.start(now);
+        src.stop(now + duration);
+      }
+
+      // ─── Sounds cho Vòng Quay May Mắn ─────────────────────────
+      function playSpinStartSound() {
+        // Whoosh khởi động
+        playTone({ freq: 200, freqEnd: 600, duration: 0.4, type: 'sawtooth', volume: 0.15 });
+        playNoise({ duration: 0.3, volume: 0.08, delay: 0.05, highpass: 1500 });
+      }
+
+      function playSpinTickSound() {
+        playTone({ freq: 1200, duration: 0.04, type: 'square', volume: 0.08 });
+      }
+
+      function playSpinResultSound() {
+        // Ascending arpeggio C-E-G-C
+        [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+          playTone({ freq: f, duration: 0.3, type: 'sine', volume: 0.22, delay: i * 0.08 });
+          playTone({ freq: f, duration: 0.3, type: 'triangle', volume: 0.12, delay: i * 0.08 });
+        });
+        playNoise({ duration: 0.3, volume: 0.08, delay: 0.05, highpass: 6000 });
+      }
+
+      // ─── Sounds cho Đua Vịt ─────────────────────────────────────
+      function playDuckCountdownSound() {
+        playTone({ freq: 400, duration: 0.18, type: 'sine', volume: 0.2 });
+        playTone({ freq: 400, duration: 0.18, type: 'triangle', volume: 0.1 });
+      }
+
+      function playDuckGoSound() {
+        playTone({ freq: 800, duration: 0.4, type: 'sine', volume: 0.3 });
+        playTone({ freq: 1200, duration: 0.4, type: 'triangle', volume: 0.18, delay: 0.05 });
+        playNoise({ duration: 0.3, volume: 0.1, delay: 0.1, highpass: 4000 });
+      }
+
+      function playDuckWinSound() {
+        [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+          playTone({ freq: f, duration: 0.3, type: 'sine', volume: 0.22, delay: i * 0.1 });
+          playTone({ freq: f, duration: 0.3, type: 'triangle', volume: 0.12, delay: i * 0.1 });
+        });
+        playNoise({ duration: 0.5, volume: 0.12, delay: 0.4, highpass: 5000 });
+      }
+
+      function playDuckFinishSound() {
+        playTone({ freq: 600, duration: 0.3, type: 'sine', volume: 0.15 });
+      }
+
+      // ─── Sounds cho Mở Hòm ─────────────────────────────────────
+      function playChestEmptySound() {
+        playTone({ freq: 400, freqEnd: 200, duration: 0.4, type: 'sine', volume: 0.18 });
+      }
+
+      function playChestTreasureSound() {
+        const coins = [
+          { freq: 2637, t: 0 },
+          { freq: 3136, t: 0.08 },
+          { freq: 2637, t: 0.16 },
+          { freq: 3520, t: 0.24 },
+          { freq: 2794, t: 0.32 },
+          { freq: 3520, t: 0.40 },
+        ];
+        coins.forEach(c => {
+          playTone({ freq: c.freq, duration: 0.18, type: 'sine', volume: 0.18, delay: c.t });
+        });
+        [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+          playTone({ freq: f, duration: 0.4, type: 'sine', volume: 0.22, delay: 0.5 + i * 0.08 });
+          playTone({ freq: f, duration: 0.4, type: 'triangle', volume: 0.12, delay: 0.5 + i * 0.08 });
+        });
+        playNoise({ duration: 0.5, volume: 0.12, delay: 0.3, highpass: 5000 });
+        playTone({ freq: 130.81, duration: 1.0, type: 'sine', volume: 0.25, delay: 0.5 });
+      }
+
+      function playChestSnakeSound() {
+        [400, 350, 300, 220].forEach((f, i) => {
+          playTone({ freq: f, duration: 0.4, type: 'sawtooth', volume: 0.22, delay: i * 0.2 });
+        });
+      }
+
+      function playChestCoinSound() {
+        [1760, 2349, 2637].forEach((f, i) => {
+          playTone({ freq: f, duration: 0.15, type: 'sine', volume: 0.18, delay: i * 0.06 });
+          playTone({ freq: f, duration: 0.15, type: 'triangle', volume: 0.08, delay: i * 0.06 });
+        });
+      }
+      // ═══════════════════════════════════════════════════════════════════
+      // INIT
+      // ═══════════════════════════════════════════════════════════════════
+      loadState();
+      initNickname();
+      setNickVisible(false); // Mặc định Hub: ẩn
+      renderAdminUI();
+      renderCardStatus();
+
+      // Register & init tất cả screens
+      registerScreen('wheel', WheelGame.$screen);
+      registerScreen('duck',  DuckGame.$screen);
+      registerScreen('chest', ChestGame.$screen);
+
+      WheelGame.init();
+      DuckGame.init();
+      ChestGame.init();
+
+      // Expose for debug
+      window.MiniGamesHub = {
+        state, gotoHub, gotoGame, gameStatus,
+        setGameStatus,
+        _resetAll: () => {
+          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(GAME_STATUS_KEY);
+          location.reload();
+        },
+      };
+    })();
+  </script>
+</body>
+</html>
