@@ -584,10 +584,45 @@
   }
 
   function loginAsGuest() {
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify({
-      id: 'guest', name: 'Khách', username: '', role: 'guest'
-    }));
-    window.location.href = 'app.html';
+    // Guest cũng PHẢI sign in vào Firebase (anonymous) để Firestore rules
+    // (request.auth != null) cho phép đọc data Bang chiến / Gacha / Minigames.
+    // Trước đây chỉ ghi sessionStorage → guest không có Firebase Auth token →
+    // iframe Gacha bị skip subscribe vì authReady() resolve signedIn:false.
+    if (!_fbReady) {
+      // Fallback: nếu Firebase chưa sẵn sàng, vẫn cho vào nhưng cảnh báo.
+      console.warn('[Login] Firebase chưa ready, guest sẽ không xem được data realtime.');
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+        id: 'guest', name: 'Khách', username: '', role: 'guest'
+      }));
+      window.location.href = 'app.html';
+      return;
+    }
+
+    var btn = document.querySelector('[onclick="loginAsGuest()"]');
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+
+    _fbAuth.signInAnonymously()
+      .then(function(cred) {
+        // Lưu uid thực của anonymous account vào session để iframe biết.
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+          id:        cred.user.uid,
+          name:      'Khách',
+          username:  '',
+          role:      'guest',
+          anonymous: true
+        }));
+        window.location.href = 'app.html';
+      })
+      .catch(function(err) {
+        console.error('[Login] guest signInAnonymously failed:', err);
+        if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+        // Hint cho admin: cần bật Anonymous trong Firebase Console.
+        if (err && err.code === 'auth/admin-restricted-operation') {
+          showError('Đăng nhập khách chưa được bật. Vui lòng liên hệ Bang Chủ.');
+        } else {
+          showError('Không thể đăng nhập khách: ' + (err && err.message || 'lỗi không xác định'));
+        }
+      });
   }
 
   function showForgot() {

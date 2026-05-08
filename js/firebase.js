@@ -48,13 +48,30 @@ function fbInit() {
 
     _auth.onAuthStateChanged(function(fbUser){
       if (fbUser) {
-        console.log('[FB] Auth: signed in as', fbUser.email, fbUser.uid);
+        console.log('[FB] Auth: signed in as', fbUser.email || ('anonymous:'+fbUser.uid), fbUser.uid);
         // Re-listen sau khi sign in để Firestore Rules cho qua
         _listenGuild();
         _listenUsers();
         _listenMembers();
       } else {
         console.log('[FB] Auth: signed out');
+        // Trường hợp guest: parent app có session role=guest nhưng Firebase Auth
+        // chưa attach (vd. session cũ từ phiên bản trước khi guest login = anonymous,
+        // hoặc cookie/IndexedDB bị xóa). Auto signInAnonymously để Firestore Rules
+        // (request.auth != null) cho phép đọc Bang chiến / Gacha / Minigames.
+        try {
+          var raw = sessionStorage.getItem('nth_session') || localStorage.getItem('nth_session');
+          var sess = raw ? JSON.parse(raw) : null;
+          if (sess && sess.role === 'guest') {
+            console.log('[FB] Guest session detected without Firebase auth → signInAnonymously()');
+            _auth.signInAnonymously().catch(function(err){
+              console.error('[FB] Guest auto signInAnonymously failed:', err && err.code, err && err.message);
+              if (err && err.code === 'auth/admin-restricted-operation') {
+                console.warn('[FB] → Anonymous Auth chưa được bật trong Firebase Console.');
+              }
+            });
+          }
+        } catch (e) {}
       }
     });
 
@@ -243,7 +260,7 @@ function _listenUsers() {
     if (!sessRaw) return;
     try {
       var sess = JSON.parse(sessRaw);
-      if (sess.id === 'admin' || sess.id === 'guest') return;
+      if (sess.id === 'admin' || sess.role === 'guest') return;
       var me = users.find(function(u){ return u.id === sess.id; });
       if (me && me.role !== sess.role) {
         console.log('[FB] Role changed:', sess.role, '→', me.role);
@@ -452,7 +469,22 @@ function _t(ts){ return ts ? new Date(ts).toLocaleTimeString('vi-VN',{hour:'2-di
 
 function _badge(ok, msg) {
   setTimeout(function(){
+    // Chỉ admin mới được thấy badge "🔥 Firebase" ở topbar — member/guest
+    // không cần biết trạng thái backend, giữ UI gọn gàng và đỡ rò rỉ chi tiết.
+    var sess = null;
+    try {
+      var raw = sessionStorage.getItem('nth_session') || localStorage.getItem('nth_session');
+      sess = raw ? JSON.parse(raw) : null;
+    } catch (e) {}
+    var isAdminNow = !!(sess && sess.role === 'admin');
+
     var el = document.getElementById('fb-badge');
+    if (!isAdminNow) {
+      // Nếu trước đó đã chèn (vd. user vừa bị giáng cấp / role thay đổi runtime),
+      // gỡ ra cho sạch.
+      if (el && el.parentNode) el.parentNode.removeChild(el);
+      return;
+    }
     if (!el) {
       el = document.createElement('div');
       el.id = 'fb-badge';

@@ -78,7 +78,7 @@ function initApp() {
           </div>
           <div class="topbar-actions" style="display:flex;gap:10px;align-items:center">
             <div id="topbar-user-tag"></div>
-            ${isAdmin()?`<button class="btn btn-outline" style="font-size:12px" onclick="exportData()">📤 Xuất</button>`:''}}
+            ${isAdmin()?`<button class="btn btn-outline" style="font-size:12px" onclick="exportData()">📤 Xuất</button>`:''}
           </div>
         </div>
         <div class="page-content"><div id="page-area"></div></div>
@@ -100,8 +100,16 @@ function initApp() {
       <button onclick="logout()" title="Đăng xuất"
         style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;padding:4px;margin-left:auto"
         onmouseover="this.style.color='var(--accent-red)'" onmouseout="this.style.color='var(--text-muted)'">⏻</button>`;
+    // Topbar role tag: chỉ hiển thị cho admin. Member/guest sẽ thấy topbar
+    // sạch sẽ — họ vẫn thấy role + tên trong sidebar-footer (góc dưới-trái).
     const tag = document.getElementById('topbar-user-tag');
-    if (tag) tag.innerHTML = `<span style="font-size:12px;color:${roleColor}">${roleLabel}: <strong>${escHtml(user.name)}</strong></span>`;
+    if (tag) {
+      if (user.role === 'admin') {
+        tag.innerHTML = `<span style="font-size:12px;color:${roleColor}">${roleLabel}: <strong>${escHtml(user.name)}</strong></span>`;
+      } else {
+        tag.innerHTML = '';
+      }
+    }
   }
   renderPage(startPage);
 }

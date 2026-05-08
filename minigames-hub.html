@@ -487,7 +487,8 @@
       font-size: 0.95rem;
     }
 
-    /* Sync badge — trạng thái Firebase */
+    /* Sync badge — trạng thái Firebase. Chỉ admin cần thấy; member/guest
+       khi mở iframe không có class .mg-admin trên body sẽ ẩn badge. */
     .mg-sync-badge {
       display: inline-flex;
       align-items: center;
@@ -500,6 +501,9 @@
       font-size: 0.78rem;
       color: var(--text-soft);
       backdrop-filter: blur(4px);
+    }
+    body:not(.mg-admin) .mg-sync-badge {
+      display: none !important;
     }
 
     .mg-sync-dot {
@@ -3019,6 +3023,15 @@
           return params.get('admin') === '1';
         } catch (e) { return false; }
       })();
+
+      // Đánh dấu role lên body để CSS ẩn các UI chỉ-admin (sync badge, ...)
+      // cho member/guest. Member/guest sẽ thấy hub gọn hơn — không thấy
+      // chi tiết backend/firebase/đồng bộ của bang.
+      if (isAdmin) {
+        document.body.classList.add('mg-admin');
+      } else {
+        document.body.classList.remove('mg-admin');
+      }
 
       // ─── Storage adapter (sẵn sàng swap Firestore) ───────────────────
       const STORAGE_KEY = 'mg_nhatmong_v1';

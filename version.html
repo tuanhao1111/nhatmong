@@ -47,6 +47,15 @@ Promise.all([
   // 7. app.js có nút Push Firebase
   row('app.js: có nút Push Firebase', appJs.includes('Push Firebase') || appJs.includes('fbPushNow'));
 
+  // 8. Guest sign-in anonymous (session 2026-05)
+  row('login.html: guest dùng signInAnonymously', login.includes('signInAnonymously'));
+
+  // 9. Firebase badge admin-only
+  row('firebase.js: badge admin-only', fb.includes("sess.role === 'admin'") || fb.includes('isAdminNow'));
+
+  // 10. Topbar tag admin-only
+  row('app.js: topbar tag admin-only', appJs.includes("user.role === 'admin'") && appJs.includes('topbar-user-tag'));
+
 }).catch(function(e){ row('Lỗi fetch: '+e.message, false); });
 </script>
 </body></html>

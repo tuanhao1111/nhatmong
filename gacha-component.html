@@ -1604,7 +1604,9 @@
     .gacha-hub.gh-readonly #ghAddInput,
     .gacha-hub.gh-readonly .gh-add-btn,
     .gacha-hub.gh-readonly .gh-history-clear,
-    .gacha-hub.gh-readonly .gh-roster-item button {
+    .gacha-hub.gh-readonly .gh-roster-item button,
+    /* Sync badge "Đang đồng bộ / kết nối Firebase" — chỉ admin cần thấy */
+    .gacha-hub.gh-readonly #ghSyncBadge {
       display: none !important;
     }
 
@@ -1665,6 +1667,523 @@
     @keyframes ghSyncPulse {
       0%, 100% { opacity: 0.6; transform: scale(0.85); }
       50%      { opacity: 1; transform: scale(1.15); }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       RULES EDITOR — Admin tùy chỉnh Thể Lệ Trao Thưởng
+       Theme khớp với phần còn lại: nâu đêm + đỏ son + cam đèn lồng
+       ═══════════════════════════════════════════════════════════════════ */
+
+    /* Header có nút Sửa */
+    .gh-rules-header {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      flex-wrap: wrap;
+    }
+    .gh-rules-edit-btn {
+      margin-left: auto;
+      padding: 0.35rem 0.85rem;
+      font-family: 'Be Vietnam Pro', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      color: var(--lantern-warm);
+      background: linear-gradient(135deg, rgba(184, 137, 63, 0.18), rgba(255, 184, 107, 0.08));
+      border: 1px solid rgba(255, 184, 107, 0.35);
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .gh-rules-edit-btn:hover {
+      background: linear-gradient(135deg, rgba(184, 137, 63, 0.32), rgba(255, 184, 107, 0.14));
+      border-color: var(--lantern-warm);
+      color: var(--lantern-glow);
+      transform: translateY(-1px);
+    }
+    .gh-rules-edit-btn:active { transform: translateY(0); }
+
+    /* Render: tag PRESET color variants (chỉ dùng khi tagColor='crimson|gold|bronze|lantern|deep') */
+    .gh-prize-tag.crimson {
+      background: linear-gradient(135deg, var(--crimson-deep), var(--crimson-fire));
+      color: var(--text-bright);
+    }
+    .gh-prize-tag.bronze {
+      background: linear-gradient(135deg, var(--bronze-deep), var(--bronze));
+      color: var(--night-deep);
+    }
+    .gh-prize-tag.lantern {
+      background: linear-gradient(135deg, var(--lantern-warm), var(--lantern-glow));
+      color: var(--night-deep);
+    }
+    .gh-prize-tag.deep {
+      background: linear-gradient(135deg, var(--night-mist), var(--twilight));
+      color: var(--lantern-warm);
+      border: 1px solid rgba(255, 184, 107, 0.3);
+    }
+
+    /* ─── MODAL OVERLAY ─────────────────────────────────────────────── */
+    .gh-rules-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 6, 4, 0.85);
+      backdrop-filter: blur(6px);
+      z-index: 9999;
+      display: none;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 2.5vh 1.2rem;
+      overflow-y: auto;
+    }
+    .gh-rules-modal.show { display: flex; animation: ghRulesFadeIn 0.22s ease; }
+    @keyframes ghRulesFadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    .gh-rules-modal-card {
+      width: 100%;
+      max-width: 880px;
+      background: linear-gradient(180deg, var(--night-mid), var(--night-deep));
+      border: 1px solid rgba(255, 184, 107, 0.25);
+      border-radius: 6px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6),
+                  0 0 0 1px rgba(204, 56, 56, 0.18) inset;
+      animation: ghRulesSlideIn 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+      overflow: hidden;
+    }
+    @keyframes ghRulesSlideIn {
+      from { opacity: 0; transform: translateY(-16px) scale(0.98); }
+      to   { opacity: 1; transform: translateY(0)     scale(1);    }
+    }
+    .gh-rules-modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.1rem 1.5rem;
+      border-bottom: 1px solid rgba(204, 56, 56, 0.2);
+      background:
+        linear-gradient(180deg, rgba(204, 56, 56, 0.08), transparent);
+    }
+    .gh-rules-modal-title {
+      font-family: 'Cinzel', serif;
+      font-size: 1.15rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      color: var(--lantern-glow);
+      text-transform: uppercase;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+    }
+    .gh-rules-modal-title::before {
+      content: '⚔';
+      color: var(--crimson-fire);
+    }
+    .gh-rules-modal-close {
+      background: none;
+      border: 1px solid rgba(255, 184, 107, 0.25);
+      color: var(--text-soft);
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .gh-rules-modal-close:hover {
+      color: var(--crimson-glow);
+      border-color: var(--crimson);
+      background: rgba(204, 56, 56, 0.12);
+    }
+
+    .gh-rules-modal-body {
+      padding: 1.3rem 1.5rem;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+    .gh-rules-modal-body::-webkit-scrollbar { width: 8px; }
+    .gh-rules-modal-body::-webkit-scrollbar-track { background: var(--night-deep); }
+    .gh-rules-modal-body::-webkit-scrollbar-thumb {
+      background: var(--bronze-deep);
+      border-radius: 4px;
+    }
+
+    .gh-rules-modal-foot {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.95rem 1.5rem;
+      border-top: 1px solid rgba(204, 56, 56, 0.18);
+      background: var(--night-deep);
+    }
+    .gh-rules-foot-left,
+    .gh-rules-foot-right {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    /* ─── SECTION CARD trong editor ───────────────────────────────── */
+    .gh-edit-section {
+      background: rgba(37, 22, 16, 0.6);
+      border: 1px solid rgba(255, 184, 107, 0.18);
+      border-radius: 5px;
+      padding: 0.95rem 1rem;
+      margin-bottom: 0.85rem;
+      position: relative;
+      transition: border-color 0.18s ease;
+    }
+    .gh-edit-section:hover { border-color: rgba(255, 184, 107, 0.35); }
+    .gh-edit-section[data-dragging="true"] {
+      opacity: 0.5;
+      border-style: dashed;
+    }
+    .gh-edit-section.drop-target-above::before,
+    .gh-edit-section.drop-target-below::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--lantern-warm);
+      box-shadow: 0 0 8px var(--lantern-warm);
+      border-radius: 2px;
+    }
+    .gh-edit-section.drop-target-above::before { top: -2px; }
+    .gh-edit-section.drop-target-below::after  { bottom: -2px; }
+
+    .gh-edit-sec-head {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 0.7rem;
+      flex-wrap: wrap;
+    }
+    .gh-edit-drag-handle {
+      cursor: grab;
+      color: var(--text-faint);
+      font-size: 1rem;
+      padding: 0.2rem 0.4rem;
+      user-select: none;
+      letter-spacing: -1px;
+    }
+    .gh-edit-drag-handle:active { cursor: grabbing; }
+    .gh-edit-drag-handle:hover { color: var(--lantern-warm); }
+    .gh-edit-kind-badge {
+      font-family: 'Manrope', sans-serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      padding: 0.18rem 0.6rem;
+      border-radius: 999px;
+      background: rgba(184, 137, 63, 0.15);
+      border: 1px solid rgba(184, 137, 63, 0.35);
+      color: var(--lantern-warm);
+    }
+    .gh-edit-kind-badge.note {
+      background: rgba(204, 56, 56, 0.12);
+      border-color: rgba(204, 56, 56, 0.3);
+      color: var(--crimson-glow);
+    }
+    .gh-edit-sec-actions { margin-left: auto; display: flex; gap: 0.35rem; }
+    .gh-edit-icon-btn {
+      background: none;
+      border: 1px solid rgba(255, 184, 107, 0.2);
+      color: var(--text-soft);
+      width: 30px;
+      height: 30px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+    .gh-edit-icon-btn:hover {
+      color: var(--lantern-glow);
+      border-color: var(--lantern-warm);
+      background: rgba(255, 184, 107, 0.08);
+    }
+    .gh-edit-icon-btn.danger:hover {
+      color: var(--crimson-glow);
+      border-color: var(--crimson);
+      background: rgba(204, 56, 56, 0.12);
+    }
+
+    /* Form fields */
+    .gh-edit-field {
+      display: block;
+      margin-bottom: 0.7rem;
+    }
+    .gh-edit-field-label {
+      display: block;
+      font-family: 'Manrope', sans-serif;
+      font-size: 0.72rem;
+      letter-spacing: 0.12em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      margin-bottom: 0.3rem;
+    }
+    .gh-edit-input,
+    .gh-edit-textarea {
+      width: 100%;
+      background: var(--night-deep);
+      border: 1px solid rgba(255, 184, 107, 0.18);
+      color: var(--text-bright);
+      padding: 0.55rem 0.75rem;
+      font-family: 'Be Vietnam Pro', sans-serif;
+      font-size: 0.92rem;
+      border-radius: 4px;
+      box-sizing: border-box;
+      transition: border-color 0.18s ease;
+    }
+    .gh-edit-input:focus,
+    .gh-edit-textarea:focus {
+      outline: none;
+      border-color: var(--lantern-warm);
+      box-shadow: 0 0 0 2px rgba(255, 184, 107, 0.12);
+    }
+    .gh-edit-textarea {
+      min-height: 70px;
+      resize: vertical;
+      line-height: 1.55;
+      font-family: 'Be Vietnam Pro', sans-serif;
+    }
+    .gh-edit-help {
+      font-size: 0.74rem;
+      color: var(--text-faint);
+      margin-top: 0.3rem;
+      line-height: 1.5;
+    }
+    .gh-edit-help code {
+      font-family: 'Manrope', monospace;
+      background: rgba(204, 56, 56, 0.12);
+      color: var(--lantern-glow);
+      padding: 0.05rem 0.35rem;
+      border-radius: 3px;
+      font-size: 0.78rem;
+    }
+
+    /* Color picker */
+    .gh-edit-color-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      align-items: center;
+    }
+    .gh-edit-color-swatch {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      position: relative;
+      padding: 0;
+    }
+    .gh-edit-color-swatch:hover { transform: scale(1.08); }
+    .gh-edit-color-swatch[aria-checked="true"] {
+      border-color: var(--lantern-glow);
+      box-shadow: 0 0 0 2px var(--night-deep), 0 0 0 4px var(--lantern-warm);
+    }
+    .gh-edit-color-swatch[aria-checked="true"]::after {
+      content: '✓';
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 700;
+      font-size: 1rem;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    }
+    .gh-edit-color-swatch.crimson { background: linear-gradient(135deg, var(--crimson-deep), var(--crimson-fire)); }
+    .gh-edit-color-swatch.gold    { background: linear-gradient(135deg, var(--bronze), var(--lantern-warm)); }
+    .gh-edit-color-swatch.bronze  { background: linear-gradient(135deg, var(--bronze-deep), var(--bronze)); }
+    .gh-edit-color-swatch.lantern { background: linear-gradient(135deg, var(--lantern-warm), var(--lantern-glow)); }
+    .gh-edit-color-swatch.deep    { background: linear-gradient(135deg, var(--night-mist), var(--twilight)); border: 2px solid rgba(255,184,107,0.4); }
+
+    .gh-edit-color-custom {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.25rem 0.55rem;
+      border: 1px dashed rgba(255, 184, 107, 0.3);
+      border-radius: 999px;
+      color: var(--text-soft);
+      font-size: 0.8rem;
+    }
+    .gh-edit-color-custom input[type="color"] {
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      border: none;
+      background: none;
+      cursor: pointer;
+    }
+
+    /* Pills (tag chips) editor */
+    .gh-edit-pills-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      align-items: center;
+    }
+    .gh-edit-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.6rem 0.25rem 0.8rem;
+      background: rgba(255, 184, 107, 0.12);
+      border: 1px solid rgba(255, 184, 107, 0.35);
+      color: var(--lantern-warm);
+      border-radius: 14px;
+      font-size: 0.85rem;
+    }
+    .gh-edit-pill button {
+      background: none;
+      border: none;
+      color: inherit;
+      cursor: pointer;
+      font-size: 1rem;
+      line-height: 1;
+      padding: 0;
+      opacity: 0.7;
+    }
+    .gh-edit-pill button:hover { opacity: 1; color: var(--crimson-glow); }
+    .gh-edit-pill-input {
+      flex: 1;
+      min-width: 130px;
+      background: var(--night-deep);
+      border: 1px dashed rgba(255, 184, 107, 0.25);
+      color: var(--text-bright);
+      padding: 0.3rem 0.6rem;
+      border-radius: 14px;
+      font-size: 0.85rem;
+    }
+    .gh-edit-pill-input:focus {
+      outline: none;
+      border-style: solid;
+      border-color: var(--lantern-warm);
+    }
+
+    /* Note items editor (kind='note-list') */
+    .gh-edit-note-item {
+      display: flex;
+      gap: 0.4rem;
+      align-items: flex-start;
+      margin-bottom: 0.4rem;
+    }
+    .gh-edit-note-item textarea {
+      flex: 1;
+      min-height: 38px;
+    }
+    .gh-edit-add-note {
+      width: 100%;
+      padding: 0.4rem;
+      background: rgba(184, 137, 63, 0.08);
+      border: 1px dashed rgba(184, 137, 63, 0.35);
+      color: var(--lantern-warm);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      transition: all 0.15s ease;
+    }
+    .gh-edit-add-note:hover {
+      background: rgba(184, 137, 63, 0.18);
+      border-style: solid;
+    }
+
+    /* Add section toolbar */
+    .gh-edit-add-toolbar {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 0.4rem;
+    }
+    .gh-edit-add-btn {
+      flex: 1;
+      min-width: 140px;
+      padding: 0.65rem 0.75rem;
+      background: linear-gradient(135deg, rgba(184, 137, 63, 0.14), rgba(255, 184, 107, 0.06));
+      border: 1px dashed rgba(255, 184, 107, 0.35);
+      color: var(--lantern-warm);
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-family: 'Be Vietnam Pro', sans-serif;
+      transition: all 0.18s ease;
+    }
+    .gh-edit-add-btn:hover {
+      background: linear-gradient(135deg, rgba(184, 137, 63, 0.28), rgba(255, 184, 107, 0.14));
+      border-style: solid;
+      color: var(--lantern-glow);
+    }
+
+    /* Footer buttons */
+    .gh-rules-btn {
+      padding: 0.5rem 1.1rem;
+      border-radius: 4px;
+      font-family: 'Be Vietnam Pro', sans-serif;
+      font-size: 0.88rem;
+      font-weight: 500;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+      transition: all 0.18s ease;
+      border: 1px solid transparent;
+    }
+    .gh-rules-btn.primary {
+      background: linear-gradient(135deg, var(--crimson), var(--crimson-fire));
+      color: var(--text-bright);
+      border-color: var(--crimson-fire);
+      box-shadow: 0 4px 12px rgba(204, 56, 56, 0.3);
+    }
+    .gh-rules-btn.primary:hover {
+      background: linear-gradient(135deg, var(--crimson-fire), var(--crimson-glow));
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(204, 56, 56, 0.4);
+    }
+    .gh-rules-btn.ghost {
+      background: transparent;
+      color: var(--text-soft);
+      border-color: rgba(255, 184, 107, 0.25);
+    }
+    .gh-rules-btn.ghost:hover {
+      background: rgba(255, 184, 107, 0.06);
+      color: var(--lantern-glow);
+      border-color: var(--lantern-warm);
+    }
+    .gh-rules-btn.danger-ghost {
+      background: transparent;
+      color: var(--crimson-glow);
+      border-color: rgba(204, 56, 56, 0.3);
+    }
+    .gh-rules-btn.danger-ghost:hover {
+      background: rgba(204, 56, 56, 0.12);
+      border-color: var(--crimson);
+    }
+
+    /* Empty state khi chưa có section nào */
+    .gh-rules-empty {
+      text-align: center;
+      padding: 2rem 1rem;
+      color: var(--text-faint);
+      font-style: italic;
+      font-size: 0.92rem;
+    }
+
+    /* Responsive editor */
+    @media (max-width: 600px) {
+      .gh-rules-modal-foot { flex-direction: column-reverse; align-items: stretch; }
+      .gh-rules-foot-left, .gh-rules-foot-right { justify-content: center; }
+      .gh-rules-btn { width: 100%; }
     }
   </style>
 </head>
@@ -1742,65 +2261,19 @@
     <div class="gh-grid">
       <!-- LEFT: Thể lệ -->
       <section class="gh-scroll" aria-label="Thể lệ">
-        <h2 class="gh-section-label">
-          Thể Lệ Trao Thưởng
-          
+        <h2 class="gh-section-label gh-rules-header">
+          <span>Thể Lệ Trao Thưởng</span>
+          <button
+            type="button"
+            class="gh-rules-edit-btn"
+            id="ghRulesEditBtn"
+            title="Chỉnh sửa thể lệ trao thưởng"
+            hidden
+          >✎ Sửa Thể Lệ</button>
         </h2>
 
-        <div class="gh-prize">
-          <span class="gh-prize-tag gold">Phần Thưởng</span>
-          <div class="gh-prize-text">
-            <strong>Gacha Thẻ tháng 3</strong> — 4 cái / 1 chu kỳ
-            <em style="color:var(--text-dim);font-style:normal;background:none;padding:0">(2 tuần)</em>
-          </div>
-        </div>
-
-        <div class="gh-prize">
-          <span class="gh-prize-tag">Giải 1</span>
-          <div class="gh-prize-text">
-            Chọn <strong>Top 1 và Top 2</strong> của <strong>mỗi hạng mục</strong> khi tổng kết bang chiến.
-            <div class="gh-categories">
-              <span class="gh-cat-pill">Mạng kết liễu</span>
-              <span class="gh-cat-pill">Sát thương người chơi</span>
-              <span class="gh-cat-pill">Sát thương trụ</span>
-              <span class="gh-cat-pill">Chống chịu</span>
-              <span class="gh-cat-pill">Hồi máu</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="gh-prize">
-          <span class="gh-prize-tag">Giải 2</span>
-          <div class="gh-prize-text">
-            <strong>Cả bang.</strong> Phần thưởng được quyết định bởi <em>tổng số trận thắng</em> của chu kỳ tương ứng.
-          </div>
-        </div>
-
-        <h2 class="gh-section-label" style="margin-top:1.8rem">
-          Lưu Ý
-          
-        </h2>
-
-        <ul class="gh-notes">
-          <li>
-            Thêm <strong>2 slot</strong> được tính vào Giải 1 cho người <strong>hồi máu tốt nhất</strong>
-            và <strong>chịu sát thương nhiều nhất</strong> của <em>team lương</em>.
-          </li>
-          <li>
-            Nếu các top trùng người thì sẽ lấy <strong>người liền kề</strong>
-            <em>(đảm bảo tổng Giải 1 sẽ có 36 người tham gia)</em>.
-          </li>
-          <li>Phải là thành viên bang đã ở trong bang <strong>ít nhất 2 tuần</strong>.</li>
-          <li>
-            Phải có mặt đúng giờ của <strong>2 tuần bang chiến</strong> trong chu kỳ
-            <em>(gồm đánh chính và dự bị)</em>.
-          </li>
-          <li>Online trễ sau <strong>19h40</strong> sẽ <em>mất quyền tham gia</em>.</li>
-          <li>Phần thưởng sẽ làm mới mỗi tháng <em>(2 chu kỳ reset người nhận thưởng)</em>.</li>
-          <li>Thời gian quay thưởng là <strong>21h Chủ Nhật tuần 2</strong> của chu kỳ <em>(tuần đánh 1 trận)</em>.</li>
-          <li>Giải thưởng được <strong>tài trợ</strong> — vui lòng liên hệ bang nếu có thắc mắc.</li>
-          <li>Thông báo có thể chỉnh sửa dựa trên những yếu tố khách quan chưa được tính tới.</li>
-        </ul>
+        <!-- Container render từ state.prizeRules.sections -->
+        <div id="ghRulesContainer"></div>
       </section>
 
       <!-- RIGHT: Quay thưởng -->
@@ -1883,6 +2356,33 @@
       <div class="gh-history-list" id="ghHistoryList"></div>
     </section>
   </main>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       RULES EDITOR MODAL (admin-only) — chỉnh sửa Thể Lệ Trao Thưởng
+       =================================================================== -->
+  <div class="gh-rules-modal" id="ghRulesModal" role="dialog"
+       aria-labelledby="ghRulesModalTitle" aria-modal="true" hidden>
+    <div class="gh-rules-modal-card" role="document">
+      <header class="gh-rules-modal-head">
+        <h3 class="gh-rules-modal-title" id="ghRulesModalTitle">Sửa Thể Lệ Trao Thưởng</h3>
+        <button type="button" class="gh-rules-modal-close" id="ghRulesModalClose"
+                aria-label="Đóng cửa sổ chỉnh sửa thể lệ">✕</button>
+      </header>
+      <div class="gh-rules-modal-body" id="ghRulesEditorBody">
+        <!-- Section editors render dynamic ở đây -->
+      </div>
+      <div class="gh-rules-modal-foot">
+        <div class="gh-rules-foot-left">
+          <button type="button" class="gh-rules-btn danger-ghost" id="ghRulesResetBtn"
+                  title="Khôi phục về thể lệ mặc định ban đầu">↺ Mặc định</button>
+        </div>
+        <div class="gh-rules-foot-right">
+          <button type="button" class="gh-rules-btn ghost"   id="ghRulesCancelBtn">Hủy</button>
+          <button type="button" class="gh-rules-btn primary" id="ghRulesSaveBtn">💾 Lưu thể lệ</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Container pháo hoa toàn màn hình (ngoài modal để overlay tự do) -->
   <div class="gh-fireworks" id="ghFireworks" aria-hidden="true"></div>
@@ -2139,6 +2639,7 @@
         rosters: {},     // { [catId]: [name, ...] }
         history: [],     // [{ cycle, catId, catLabel, name, time }]
         blacklist: [],   // [{ name, atCycle, lockUntilCycle, catLabel }]
+        prizeRules: null // { v, sections:[...] } — null = dùng DEFAULT_PRIZE_RULES
       };
       let currentCatId = CATEGORIES[0].id;
       let isSpinning = false;
@@ -2148,6 +2649,11 @@
         state.rosters = data.rosters || {};
         state.history = data.history || [];
         state.blacklist = data.blacklist || [];
+        // prizeRules: chỉ apply nếu doc Firestore có (admin đã save).
+        // Không có → giữ null → renderRules() fallback default.
+        state.prizeRules = (data.prizeRules && Array.isArray(data.prizeRules.sections))
+                         ? data.prizeRules
+                         : null;
         CATEGORIES.forEach(c => {
           if (!Array.isArray(state.rosters[c.id])) state.rosters[c.id] = [];
         });
@@ -2167,6 +2673,617 @@
       function saveState() {
         Storage.save(state);
       }
+
+      // ═════════════════════════════════════════════════════════════════
+      //  THỂ LỆ TRAO THƯỞNG — Render dynamic + Editor (admin only)
+      // ═════════════════════════════════════════════════════════════════
+      // Schema state.prizeRules:
+      //   {
+      //     v: 1,
+      //     sections: [
+      //       { id, kind:'prize', tag, tagColor:'gold|crimson|bronze|lantern|deep|custom',
+      //         tagCustomBg?, tagCustomFg?, body, pills:[] },
+      //       { id, kind:'note-list', title, items:[ "html string", ... ] },
+      //       { id, kind:'note-list', title:null, items:[...] }   // không có header
+      //     ]
+      //   }
+      // null/undefined → fallback DEFAULT_PRIZE_RULES (giữ nội dung gốc).
+      //
+      // Body & pills & note items: cho phép inline tag <strong> và <em>.
+      // Mọi thứ khác bị escape an toàn để chống XSS từ chính admin (cẩn tắc
+      // vô áy náy — nếu account admin bị compromise vẫn không inject được script).
+
+      const PRIZE_TAG_COLORS = ['crimson', 'gold', 'bronze', 'lantern', 'deep'];
+
+      const DEFAULT_PRIZE_RULES = {
+        v: 1,
+        sections: [
+          {
+            id: 'sec_phanthuong',
+            kind: 'prize',
+            tag: 'Phần Thưởng',
+            tagColor: 'gold',
+            body: '<strong>Gacha Thẻ tháng 3</strong> — 4 cái / 1 chu kỳ (2 tuần)',
+            pills: []
+          },
+          {
+            id: 'sec_giai1',
+            kind: 'prize',
+            tag: 'Giải 1',
+            tagColor: 'crimson',
+            body: 'Chọn <strong>Top 1 và Top 2</strong> của <strong>mỗi hạng mục</strong> khi tổng kết bang chiến.',
+            pills: ['Mạng kết liễu', 'Sát thương người chơi', 'Sát thương trụ', 'Chống chịu', 'Hồi máu']
+          },
+          {
+            id: 'sec_giai2',
+            kind: 'prize',
+            tag: 'Giải 2',
+            tagColor: 'crimson',
+            body: '<strong>Cả bang.</strong> Phần thưởng được quyết định bởi <em>tổng số trận thắng</em> của chu kỳ tương ứng.',
+            pills: []
+          },
+          {
+            id: 'sec_luuy',
+            kind: 'note-list',
+            title: 'Lưu Ý',
+            items: [
+              'Thêm <strong>2 slot</strong> được tính vào Giải 1 cho người <strong>hồi máu tốt nhất</strong> và <strong>chịu sát thương nhiều nhất</strong> của <em>team lương</em>.',
+              'Nếu các top trùng người thì sẽ lấy <strong>người liền kề</strong> <em>(đảm bảo tổng Giải 1 sẽ có 36 người tham gia)</em>.',
+              'Phải là thành viên bang đã ở trong bang <strong>ít nhất 2 tuần</strong>.',
+              'Phải có mặt đúng giờ của <strong>2 tuần bang chiến</strong> trong chu kỳ <em>(gồm đánh chính và dự bị)</em>.',
+              'Online trễ sau <strong>19h40</strong> sẽ <em>mất quyền tham gia</em>.',
+              'Phần thưởng sẽ làm mới mỗi tháng <em>(2 chu kỳ reset người nhận thưởng)</em>.',
+              'Thời gian quay thưởng là <strong>21h Chủ Nhật tuần 2</strong> của chu kỳ <em>(tuần đánh 1 trận)</em>.',
+              'Giải thưởng được <strong>tài trợ</strong> — vui lòng liên hệ bang nếu có thắc mắc.',
+              'Thông báo có thể chỉnh sửa dựa trên những yếu tố khách quan chưa được tính tới.'
+            ]
+          }
+        ]
+      };
+
+      // Tạo bản copy sâu của default (để admin "↺ Mặc định" không reference shared object)
+      function _cloneDefaultRules() {
+        return JSON.parse(JSON.stringify(DEFAULT_PRIZE_RULES));
+      }
+
+      // Sanitizer: cho phép <strong> và <em> (cùng </strong>, </em>),
+      // mọi thứ khác escape thành entities. Dùng cho body, pill, note item.
+      function sanitizeRichText(raw) {
+        if (raw == null) return '';
+        let s = String(raw);
+        // Bước 1: escape ALL HTML
+        s = s.replace(/&/g, '&amp;')
+             .replace(/</g, '&lt;')
+             .replace(/>/g, '&gt;')
+             .replace(/"/g, '&quot;')
+             .replace(/'/g, '&#39;');
+        // Bước 2: un-escape các tag whitelist (đã escape thành &lt;...&gt;)
+        s = s.replace(/&lt;(\/?)(strong|em|b|i)&gt;/gi, function(_, slash, tag){
+          tag = tag.toLowerCase();
+          // Chuẩn hoá b→strong, i→em cho consistent
+          if (tag === 'b') tag = 'strong';
+          if (tag === 'i') tag = 'em';
+          return '<' + slash + tag + '>';
+        });
+        return s;
+      }
+
+      // ─── RENDER (cho cả admin lẫn member/guest) ─────────────────────
+      function getActivePrizeRules() {
+        return state.prizeRules || DEFAULT_PRIZE_RULES;
+      }
+
+      function renderRules() {
+        const $container = document.getElementById('ghRulesContainer');
+        if (!$container) return;
+        const rules = getActivePrizeRules();
+        const sections = Array.isArray(rules.sections) ? rules.sections : [];
+
+        if (sections.length === 0) {
+          $container.innerHTML =
+            '<div class="gh-rules-empty">' +
+            (isAdmin
+              ? 'Chưa có thể lệ nào. Bấm <strong>✎ Sửa Thể Lệ</strong> ở trên để thêm.'
+              : 'Bang chủ chưa cập nhật thể lệ.') +
+            '</div>';
+          return;
+        }
+
+        $container.innerHTML = sections.map(function(sec){
+          if (sec.kind === 'note-list') {
+            const itemsHtml = (sec.items || []).map(function(it){
+              return '<li>' + sanitizeRichText(it) + '</li>';
+            }).join('');
+            const titleHtml = sec.title
+              ? '<h2 class="gh-section-label" style="margin-top:1.8rem"><span>' +
+                sanitizeRichText(sec.title) + '</span></h2>'
+              : '';
+            return titleHtml + '<ul class="gh-notes">' + itemsHtml + '</ul>';
+          }
+          // kind === 'prize' (default)
+          const tagColor = PRIZE_TAG_COLORS.indexOf(sec.tagColor) >= 0
+                         ? sec.tagColor : 'crimson';
+          let tagInline = '';
+          if (sec.tagColor === 'custom' && sec.tagCustomBg) {
+            const bg = String(sec.tagCustomBg);
+            const fg = sec.tagCustomFg ? String(sec.tagCustomFg) : '#fff';
+            tagInline = ' style="background:' + escAttr(bg) + ';color:' + escAttr(fg) + '"';
+          }
+          const pillsHtml = (sec.pills && sec.pills.length)
+            ? '<div class="gh-categories">' +
+              sec.pills.map(function(p){
+                return '<span class="gh-cat-pill">' + sanitizeRichText(p) + '</span>';
+              }).join('') +
+              '</div>'
+            : '';
+          return (
+            '<div class="gh-prize">' +
+              '<span class="gh-prize-tag ' + tagColor + '"' + tagInline + '>' +
+                sanitizeRichText(sec.tag || '') +
+              '</span>' +
+              '<div class="gh-prize-text">' +
+                sanitizeRichText(sec.body || '') +
+                pillsHtml +
+              '</div>' +
+            '</div>'
+          );
+        }).join('');
+      }
+
+      function escAttr(s) {
+        return String(s).replace(/[<>"'&]/g, function(ch){
+          return { '<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','&':'&amp;' }[ch];
+        });
+      }
+
+      // ═════════════════════════════════════════════════════════════════
+      //  EDITOR — chỉ render & wire-up khi isAdmin
+      // ═════════════════════════════════════════════════════════════════
+      const RulesEditor = (function(){
+        // Working copy: deep-clone state.prizeRules khi mở, commit khi Save.
+        let working = null;
+
+        function _newId() {
+          return 'sec_' + Math.random().toString(36).slice(2, 9) +
+                 Date.now().toString(36).slice(-3);
+        }
+
+        function _newPrizeSection() {
+          return {
+            id: _newId(),
+            kind: 'prize',
+            tag: 'Tag mới',
+            tagColor: 'crimson',
+            body: 'Mô tả phần thưởng. Dùng <strong>...</strong> để in đậm.',
+            pills: []
+          };
+        }
+        function _newNoteList() {
+          return {
+            id: _newId(),
+            kind: 'note-list',
+            title: 'Lưu Ý Mới',
+            items: ['Một lưu ý mẫu — bấm để chỉnh sửa.']
+          };
+        }
+
+        function open() {
+          if (!isAdmin) return;
+          // Clone từ state.prizeRules HOẶC default (nếu chưa có)
+          const src = state.prizeRules || _cloneDefaultRules();
+          working = JSON.parse(JSON.stringify(src));
+          if (!Array.isArray(working.sections)) working.sections = [];
+          working.v = working.v || 1;
+          render();
+          const $modal = document.getElementById('ghRulesModal');
+          $modal.hidden = false;
+          $modal.classList.add('show');
+          document.body.style.overflow = 'hidden';
+        }
+
+        function close() {
+          const $modal = document.getElementById('ghRulesModal');
+          $modal.classList.remove('show');
+          $modal.hidden = true;
+          document.body.style.overflow = '';
+          working = null;
+        }
+
+        function save() {
+          if (!working) { close(); return; }
+          // Validate nhẹ: bỏ section trống hoàn toàn
+          working.sections = working.sections.filter(function(s){
+            if (s.kind === 'note-list') {
+              s.items = (s.items || []).map(function(x){ return String(x || '').trim(); })
+                                       .filter(Boolean);
+              return s.items.length > 0 || (s.title && s.title.trim());
+            }
+            return (s.tag && s.tag.trim()) || (s.body && s.body.trim());
+          });
+          state.prizeRules = working;
+          saveState();              // push lên Firestore qua Storage.save
+          renderRules();            // render lại view chính
+          close();
+          if (typeof showToast === 'function') {
+            showToast('💾 Đã lưu thể lệ', 'success', 2200);
+          } else {
+            console.log('[Rules] Saved.');
+          }
+        }
+
+        function resetToDefault() {
+          if (!confirm('Khôi phục thể lệ về mặc định ban đầu?\n\nMọi chỉnh sửa hiện có sẽ bị mất khi bạn bấm "Lưu thể lệ".')) return;
+          working = _cloneDefaultRules();
+          render();
+        }
+
+        // ─── Render UI editor ────────────────────────────────────────
+        function render() {
+          const $body = document.getElementById('ghRulesEditorBody');
+          if (!$body || !working) return;
+
+          const sectionsHtml = working.sections.map(function(sec, idx){
+            return _renderSectionEditor(sec, idx);
+          }).join('');
+
+          $body.innerHTML =
+            sectionsHtml +
+            '<div class="gh-edit-add-toolbar">' +
+              '<button type="button" class="gh-edit-add-btn" data-add="prize">' +
+                '+ Thêm thẻ Phần Thưởng' +
+              '</button>' +
+              '<button type="button" class="gh-edit-add-btn" data-add="note">' +
+                '+ Thêm danh sách Lưu Ý' +
+              '</button>' +
+            '</div>';
+
+          // Wire delegated events trong $body
+          _wireBody($body);
+        }
+
+        function _renderSectionEditor(sec, idx) {
+          const isPrize = sec.kind !== 'note-list';
+          const id = escAttr(sec.id || '');
+          const kindBadge = isPrize
+            ? '<span class="gh-edit-kind-badge">Thẻ phần thưởng</span>'
+            : '<span class="gh-edit-kind-badge note">Danh sách lưu ý</span>';
+
+          let inner = '';
+          if (isPrize) {
+            // Tag
+            inner +=
+              '<label class="gh-edit-field">' +
+                '<span class="gh-edit-field-label">Nhãn (Tag)</span>' +
+                '<input type="text" class="gh-edit-input" data-field="tag" maxlength="40" ' +
+                       'value="' + escAttr(sec.tag || '') + '" ' +
+                       'placeholder="Phần Thưởng / Giải 1 / ..." />' +
+              '</label>';
+
+            // Color picker
+            inner +=
+              '<div class="gh-edit-field">' +
+                '<span class="gh-edit-field-label">Màu nhãn</span>' +
+                '<div class="gh-edit-color-row" data-color-row>' +
+                  PRIZE_TAG_COLORS.map(function(c){
+                    const checked = (sec.tagColor === c) ? 'true' : 'false';
+                    return '<button type="button" class="gh-edit-color-swatch ' + c + '" ' +
+                           'data-color="' + c + '" aria-checked="' + checked + '" ' +
+                           'title="' + _colorLabel(c) + '"></button>';
+                  }).join('') +
+                  '<label class="gh-edit-color-custom" title="Chọn màu tùy ý">' +
+                    '<span>Tùy chọn:</span>' +
+                    '<input type="color" data-field="tagCustomBg" ' +
+                           'value="' + escAttr(sec.tagCustomBg || '#a02828') + '" />' +
+                  '</label>' +
+                '</div>' +
+              '</div>';
+
+            // Body
+            inner +=
+              '<label class="gh-edit-field">' +
+                '<span class="gh-edit-field-label">Nội dung</span>' +
+                '<textarea class="gh-edit-textarea" data-field="body" rows="3">' +
+                  escAttr(sec.body || '') +
+                '</textarea>' +
+                '<div class="gh-edit-help">Hỗ trợ thẻ <code>&lt;strong&gt;</code> và <code>&lt;em&gt;</code> để in đậm / nghiêng. Mọi HTML khác sẽ bị hiển thị nguyên văn.</div>' +
+              '</label>';
+
+            // Pills
+            const pills = Array.isArray(sec.pills) ? sec.pills : [];
+            const pillsHtml = pills.map(function(p, i){
+              return '<span class="gh-edit-pill">' +
+                       sanitizeRichText(p) +
+                       ' <button type="button" data-remove-pill="' + i + '" title="Xóa">✕</button>' +
+                     '</span>';
+            }).join('');
+            inner +=
+              '<div class="gh-edit-field">' +
+                '<span class="gh-edit-field-label">Hạng mục (chips dưới nội dung — tuỳ chọn)</span>' +
+                '<div class="gh-edit-pills-wrap" data-pills-wrap>' +
+                  pillsHtml +
+                  '<input type="text" class="gh-edit-pill-input" data-pill-input ' +
+                         'placeholder="Nhập rồi Enter..." />' +
+                '</div>' +
+              '</div>';
+          } else {
+            // note-list
+            inner +=
+              '<label class="gh-edit-field">' +
+                '<span class="gh-edit-field-label">Tiêu đề mục (có thể bỏ trống)</span>' +
+                '<input type="text" class="gh-edit-input" data-field="title" maxlength="60" ' +
+                       'value="' + escAttr(sec.title || '') + '" ' +
+                       'placeholder="VD: Lưu Ý" />' +
+              '</label>';
+
+            const items = Array.isArray(sec.items) ? sec.items : [];
+            const itemsHtml = items.map(function(it, i){
+              return '<div class="gh-edit-note-item">' +
+                       '<textarea class="gh-edit-textarea" data-note-item="' + i + '" rows="1">' +
+                         escAttr(it) +
+                       '</textarea>' +
+                       '<button type="button" class="gh-edit-icon-btn danger" ' +
+                               'data-remove-note="' + i + '" title="Xóa dòng">🗑</button>' +
+                     '</div>';
+            }).join('');
+
+            inner +=
+              '<div class="gh-edit-field">' +
+                '<span class="gh-edit-field-label">Các dòng lưu ý</span>' +
+                '<div data-note-items>' +
+                  itemsHtml +
+                '</div>' +
+                '<button type="button" class="gh-edit-add-note" data-add-note>' +
+                  '+ Thêm một dòng' +
+                '</button>' +
+                '<div class="gh-edit-help">Mỗi dòng là một bullet ◆ trong danh sách. Dùng <code>&lt;strong&gt;</code> và <code>&lt;em&gt;</code> để nhấn mạnh.</div>' +
+              '</div>';
+          }
+
+          return (
+            '<div class="gh-edit-section" data-section-id="' + id + '" data-index="' + idx + '" draggable="true">' +
+              '<div class="gh-edit-sec-head">' +
+                '<span class="gh-edit-drag-handle" title="Kéo để sắp xếp">⋮⋮</span>' +
+                kindBadge +
+                '<div class="gh-edit-sec-actions">' +
+                  '<button type="button" class="gh-edit-icon-btn" data-move="up"   title="Lên">▲</button>' +
+                  '<button type="button" class="gh-edit-icon-btn" data-move="down" title="Xuống">▼</button>' +
+                  '<button type="button" class="gh-edit-icon-btn danger" data-delete title="Xóa thẻ này">🗑</button>' +
+                '</div>' +
+              '</div>' +
+              inner +
+            '</div>'
+          );
+        }
+
+        function _colorLabel(c) {
+          return ({ crimson:'Đỏ son', gold:'Vàng đèn', bronze:'Đồng cổ',
+                    lantern:'Cam lồng', deep:'Nâu đêm' })[c] || c;
+        }
+
+        function _findSection(id) {
+          for (let i = 0; i < working.sections.length; i++) {
+            if (working.sections[i].id === id) return { sec: working.sections[i], idx: i };
+          }
+          return null;
+        }
+
+        // ─── Event delegation cho body ───────────────────────────────
+        function _wireBody($body) {
+          // Click events
+          $body.onclick = function(ev){
+            const t = ev.target;
+            const $sec = t.closest('.gh-edit-section');
+
+            // Toolbar add
+            const addKind = t.dataset && t.dataset.add;
+            if (addKind === 'prize')   { working.sections.push(_newPrizeSection()); render(); return; }
+            if (addKind === 'note')    { working.sections.push(_newNoteList());     render(); return; }
+
+            if (!$sec) return;
+            const found = _findSection($sec.dataset.sectionId);
+            if (!found) return;
+            const { sec, idx } = found;
+
+            // Move up/down
+            const move = t.dataset.move;
+            if (move === 'up' && idx > 0) {
+              const tmp = working.sections[idx - 1];
+              working.sections[idx - 1] = sec;
+              working.sections[idx] = tmp;
+              render();
+              return;
+            }
+            if (move === 'down' && idx < working.sections.length - 1) {
+              const tmp = working.sections[idx + 1];
+              working.sections[idx + 1] = sec;
+              working.sections[idx] = tmp;
+              render();
+              return;
+            }
+
+            // Delete section
+            if (t.hasAttribute('data-delete')) {
+              if (confirm('Xóa thẻ này? Hành động này có thể hoàn tác bằng cách bấm Hủy thay vì Lưu.')) {
+                working.sections.splice(idx, 1);
+                render();
+              }
+              return;
+            }
+
+            // Color swatch
+            const colorBtn = t.closest('[data-color]');
+            if (colorBtn) {
+              sec.tagColor = colorBtn.dataset.color;
+              sec.tagCustomBg = null;
+              sec.tagCustomFg = null;
+              // Update aria-checked sibling buttons
+              const $row = colorBtn.parentElement;
+              $row.querySelectorAll('[data-color]').forEach(function(b){
+                b.setAttribute('aria-checked', b === colorBtn ? 'true' : 'false');
+              });
+              return;
+            }
+
+            // Remove pill
+            if (t.hasAttribute('data-remove-pill')) {
+              const i = parseInt(t.getAttribute('data-remove-pill'), 10);
+              if (Array.isArray(sec.pills)) sec.pills.splice(i, 1);
+              render();
+              return;
+            }
+
+            // Remove note item
+            if (t.hasAttribute('data-remove-note')) {
+              const i = parseInt(t.getAttribute('data-remove-note'), 10);
+              if (Array.isArray(sec.items)) sec.items.splice(i, 1);
+              render();
+              return;
+            }
+
+            // Add note item
+            if (t.hasAttribute('data-add-note')) {
+              if (!Array.isArray(sec.items)) sec.items = [];
+              sec.items.push('');
+              render();
+              // Focus dòng mới
+              setTimeout(function(){
+                const $newSec = $body.querySelector('[data-section-id="' + sec.id + '"]');
+                if ($newSec) {
+                  const all = $newSec.querySelectorAll('[data-note-item]');
+                  if (all.length) all[all.length - 1].focus();
+                }
+              }, 30);
+              return;
+            }
+          };
+
+          // Input events (text fields)
+          $body.oninput = function(ev){
+            const t = ev.target;
+            const $sec = t.closest('.gh-edit-section');
+            if (!$sec) return;
+            const found = _findSection($sec.dataset.sectionId);
+            if (!found) return;
+            const { sec } = found;
+
+            const field = t.dataset.field;
+            if (field === 'tag')         { sec.tag = t.value;   return; }
+            if (field === 'body')        { sec.body = t.value;  return; }
+            if (field === 'title')       { sec.title = t.value; return; }
+            if (field === 'tagCustomBg') {
+              sec.tagColor = 'custom';
+              sec.tagCustomBg = t.value;
+              // Auto-pick contrasting fg
+              sec.tagCustomFg = _pickFg(t.value);
+              // Bỏ aria-checked khỏi preset swatch
+              const $row = t.closest('[data-color-row]');
+              if ($row) {
+                $row.querySelectorAll('[data-color]').forEach(function(b){
+                  b.setAttribute('aria-checked', 'false');
+                });
+              }
+              return;
+            }
+
+            // Note item
+            const noteIdx = t.getAttribute('data-note-item');
+            if (noteIdx !== null) {
+              const i = parseInt(noteIdx, 10);
+              if (!Array.isArray(sec.items)) sec.items = [];
+              sec.items[i] = t.value;
+              return;
+            }
+          };
+
+          // Pill input — Enter để thêm
+          $body.onkeydown = function(ev){
+            const t = ev.target;
+            if (ev.key === 'Enter' && t.matches && t.matches('[data-pill-input]')) {
+              ev.preventDefault();
+              const v = t.value.trim();
+              if (!v) return;
+              const $sec = t.closest('.gh-edit-section');
+              const found = _findSection($sec.dataset.sectionId);
+              if (!found) return;
+              if (!Array.isArray(found.sec.pills)) found.sec.pills = [];
+              found.sec.pills.push(v);
+              t.value = '';
+              render();
+              // Re-focus pill input của section vừa thêm
+              setTimeout(function(){
+                const $newSec = $body.querySelector('[data-section-id="' + found.sec.id + '"]');
+                if ($newSec) {
+                  const $inp = $newSec.querySelector('[data-pill-input]');
+                  if ($inp) $inp.focus();
+                }
+              }, 30);
+            }
+          };
+
+          // ─── Drag & drop reorder ───────────────────────────────────
+          let dragSrcId = null;
+          $body.ondragstart = function(ev){
+            const $sec = ev.target.closest('.gh-edit-section');
+            if (!$sec) return;
+            dragSrcId = $sec.dataset.sectionId;
+            $sec.dataset.dragging = 'true';
+            try { ev.dataTransfer.effectAllowed = 'move'; } catch(e){}
+            try { ev.dataTransfer.setData('text/plain', dragSrcId); } catch(e){}
+          };
+          $body.ondragend = function(ev){
+            const $sec = ev.target.closest('.gh-edit-section');
+            if ($sec) $sec.removeAttribute('data-dragging');
+            dragSrcId = null;
+            $body.querySelectorAll('.drop-target-above, .drop-target-below').forEach(function(el){
+              el.classList.remove('drop-target-above', 'drop-target-below');
+            });
+          };
+          $body.ondragover = function(ev){
+            const $sec = ev.target.closest('.gh-edit-section');
+            if (!$sec || !dragSrcId || $sec.dataset.sectionId === dragSrcId) return;
+            ev.preventDefault();
+            try { ev.dataTransfer.dropEffect = 'move'; } catch(e){}
+            $body.querySelectorAll('.drop-target-above, .drop-target-below').forEach(function(el){
+              if (el !== $sec) el.classList.remove('drop-target-above', 'drop-target-below');
+            });
+            const rect = $sec.getBoundingClientRect();
+            const above = (ev.clientY - rect.top) < rect.height / 2;
+            $sec.classList.toggle('drop-target-above', above);
+            $sec.classList.toggle('drop-target-below', !above);
+          };
+          $body.ondrop = function(ev){
+            const $sec = ev.target.closest('.gh-edit-section');
+            if (!$sec || !dragSrcId) return;
+            ev.preventDefault();
+            const targetId = $sec.dataset.sectionId;
+            if (targetId === dragSrcId) return;
+            const srcIdx = working.sections.findIndex(function(s){ return s.id === dragSrcId; });
+            const tgtIdx = working.sections.findIndex(function(s){ return s.id === targetId; });
+            if (srcIdx < 0 || tgtIdx < 0) return;
+            const above = $sec.classList.contains('drop-target-above');
+            const [moved] = working.sections.splice(srcIdx, 1);
+            // Tính lại tgt sau khi splice
+            let insertAt = working.sections.findIndex(function(s){ return s.id === targetId; });
+            if (insertAt < 0) insertAt = working.sections.length;
+            if (!above) insertAt += 1;
+            working.sections.splice(insertAt, 0, moved);
+            render();
+          };
+        }
+
+        // Dùng cho contrast: nếu màu nền sáng → fg đen, ngược lại trắng
+        function _pickFg(hex) {
+          const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+          if (!m) return '#fff';
+          const n = parseInt(m[1], 16);
+          const r = (n >> 16) & 0xff, g = (n >> 8) & 0xff, b = n & 0xff;
+          // Perceived luminance
+          const lum = 0.299*r + 0.587*g + 0.114*b;
+          return lum > 160 ? '#1a0f0a' : '#fff';
+        }
+
+        return { open, close, save, resetToDefault };
+      })();
 
       // ─── DOM refs ────────────────────────────────────────────────────
       const $tabs            = document.getElementById('ghTabs');
@@ -2936,8 +4053,44 @@
       }
       renderCurrentCatLabel();
       renderAll();
+      renderRules();        // Render thể lệ (default hoặc từ state.prizeRules)
       spawnPetals();
       setTimeout(updateGachaSyncBadge, 0);
+
+      // 2b) Wire-up Rules Editor — chỉ admin mới thấy nút và xài được modal.
+      (function _wireRulesEditor(){
+        const $editBtn   = document.getElementById('ghRulesEditBtn');
+        const $modal     = document.getElementById('ghRulesModal');
+        const $closeBtn  = document.getElementById('ghRulesModalClose');
+        const $cancelBtn = document.getElementById('ghRulesCancelBtn');
+        const $saveBtn   = document.getElementById('ghRulesSaveBtn');
+        const $resetBtn  = document.getElementById('ghRulesResetBtn');
+
+        if (!$editBtn || !$modal) return;
+
+        if (isAdmin) {
+          $editBtn.hidden = false;
+          $editBtn.addEventListener('click', function(){ RulesEditor.open(); });
+        }
+
+        // Close handlers (ai cũng có thể đóng nếu lỡ mở — defensive)
+        if ($closeBtn)  $closeBtn.addEventListener('click',  function(){ RulesEditor.close(); });
+        if ($cancelBtn) $cancelBtn.addEventListener('click', function(){ RulesEditor.close(); });
+        if ($saveBtn)   $saveBtn.addEventListener('click',   function(){ RulesEditor.save(); });
+        if ($resetBtn)  $resetBtn.addEventListener('click',  function(){ RulesEditor.resetToDefault(); });
+
+        // Click backdrop để đóng
+        $modal.addEventListener('click', function(ev){
+          if (ev.target === $modal) RulesEditor.close();
+        });
+
+        // ESC để đóng
+        document.addEventListener('keydown', function(ev){
+          if (ev.key === 'Escape' && $modal.classList.contains('show')) {
+            RulesEditor.close();
+          }
+        });
+      })();
 
       // 3) Subscribe Firestore realtime — snapshot tới sẽ override local cache
       //    và re-render. Nếu chưa đăng nhập (member chưa load xong, hoặc mở
@@ -2954,6 +4107,7 @@
           // Cache local để load nhanh lần sau
           Storage.saveLocal(state);
           renderAll();
+          renderRules();   // ← cập nhật thể lệ khi admin sửa từ máy khác
           renderCurrentCatLabel();
         } else {
           // Document chưa tồn tại trên Firestore.
@@ -2969,9 +4123,11 @@
               rosters: {},
               history: [],
               blacklist: [],
+              prizeRules: null
             };
             CATEGORIES.forEach(c => { state.rosters[c.id] = []; });
             renderAll();
+            renderRules();   // ← hiển thị thể lệ default cho member/guest
             renderCurrentCatLabel();
           }
         }
