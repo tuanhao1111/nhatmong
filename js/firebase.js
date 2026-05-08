@@ -115,27 +115,46 @@ function _emailToUsername(email) {
  * Đăng ký account mới.
  * profile = { name, inGameName, inGameId, discordId, class }
  * Trả về Promise<userDoc>
+ *
+ * SANITIZE: cắt ký tự nguy hiểm khỏi các trường free-text trước khi ghi
+ * Firestore. Đây là defense-in-depth — render-side đã có escHtml, nhưng nếu
+ * tương lai có chỗ render quên escape thì input đã sạch sẵn.
  */
+function _sanitizeProfileText(s, maxLen) {
+  if (s == null) return '';
+  // Bỏ < > " ' ` \\ và control chars; giữ Unicode (tiếng Việt, emoji OK)
+  var cleaned = String(s).replace(/[<>"'`\\\u0000-\u001F\u007F]/g, '').trim();
+  return cleaned.slice(0, maxLen || 60);
+}
+
 function fbRegister(username, password, profile) {
   if (!_fbOk || !_auth) return Promise.reject(new Error('Firebase chưa kết nối'));
   var email = _usernameToFakeEmail(username);
+  // Clean profile before write
+  var cleanProfile = {
+    name:       _sanitizeProfileText(profile.name,       60) || username,
+    inGameName: _sanitizeProfileText(profile.inGameName, 60),
+    inGameId:   _sanitizeProfileText(profile.inGameId,   40),
+    discordId:  _sanitizeProfileText(profile.discordId,  60),
+    class:      _sanitizeProfileText(profile.class,      30)
+  };
   return _auth.createUserWithEmailAndPassword(email, password)
     .then(function(cred){
       var uid = cred.user.uid;
       var userDoc = {
         id: uid,
         username: username,
-        name: profile.name || username,
+        name: cleanProfile.name,
         role: 'member',
         createdAt: new Date().toISOString()
       };
       var memberDoc = {
         id: uid,
-        name: profile.name || username,
-        inGameName: profile.inGameName || '',
-        inGameId:   profile.inGameId   || '',
-        discordId:  profile.discordId  || '',
-        class:      profile.class      || '',
+        name: cleanProfile.name,
+        inGameName: cleanProfile.inGameName,
+        inGameId:   cleanProfile.inGameId,
+        discordId:  cleanProfile.discordId,
+        class:      cleanProfile.class,
         power: 0, combatRole: '', skill: '', tasks: [], group: '', note: '',
         role: 'member',
         joinDate: new Date().toISOString().split('T')[0]
@@ -260,7 +279,10 @@ function _listenUsers() {
     if (!sessRaw) return;
     try {
       var sess = JSON.parse(sessRaw);
-      if (sess.id === 'admin' || sess.role === 'guest') return;
+      // Guest không có doc trong /users (chỉ có Firebase anonymous Auth) → skip.
+      // Chú ý: KHÔNG check sess.id === 'admin' nữa — admin giờ có Firebase UID
+      // thật, không còn là literal 'admin' (legacy của bản pre-Firebase Auth).
+      if (sess.role === 'guest') return;
       var me = users.find(function(u){ return u.id === sess.id; });
       if (me && me.role !== sess.role) {
         console.log('[FB] Role changed:', sess.role, '→', me.role);

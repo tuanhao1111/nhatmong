@@ -11,6 +11,6 @@ function getGroupName(id){if(!id)return '';try{var g=Settings.get().groups.find(
 function getGroupColor(id){if(!id)return '#666';try{var g=Settings.get().groups.find(function(g){return g.id===id;});return g?g.color:'#666';}catch(e){return '#666';}}
 function classBadge(id){var c=getClassColor(id),n=getClassName(id);if(!n)return '';return '<span style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:'+c+'22;color:'+c+';border:1px solid '+c+'44">'+escHtml(n)+'</span>';}
 function openModal(html,onClose,wide){var e=document.querySelector('.modal-overlay');if(e)e.remove();var o=document.createElement('div');o.className='modal-overlay';o.innerHTML='<div class="modal"'+(wide?' style="max-width:700px;width:95%"':'')+'>'+html+'</div>';document.body.appendChild(o);o.addEventListener('click',function(ev){if(ev.target===o){o.remove();if(onClose)onClose();}});return o;}
-function escHtml(s){if(!s&&s!==0)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function escHtml(s){if(!s&&s!==0)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/`/g,'&#96;');}
 function navigate(p){if(typeof renderPage==='function')renderPage(p);}
 function denyEdit(){showToast('🔒 Bạn không có quyền chỉnh sửa.','error',3000);}

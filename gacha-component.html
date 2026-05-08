@@ -2583,7 +2583,10 @@
             return false;
           }
           try {
-            await docRef.set(data, { merge: false });
+            // merge: true để tránh overwrite các field admin khác vừa update
+            // (vd. admin A đang sửa thể lệ, admin B đang spin gacha — không
+            // được wipe history/rosters của nhau).
+            await docRef.set(data, { merge: true });
             return true;
           } catch (e) {
             console.error('[GachaSync] push failed:', e && e.code, e && e.message);

@@ -51,7 +51,7 @@ function requireAuth() {
       '<div style="position:fixed;inset:0;background:#0a0a0f;display:flex;flex-direction:column;' +
       'align-items:center;justify-content:center;font-family:sans-serif">' +
         '<div style="font-size:52px;margin-bottom:16px">⚔️</div>' +
-        '<div style="font-size:24px;color:#f0c040;letter-spacing:2px;margin-bottom:8px;font-family:Cinzel,serif">NGHỊCH THỦY HÀN</div>' +
+        '<div style="font-size:24px;color:#f0c040;letter-spacing:2px;margin-bottom:8px;font-family:Cinzel,serif">NHẤT MỘNG</div>' +
         '<div style="color:#808090;margin-bottom:28px">Vui lòng đăng nhập để tiếp tục</div>' +
         '<button onclick="window.location.href=\'login.html\'" ' +
           'style="padding:12px 32px;background:#f0c040;color:#111;border:none;border-radius:8px;' +
@@ -107,10 +107,13 @@ function renderAccountsPage() {
         <td style="padding:12px 16px;font-size:12px;color:var(--text-secondary)">${formatDate(u.createdAt)}</td>
         <td style="padding:12px 16px">
           <div style="display:flex;gap:8px;align-items:center">
-            <select onchange="setUserRole('${u.id}', this.value)" style="font-size:12px;padding:4px 8px">
+            <select data-action="set-role" data-user-id="${escHtml(u.id)}" style="font-size:12px;padding:4px 8px">
               ${roleOpts(u.role)}
             </select>
-            <button class="btn btn-danger" style="padding:4px 10px;font-size:12px" onclick="deleteUser('${u.id}','${escHtml(u.name||u.username||'')}')">Xóa</button>
+            <button class="btn btn-danger" style="padding:4px 10px;font-size:12px"
+                    data-action="delete-user"
+                    data-user-id="${escHtml(u.id)}"
+                    data-user-name="${escHtml(u.name||u.username||'')}">Xóa</button>
           </div>
         </td>
       </tr>`).join('');
@@ -214,3 +217,28 @@ function deleteUser(userId, name) {
 function denyEdit() {
   showToast('🔒 Bạn không có quyền chỉnh sửa. Liên hệ Admin để được cấp quyền.', 'error', 4000);
 }
+
+// ── Delegated event handler cho trang Quản Lý Tài Khoản ──────────────────────
+// Tránh inline onclick="..." để chống XSS qua user.name (kẻ tấn công đăng ký
+// account với name chứa quote/script). data-user-id và data-user-name đã được
+// escHtml ở chỗ render — listener đọc lại từ dataset.
+(function bindAccountsActions(){
+  function handler(ev){
+    var t = ev.target;
+    if (!t || !t.dataset) return;
+    var action = t.dataset.action;
+    if (!action) return;
+
+    if (action === 'set-role' && ev.type === 'change') {
+      setUserRole(t.dataset.userId, t.value);
+      return;
+    }
+    if (action === 'delete-user' && ev.type === 'click') {
+      deleteUser(t.dataset.userId, t.dataset.userName || '');
+      return;
+    }
+  }
+  // Bind ở document để bền vững với re-render trang
+  document.addEventListener('click',  handler);
+  document.addEventListener('change', handler);
+})();
