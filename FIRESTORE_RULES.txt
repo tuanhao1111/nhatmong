@@ -61,6 +61,27 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ─── /guilds/guild_main/gacha/{document} ─────────────────────────────
+    // Data Gacha Bang Chiến (rosters, history, blacklist, currentCycle)
+    // Hiện dùng 1 doc duy nhất /guilds/guild_main/gacha/state.
+    // Đọc: cả bang đọc (member/guest cũng xem được)
+    // Ghi: chỉ admin (member/guest read-only — UI cũng đã ẩn nút sửa)
+    match /guilds/guild_main/gacha/{document=**} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ─── /minigames/{document} ───────────────────────────────────────────
+    // Trạng thái game (mở/đóng từng game) — đọc cả bang, ghi admin.
+    // Phase 4 multiplayer rooms: ai login cũng read/write được.
+    match /minigames/status {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    match /minigames/rooms/{roomId} {
+      allow read, write: if isSignedIn();
+    }
+
     // ─── /guilds/guild_main/members/{uid} ────────────────────────────────
     // Mỗi member 1 doc, document ID == auth UID
     // Đọc: cả bang đọc

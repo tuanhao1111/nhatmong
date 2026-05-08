@@ -2,9 +2,16 @@
  * gacha.js - Gacha Bang Chiến page
  * Embed gacha-component.html bằng iframe để cách ly CSS/JS,
  * tránh xung đột với app chính (Nhất Mộng).
+ *
+ * Truyền admin role qua query param ?admin=1 để file con đọc được.
+ * Admin → có quyền sửa rosters, quay thưởng, đóng chu kỳ, xóa lịch sử.
+ * Member/Guest → chỉ xem (read-only).
  */
 
 function renderGachaPage() {
+  const adminFlag = (typeof isAdmin === 'function' && isAdmin()) ? '1' : '0';
+  const src = `gacha-component.html?admin=${adminFlag}`;
+
   return `
     <div style="
       width:100%;
@@ -17,7 +24,7 @@ function renderGachaPage() {
       position:relative;
     ">
       <iframe
-        src="gacha-component.html"
+        src="${src}"
         title="Gacha Bang Chiến"
         style="
           width:100%;

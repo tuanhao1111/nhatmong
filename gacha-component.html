@@ -11,6 +11,35 @@
     rel="stylesheet"
   />
 
+  <!-- Firebase SDK v10 (compat mode) — load auth TRƯỚC firestore để Firestore
+       client attach IdToken vào snapshot đầu tiên (rules check request.auth). -->
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+  <script>
+    // Firebase config — Nhất Mộng project (same project as parent app).
+    // Khi đã có firebase.app() từ parent → skip initializeApp.
+    if (typeof firebase !== 'undefined' && (!firebase.apps || firebase.apps.length === 0)) {
+      firebase.initializeApp({
+        apiKey: "AIzaSyBszK09g8sHvufGNrFwDDgcw6rolV37KSA",
+        authDomain: "nhatmongdata.firebaseapp.com",
+        projectId: "nhatmongdata",
+        storageBucket: "nhatmongdata.firebasestorage.app",
+        messagingSenderId: "814787062547",
+        appId: "1:814787062547:web:c4ca571227c5a5555688e6",
+        measurementId: "G-WH87JWSQGF",
+      });
+    }
+    // Persistence LOCAL: cùng origin với parent → iframe tự đọc session từ
+    // IndexedDB mà parent đã sign in, không cần đăng nhập lại.
+    if (typeof firebase !== 'undefined' && firebase.auth) {
+      try {
+        firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+          .catch(function(e){ console.warn('[Gacha] setPersistence warn:', e && e.code); });
+      } catch (e) {}
+    }
+  </script>
+
   <style>
     /* ═══════════════════════════════════════════════════════════════════
        GACHA HUB — Theme: Tửu Quán Giang Hồ (Wuxia Tavern Night)
@@ -1566,6 +1595,77 @@
       .gh-firework,
       .gacha-hub.shake { animation: none !important; }
     }
+
+    /* ─── READ-ONLY MODE (member/guest) ───────────────────────────────
+       Khi không phải admin: ẩn toàn bộ control sửa đổi, chỉ cho xem.
+       Áp lên .gacha-hub bằng class .gh-readonly. */
+    .gacha-hub.gh-readonly .gh-cycle-btn,
+    .gacha-hub.gh-readonly .gh-spin-btn,
+    .gacha-hub.gh-readonly #ghAddInput,
+    .gacha-hub.gh-readonly .gh-add-btn,
+    .gacha-hub.gh-readonly .gh-history-clear,
+    .gacha-hub.gh-readonly .gh-roster-item button {
+      display: none !important;
+    }
+
+    /* Badge hiển thị "Chỉ xem" cho member/guest */
+    .gh-readonly-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-left: 0.5rem;
+      padding: 0.25rem 0.7rem;
+      background: rgba(184, 137, 63, 0.15);
+      border: 1px solid rgba(184, 137, 63, 0.4);
+      border-radius: 999px;
+      color: var(--lantern-glow, #ffd28c);
+      font-family: 'Be Vietnam Pro', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
+    .gh-readonly-badge::before {
+      content: '👁';
+      font-size: 0.9rem;
+    }
+
+    /* Sync badge giống minigames-hub: 4 trạng thái */
+    .gh-sync-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-left: 0.5rem;
+      padding: 0.25rem 0.7rem;
+      background: rgba(37, 22, 16, 0.7);
+      border: 1px solid rgba(255, 184, 107, 0.25);
+      border-radius: 999px;
+      font-family: 'Be Vietnam Pro', sans-serif;
+      font-size: 0.78rem;
+      color: var(--text-soft, #d8c8b0);
+    }
+    .gh-sync-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--text-faint, #8a6f5b);
+      box-shadow: 0 0 4px var(--text-faint, #8a6f5b);
+      animation: ghSyncPulse 1.5s ease-in-out infinite;
+    }
+    .gh-sync-badge.online .gh-sync-dot {
+      background: #6cd66c; box-shadow: 0 0 8px #6cd66c;
+    }
+    .gh-sync-badge.connecting .gh-sync-dot {
+      background: var(--lantern-warm, #ffb86b);
+      box-shadow: 0 0 8px var(--lantern-warm, #ffb86b);
+    }
+    .gh-sync-badge.offline .gh-sync-dot {
+      background: var(--text-faint, #8a6f5b);
+      box-shadow: none;
+      animation: none;
+    }
+    @keyframes ghSyncPulse {
+      0%, 100% { opacity: 0.6; transform: scale(0.85); }
+      50%      { opacity: 1; transform: scale(1.15); }
+    }
   </style>
 </head>
 
@@ -1715,6 +1815,11 @@
           <div class="gh-cycle-info">
             <span class="gh-cycle-label">Chu kỳ hiện tại</span>
             <span class="gh-cycle-num">#<strong id="ghCycleNum">1</strong></span>
+            <span class="gh-sync-badge" id="ghSyncBadge" title="Trạng thái đồng bộ với Firebase">
+              <span class="gh-sync-dot"></span>
+              <span class="gh-sync-text">Đang kết nối…</span>
+            </span>
+            <span class="gh-readonly-badge" id="ghReadonlyBadge" hidden>Chỉ xem</span>
           </div>
           <button class="gh-cycle-btn" id="ghCloseCycleBtn" title="Đóng chu kỳ này, chuyển sang chu kỳ mới">
             ⤳ Đóng chu kỳ
@@ -1846,9 +1951,161 @@
 
       const STORAGE_KEY = 'gacha_nhatmong_v3';
 
-      // ─── Storage Adapter ─────────────────────────────────────────────
-      // Khi nhúng vào Nhất Mộng, swap toàn bộ object này sang Firestore impl
-      // (interface giữ nguyên: load/save async-ready)
+      // ─── ADMIN FLAG ──────────────────────────────────────────────────
+      // Đọc từ query string ?admin=1 (do parent /js/gacha.js đính kèm).
+      // Nếu mở standalone (không có query) → mặc định false (read-only).
+      // Đây là UI gating; rules Firestore mới là authority thật sự.
+      const _qs = new URLSearchParams(window.location.search);
+      const isAdmin = _qs.get('admin') === '1';
+      console.log('[Gacha] role =', isAdmin ? 'admin' : 'member/guest (read-only)');
+
+      // ─── GachaSync — Firestore adapter có authReady gating ───────────
+      // Tương tự MGFirebase trong minigames-hub: đợi Firebase Auth sẵn sàng
+      // rồi mới subscribe/write Firestore. Snapshot đầu tiên cần auth attached
+      // để rules có request.auth != null pass.
+      //
+      // PATH: /guilds/guild_main/gacha/state  (1 doc dùng chung).
+      // Rules đề xuất:
+      //   match /guilds/guild_main/gacha/{document=**} {
+      //     allow read: if isSignedIn();
+      //     allow write: if isAdmin();
+      //   }
+      const GachaSync = (function() {
+        let db = null;
+        let docRef = null;
+        let isReady = false;
+        let unsubSnapshot = null;
+        let unsubAuth = null;
+
+        // authReady() Promise<{ user, signedIn }>: luôn resolve, không reject.
+        let _authReadyPromise = null;
+        let _authReadyResolve = null;
+        let _authResolved = false;
+        let _currentUser = null;
+        const AUTH_READY_TIMEOUT_MS = 6000;
+
+        _authReadyPromise = new Promise(function(r){ _authReadyResolve = r; });
+
+        function _resolveAuthReady(user) {
+          if (_authResolved) return;
+          _authResolved = true;
+          _currentUser = user || null;
+          if (_currentUser) {
+            console.log('[GachaSync] authReady → signed in as', _currentUser.email || _currentUser.uid);
+          } else {
+            console.warn('[GachaSync] authReady → KHÔNG có user. Firestore ops sẽ skip, fallback localStorage.');
+          }
+          _authReadyResolve({ user: _currentUser, signedIn: !!_currentUser });
+        }
+
+        function authReady() { return _authReadyPromise; }
+
+        function init() {
+          if (typeof window.firebase === 'undefined' || !window.firebase.firestore) {
+            console.warn('[GachaSync] Firebase SDK chưa load → fallback localStorage');
+            _resolveAuthReady(null);
+            return false;
+          }
+          try {
+            const app = (window.firebase.apps && window.firebase.apps.length > 0)
+              ? window.firebase.app()
+              : null;
+            if (!app) {
+              console.warn('[GachaSync] No firebase app → fallback localStorage');
+              _resolveAuthReady(null);
+              return false;
+            }
+            db = window.firebase.firestore(app);
+            docRef = db.collection('guilds').doc('guild_main')
+                       .collection('gacha').doc('state');
+
+            // Auth listener
+            if (typeof window.firebase.auth === 'function') {
+              const auth = window.firebase.auth(app);
+              if (auth.currentUser) _resolveAuthReady(auth.currentUser);
+              unsubAuth = auth.onAuthStateChanged(function(u){
+                _currentUser = u || null;
+                if (!_authResolved && u) _resolveAuthReady(u);
+              }, function(err){
+                console.error('[GachaSync] onAuthStateChanged error:', err);
+                if (!_authResolved) _resolveAuthReady(null);
+              });
+              setTimeout(function(){
+                if (!_authResolved) _resolveAuthReady(auth.currentUser || null);
+              }, AUTH_READY_TIMEOUT_MS);
+            } else {
+              _resolveAuthReady(null);
+            }
+
+            isReady = true;
+            console.log('[GachaSync] Firestore ready, awaiting auth…');
+            return true;
+          } catch (e) {
+            console.error('[GachaSync] init failed:', e);
+            isReady = false;
+            _resolveAuthReady(null);
+            return false;
+          }
+        }
+
+        // Subscribe realtime. callback(data, meta?) — meta.reason='not-signed-in' nếu auth fail.
+        function subscribe(callback) {
+          if (!isReady) return null;
+          let cancelled = false;
+          authReady().then(function(s){
+            if (cancelled) return;
+            if (!s.signedIn) {
+              try { callback(null, { reason: 'not-signed-in' }); } catch (e) {}
+              return;
+            }
+            try {
+              unsubSnapshot = docRef.onSnapshot(function(snap){
+                callback(snap.exists ? snap.data() : null);
+              }, function(err){
+                console.error('[GachaSync] snapshot error:', err && err.code, err && err.message);
+              });
+            } catch (e) {
+              console.error('[GachaSync] subscribe failed:', e);
+            }
+          });
+          return function(){
+            cancelled = true;
+            if (unsubSnapshot) { try { unsubSnapshot(); } catch (e) {} unsubSnapshot = null; }
+          };
+        }
+
+        // Push state → Firestore (admin only). Trả về Promise<bool>.
+        async function push(data) {
+          if (!isReady) return false;
+          const s = await authReady();
+          if (!s.signedIn) {
+            console.warn('[GachaSync] push: skip (chưa đăng nhập)');
+            return false;
+          }
+          try {
+            await docRef.set(data, { merge: false });
+            return true;
+          } catch (e) {
+            console.error('[GachaSync] push failed:', e && e.code, e && e.message);
+            return false;
+          }
+        }
+
+        function getAuthState() {
+          if (!isReady) return 'no-firebase';
+          if (!_authResolved) return 'connecting';
+          return _currentUser ? 'online' : 'signed-out';
+        }
+
+        return { init, isReady: function(){ return isReady; }, authReady, subscribe, push, getAuthState };
+      })();
+
+      GachaSync.init();
+
+      // ─── Storage Adapter (dual: Firestore + localStorage cache) ──────
+      // load(): đọc cache nhanh để render lần đầu (sync). Firebase snapshot
+      //         tới sau sẽ override qua subscribe callback (xem boot logic).
+      // save(): luôn ghi local cache + push lên Firestore (chỉ admin sẽ pass rules).
       const Storage = {
         load() {
           try {
@@ -1856,10 +2113,23 @@
             return raw ? JSON.parse(raw) : null;
           } catch (e) { return null; }
         },
-        save(data) {
+        saveLocal(data) {
           try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
           } catch (e) {}
+        },
+        save(data) {
+          // Cache local trước (UI feedback tức thì + offline fallback)
+          this.saveLocal(data);
+          // Push lên cloud — nếu không phải admin, push sẽ permission-denied
+          // và GachaSync.push trả false. UI vẫn responsive nhờ saveLocal.
+          if (GachaSync.isReady()) {
+            GachaSync.push(data).then(function(ok){
+              if (!ok && isAdmin) {
+                console.warn('[Storage] Push failed dù role admin — kiểm tra rules?');
+              }
+            });
+          }
         },
       };
 
@@ -1873,17 +2143,25 @@
       let currentCatId = CATEGORIES[0].id;
       let isSpinning = false;
 
-      function loadState() {
-        const data = Storage.load();
-        if (data) {
-          state.currentCycle = data.currentCycle || 1;
-          state.rosters = data.rosters || {};
-          state.history = data.history || [];
-          state.blacklist = data.blacklist || [];
-        }
+      function _applyData(data) {
+        state.currentCycle = data.currentCycle || 1;
+        state.rosters = data.rosters || {};
+        state.history = data.history || [];
+        state.blacklist = data.blacklist || [];
         CATEGORIES.forEach(c => {
           if (!Array.isArray(state.rosters[c.id])) state.rosters[c.id] = [];
         });
+      }
+
+      function loadState() {
+        const data = Storage.load();
+        if (data) {
+          _applyData(data);
+        } else {
+          CATEGORIES.forEach(c => {
+            if (!Array.isArray(state.rosters[c.id])) state.rosters[c.id] = [];
+          });
+        }
       }
 
       function saveState() {
@@ -2028,6 +2306,7 @@
         $roster.querySelectorAll('button').forEach(btn => {
           btn.addEventListener('click', () => {
             if (isSpinning) return;
+            if (_denyIfNotAdmin()) return;
             const action = btn.dataset.action;
             if (action === 'remove') {
               const idx = parseInt(btn.dataset.idx, 10);
@@ -2567,11 +2846,25 @@
       }
 
       // ─── Bind events ─────────────────────────────────────────────────
-      $spinBtn.addEventListener('click', spin);
-      $addBtn.addEventListener('click', addMember);
+      // Helper: chặn sớm nếu không phải admin. Trả true nếu đã chặn.
+      function _denyIfNotAdmin() {
+        if (isAdmin) return false;
+        console.warn('[Gacha] Hành động chỉ dành cho admin, đã chặn ở client.');
+        return true;
+      }
+
+      $spinBtn.addEventListener('click', function(){
+        if (_denyIfNotAdmin()) return;
+        spin();
+      });
+      $addBtn.addEventListener('click', function(){
+        if (_denyIfNotAdmin()) return;
+        addMember();
+      });
       $addInput.addEventListener('keydown', e => {
         if (e.key === 'Enter') {
           e.preventDefault();
+          if (_denyIfNotAdmin()) return;
           addMember();
         }
       });
@@ -2580,6 +2873,7 @@
         if (e.target === $modal) hideModal();
       });
       $clearHistory.addEventListener('click', () => {
+        if (_denyIfNotAdmin()) return;
         if (state.history.length === 0) return;
         if (confirm('Xóa toàn bộ lịch sử + blacklist? Tất cả người đang bị khóa sẽ được tham gia quay lại.')) {
           state.history = [];
@@ -2588,19 +2882,120 @@
           renderAll();
         }
       });
-      $closeCycleBtn.addEventListener('click', closeCycle);
+      $closeCycleBtn.addEventListener('click', function(){
+        if (_denyIfNotAdmin()) return;
+        closeCycle();
+      });
+
+      // ─── Sync badge updater (4 trạng thái như minigames-hub) ─────────
+      function updateGachaSyncBadge() {
+        const $badge = document.getElementById('ghSyncBadge');
+        if (!$badge) return;
+        const $text = $badge.querySelector('.gh-sync-text');
+        $badge.classList.remove('online', 'offline', 'connecting');
+        const s = GachaSync.getAuthState();
+        if (s === 'online') {
+          $badge.classList.add('online');
+          $text.textContent = 'Đang đồng bộ';
+          $badge.title = 'Đã kết nối Firebase + đăng nhập — data Gacha sync giữa các máy';
+        } else if (s === 'connecting') {
+          $badge.classList.add('connecting');
+          $text.textContent = 'Đang xác thực…';
+          $badge.title = 'Firebase đã sẵn sàng, đang chờ phiên đăng nhập…';
+        } else if (s === 'signed-out') {
+          $badge.classList.add('offline');
+          $text.textContent = 'Chưa đăng nhập';
+          $badge.title = 'Firebase OK nhưng phiên đăng nhập chưa khôi phục — chạy chế độ local';
+        } else {
+          $badge.classList.add('offline');
+          $text.textContent = 'Chế độ offline';
+          $badge.title = 'Không có Firebase — data chỉ lưu trên máy này';
+        }
+      }
 
       // ─── Init ────────────────────────────────────────────────────────
-      loadState();
+      // 1) Gắn class read-only nếu không phải admin (CSS sẽ ẩn các nút sửa)
+      if (!isAdmin) {
+        $gachaHub.classList.add('gh-readonly');
+        const $roBadge = document.getElementById('ghReadonlyBadge');
+        if ($roBadge) $roBadge.hidden = false;
+      }
+
+      // 2) Load cache local + render. Lý do bypass cache cho member/guest:
+      //    cache cũ trên máy có thể là data lỗi thời (từ phiên bản trước khi
+      //    có Firestore sync) hoặc data của chính họ — không phản ánh data
+      //    chính thức của bang. Để họ thấy "Chu kỳ #1" trống trong ~1s thay
+      //    vì data sai, rồi Firestore snapshot tới sẽ override.
+      //    Admin thì load cache để có UI tức thì khi reload (admin chính là
+      //    nguồn data nên cache của họ tin được).
+      if (isAdmin) {
+        loadState();
+      } else {
+        // Khởi tạo state mặc định trống cho member/guest, đợi Firestore.
+        CATEGORIES.forEach(c => { state.rosters[c.id] = []; });
+      }
       renderCurrentCatLabel();
       renderAll();
       spawnPetals();
+      setTimeout(updateGachaSyncBadge, 0);
+
+      // 3) Subscribe Firestore realtime — snapshot tới sẽ override local cache
+      //    và re-render. Nếu chưa đăng nhập (member chưa load xong, hoặc mở
+      //    standalone) → callback nhận meta.reason='not-signed-in' và ta giữ
+      //    nguyên local cache, không reset về default.
+      GachaSync.subscribe(function(data, meta){
+        updateGachaSyncBadge();
+        if (meta && meta.reason === 'not-signed-in') {
+          console.warn('[Gacha] Firestore subscribe skipped vì chưa đăng nhập, dùng local cache.');
+          return;
+        }
+        if (data) {
+          _applyData(data);
+          // Cache local để load nhanh lần sau
+          Storage.saveLocal(state);
+          renderAll();
+          renderCurrentCatLabel();
+        } else {
+          // Document chưa tồn tại trên Firestore.
+          // - Nếu admin: bootstrap doc với state hiện tại (đã từ local cache hoặc mặc định).
+          // - Nếu member/guest: hiển thị state mặc định (rỗng) vì admin chưa nhập gì.
+          if (isAdmin) {
+            console.log('[Gacha] Doc chưa tồn tại, admin bootstrap từ local cache hiện tại.');
+            Storage.save(state);
+          } else {
+            // Reset về mặc định vì chưa có data từ admin
+            state = {
+              currentCycle: 1,
+              rosters: {},
+              history: [],
+              blacklist: [],
+            };
+            CATEGORIES.forEach(c => { state.rosters[c.id] = []; });
+            renderAll();
+            renderCurrentCatLabel();
+          }
+        }
+      });
+
+      // Cập nhật badge khi auth state thay đổi (sau lần resolve đầu)
+      GachaSync.authReady().then(updateGachaSyncBadge);
 
       window.GachaHub = {
         state, CATEGORIES, BLACKLIST_DURATION,
         buildPool, isLocked, getLockInfo,
-        // Để debug
-        _resetAll: () => { localStorage.removeItem(STORAGE_KEY); location.reload(); },
+        isAdmin,
+        GachaSync,
+        // Để debug — chỉ admin nên xài (member dùng sẽ không xóa được data cloud)
+        _resetAll: () => {
+          localStorage.removeItem(STORAGE_KEY);
+          if (isAdmin && GachaSync.isReady()) {
+            // Reset cloud về default
+            GachaSync.push({
+              currentCycle: 1, rosters: {}, history: [], blacklist: []
+            });
+          }
+          location.reload();
+        },
       };
     })();
   </script>
