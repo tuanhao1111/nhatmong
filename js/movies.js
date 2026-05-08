@@ -21,7 +21,34 @@ window.MoviesHub = (function(){
   // ========== CONFIG ==========
   const API = 'https://phimapi.com';
   const STORAGE_KEY = 'nthBangHoi_movies';
-  
+
+  // Lấy id của user hiện tại để tag cache (tránh lẫn data giữa các user trên cùng máy)
+  function _ownerId() {
+    try {
+      var u = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
+      return u && u.id ? String(u.id) : 'guest';
+    } catch (e) { return 'guest'; }
+  }
+
+  // Khi đọc cache, nếu owner trong cache khác user hiện tại → reset về rỗng
+  function _readCacheBundle() {
+    try {
+      var raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      if (raw._owner && raw._owner !== _ownerId()) {
+        // Cache thuộc về user khác → bỏ, không dùng
+        return {};
+      }
+      return raw;
+    } catch (e) { return {}; }
+  }
+
+  function _writeCacheBundle(bundle) {
+    try {
+      bundle._owner = _ownerId();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(bundle));
+    } catch (e) { console.warn('Storage failed:', e); }
+  }
+
   let state = {
     currentTab: 'latest',
     currentPage: 1,
@@ -38,31 +65,27 @@ window.MoviesHub = (function(){
     // progress: { [slug]: { server, episode, episodeName, currentTime, duration, updatedAt } }
     progress: loadProgress(),
     // Khi user chọn "Xem tiếp", lưu lại resumeTime để set vào video sau khi load
-    pendingResumeTime: 0
+    pendingResumeTime: 0,
+    // Đã sync xong với Firestore lần đầu chưa (để bootstrap không render data cũ)
+    initialSyncDone: false
   };
 
   // Load progress (object map by slug)
   function loadProgress() {
-    try {
-      const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-      return (all.progress && typeof all.progress === 'object') ? all.progress : {};
-    } catch (e) { return {}; }
+    var all = _readCacheBundle();
+    return (all.progress && typeof all.progress === 'object') ? all.progress : {};
   }
 
   // ========== STORAGE ==========
   function loadStorage(key) {
-    try {
-      const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-      return all[key] || [];
-    } catch (e) { return []; }
+    var all = _readCacheBundle();
+    return all[key] || [];
   }
 
   function saveStorage(key, value) {
-    try {
-      const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-      all[key] = value;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
-    } catch (e) { console.warn('Storage failed:', e); }
+    var all = _readCacheBundle();
+    all[key] = value;
+    _writeCacheBundle(all);
   }
 
   // ========== API CALLS ==========
@@ -762,71 +785,130 @@ window.MoviesHub = (function(){
   }
 
   function _writeLocal(key, value) {
-    try {
-      var all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-      all[key] = value;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
-    } catch(e){}
+    var all = _readCacheBundle();
+    all[key] = value;
+    _writeCacheBundle(all);
   }
 
-  function _syncFromFirestore() {
+  // ════════════════════════════════════════════════════════════════════════
+  // FIRESTORE REALTIME SYNC
+  // ════════════════════════════════════════════════════════════════════════
+  //
+  // Mô hình: 1 doc ở /users/{uid}/movies/data chứa { favorites, history, progress, updatedAt }
+  // - Push: debounce 1.2s để gom các update liên tiếp (mỗi 5s khi xem video)
+  // - Pull: onSnapshot để tự cập nhật khi máy khác sửa
+  // - Loop guard: lưu lastPushedAt; nếu snapshot về có updatedAt = lastPushedAt thì bỏ qua
+  //               (tránh ghi đè state hiện tại bằng chính data mình vừa push)
+
+  var _pushTimer = null;
+  var _lastPushedAt = 0;
+  var _unsub = null; // hàm hủy onSnapshot
+
+  function _applyRemoteData(d, source) {
+    if (!d) return false;
+    // Loop guard: snapshot này là echo của push mình vừa làm → bỏ
+    if (d.updatedAt && d.updatedAt === _lastPushedAt) return false;
+
+    var changed = false;
+    if (Array.isArray(d.favorites)) {
+      state.favorites = d.favorites;
+      _writeLocal('favorites', d.favorites);
+      changed = true;
+    }
+    if (Array.isArray(d.history)) {
+      state.history = d.history;
+      _writeLocal('history', d.history);
+      changed = true;
+    }
+    if (d.progress && typeof d.progress === 'object') {
+      // Merge: ưu tiên record có updatedAt mới hơn (để không mất tiến độ vừa xem ở local)
+      var merged = {};
+      var keysObj = {};
+      Object.keys(state.progress || {}).forEach(function(k){ keysObj[k] = 1; });
+      Object.keys(d.progress || {}).forEach(function(k){ keysObj[k] = 1; });
+      Object.keys(keysObj).forEach(function(k){
+        var local = state.progress[k];
+        var remote = d.progress[k];
+        if (local && remote) {
+          merged[k] = (local.updatedAt || 0) >= (remote.updatedAt || 0) ? local : remote;
+        } else {
+          merged[k] = local || remote;
+        }
+      });
+      state.progress = merged;
+      _writeLocal('progress', merged);
+      changed = true;
+    }
+
+    if (changed) {
+      // Re-render list nếu đang ở tab cần progress/favorites
+      if (state.currentTab === 'favorites' || state.currentTab === 'history') {
+        loadMovies();
+      }
+      // Nếu modal đang mở phim mà progress của chính phim đó vừa update → render lại để
+      // resume panel hiển thị mốc thời gian mới nhất
+      if (state.currentMovie && state.currentMovie.movie) {
+        var mm = document.getElementById('movieModal');
+        if (mm && mm.classList.contains('active')) {
+          // Chỉ re-render info, KHÔNG động vào player đang phát
+          renderMovieDetail(state.currentMovie);
+        }
+      }
+    }
+    return changed;
+  }
+
+  function _startRealtimeSync() {
     var ref = _movieDocRef();
     if (!ref) return Promise.resolve();
-    return ref.get().then(function(snap){
-      if (!snap.exists) return;
-      var d = snap.data();
-      var changed = false;
-      if (Array.isArray(d.favorites)) {
-        state.favorites = d.favorites;
-        _writeLocal('favorites', d.favorites);
-        changed = true;
-      }
-      if (Array.isArray(d.history)) {
-        state.history = d.history;
-        _writeLocal('history', d.history);
-        changed = true;
-      }
-      if (d.progress && typeof d.progress === 'object') {
-        // Merge: ưu tiên record có updatedAt mới hơn (để không mất tiến độ vừa xem ở local)
-        var merged = {};
-        var keys = new Set([].concat(Object.keys(state.progress || {}), Object.keys(d.progress || {})));
-        keys.forEach(function(k){
-          var local = state.progress[k];
-          var remote = d.progress[k];
-          if (local && remote) {
-            merged[k] = (local.updatedAt || 0) >= (remote.updatedAt || 0) ? local : remote;
-          } else {
-            merged[k] = local || remote;
+    // Hủy listener cũ nếu có
+    if (typeof _unsub === 'function') { try { _unsub(); } catch(e){} _unsub = null; }
+
+    return new Promise(function(resolve){
+      var firstSnapDone = false;
+      try {
+        _unsub = ref.onSnapshot(function(snap){
+          if (snap.exists) {
+            _applyRemoteData(snap.data(), 'snapshot');
           }
+          if (!firstSnapDone) { firstSnapDone = true; state.initialSyncDone = true; resolve(); }
+        }, function(err){
+          console.warn('[Movies] Firestore listener error:', err && err.message);
+          if (!firstSnapDone) { firstSnapDone = true; state.initialSyncDone = true; resolve(); }
         });
-        state.progress = merged;
-        _writeLocal('progress', merged);
-        changed = true;
+      } catch (e) {
+        console.warn('[Movies] Cannot start listener:', e.message);
+        state.initialSyncDone = true;
+        resolve();
       }
-      // Re-render only if currently viewing favorites/history tab
-      if (changed && (state.currentTab === 'favorites' || state.currentTab === 'history'))
-        loadMovies();
-    }).catch(function(e){ console.warn('[Movies] Firestore sync skip:', e.message); });
+    });
   }
 
   function _pushToFirestore() {
     var ref = _movieDocRef();
     if (!ref) return;
+    var stamp = Date.now();
+    _lastPushedAt = stamp;
     ref.set({
       favorites: state.favorites,
       history:   state.history,
       progress:  state.progress,
-      updatedAt: Date.now()
+      updatedAt: stamp
     }, { merge: true }).catch(function(e){
       console.warn('[Movies] Firestore push fail:', e.message);
     });
+  }
+
+  function _schedulePush() {
+    if (_pushTimer) clearTimeout(_pushTimer);
+    _pushTimer = setTimeout(_pushToFirestore, 1200);
   }
 
   // Override saveStorage để vừa ghi local vừa push Firestore (cho member/admin)
   var _origSave = saveStorage;
   saveStorage = function(key, value) {
     _origSave(key, value);
-    if (_isLoggedInMember()) _pushToFirestore();
+    if (_isLoggedInMember()) _schedulePush();
   };
 
   // ════════════════════════════════════════════════════════════════════════
@@ -848,11 +930,23 @@ window.MoviesHub = (function(){
 
   function bootstrap() {
     _bindEscOnce();
-    // init() (định nghĩa ở trên) bind events lên các DOM element vừa render
-    // và trigger loadCategories/loadCountries/loadMovies
-    init();
-    // Sync từ Firestore (data có thể đã đổi từ thiết bị khác)
-    if (_isLoggedInMember()) _syncFromFirestore();
+
+    // Reload state từ localStorage với đúng owner hiện tại.
+    // (Lần khởi tạo state ban đầu có thể chạy trước khi user info sẵn sàng.)
+    state.favorites = loadStorage('favorites');
+    state.history   = loadStorage('history');
+    state.progress  = loadProgress();
+
+    if (_isLoggedInMember()) {
+      // Member/Admin: chờ Firestore sync xong rồi mới render để tránh hiển thị
+      // data cũ từ localStorage (có thể là từ thiết bị/phiên cũ)
+      _startRealtimeSync().then(function(){
+        init();
+      });
+    } else {
+      // Guest: chỉ dùng localStorage, render ngay
+      init();
+    }
   }
 
   return { bootstrap: bootstrap };

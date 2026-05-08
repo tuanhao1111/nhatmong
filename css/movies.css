@@ -673,8 +673,8 @@
     left: 0;
     right: 0;
     bottom: 0;
-    height: 3px;
-    background: rgba(10, 9, 8, 0.6);
+    height: 4px;
+    background: rgba(10, 9, 8, 0.65);
     z-index: 3;
     pointer-events: none;
   }
@@ -687,17 +687,21 @@
   }
 
   .movie-resume-info {
-    margin-top: 0.4rem;
-    font-family: 'Cormorant Garamond', serif;
-    font-style: italic;
-    font-size: 0.72rem;
+    margin-top: 0.5rem;
+    padding: 0.35rem 0.5rem;
+    background: rgba(178, 34, 34, 0.18);
+    border-left: 2px solid var(--crimson-bright);
+    border-radius: 2px;
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 600;
+    font-size: 0.82rem;
     color: var(--gold-bright);
-    opacity: 0.85;
     overflow: hidden;
     display: -webkit-box;
     -webkit-line-clamp: 1;
     -webkit-box-orient: vertical;
-    letter-spacing: 0.03em;
+    letter-spacing: 0.02em;
+    line-height: 1.3;
   }
 
   /* ════════════════════════════════════════════════════════════
