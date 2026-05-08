@@ -664,3 +664,119 @@
   .movie-card:nth-child(6) { animation-delay: 0.3s; }
   .movie-card:nth-child(7) { animation-delay: 0.35s; }
   .movie-card:nth-child(8) { animation-delay: 0.4s; }
+
+  /* ════════════════════════════════════════════════════════════
+     === PROGRESS BAR TRÊN MOVIE CARD (tab Lịch Sử / Yêu Thích) ===
+     ════════════════════════════════════════════════════════════ */
+  .movie-progress-bar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 3px;
+    background: rgba(10, 9, 8, 0.6);
+    z-index: 3;
+    pointer-events: none;
+  }
+
+  .movie-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--crimson), var(--crimson-bright, #d94545));
+    box-shadow: 0 0 8px rgba(178, 34, 34, 0.5);
+    transition: width 0.4s ease;
+  }
+
+  .movie-resume-info {
+    margin-top: 0.4rem;
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 0.72rem;
+    color: var(--gold-bright);
+    opacity: 0.85;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    letter-spacing: 0.03em;
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     === RESUME PANEL TRONG MODAL ===
+     ════════════════════════════════════════════════════════════ */
+  .resume-panel {
+    margin-top: 1.25rem;
+    padding: 1rem 1.1rem;
+    background: linear-gradient(135deg, rgba(178, 34, 34, 0.12), rgba(201, 169, 97, 0.08));
+    border: 1px solid rgba(201, 169, 97, 0.3);
+    border-left: 3px solid var(--crimson);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .resume-info {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .resume-label {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--gold-bright);
+    letter-spacing: 0.08em;
+    margin-bottom: 0.3rem;
+  }
+
+  .resume-detail {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 0.95rem;
+    color: var(--paper);
+    opacity: 0.9;
+    margin-bottom: 0.5rem;
+  }
+
+  .resume-bar {
+    height: 4px;
+    background: rgba(10, 9, 8, 0.5);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .resume-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--crimson), var(--gold));
+    transition: width 0.5s ease;
+  }
+
+  .resume-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .action-btn.resume-continue {
+    background: var(--crimson);
+    border-color: var(--crimson-bright, #d94545);
+    color: var(--paper);
+  }
+
+  .action-btn.resume-continue:hover {
+    background: var(--crimson-bright, #d94545);
+    color: var(--paper);
+    box-shadow: 0 0 12px rgba(178, 34, 34, 0.4);
+  }
+
+  .action-btn.resume-restart {
+    background: transparent;
+  }
+
+  @media (max-width: 640px) {
+    .resume-panel { flex-direction: column; align-items: stretch; }
+    .resume-actions { justify-content: stretch; }
+    .resume-actions .action-btn { flex: 1; justify-content: center; }
+  }

@@ -34,8 +34,20 @@ window.MoviesHub = (function(){
     categories: [],
     countries: [],
     favorites: loadStorage('favorites'),
-    history: loadStorage('history')
+    history: loadStorage('history'),
+    // progress: { [slug]: { server, episode, episodeName, currentTime, duration, updatedAt } }
+    progress: loadProgress(),
+    // Khi user chọn "Xem tiếp", lưu lại resumeTime để set vào video sau khi load
+    pendingResumeTime: 0
   };
+
+  // Load progress (object map by slug)
+  function loadProgress() {
+    try {
+      const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      return (all.progress && typeof all.progress === 'object') ? all.progress : {};
+    } catch (e) { return {}; }
+  }
 
   // ========== STORAGE ==========
   function loadStorage(key) {
@@ -186,6 +198,9 @@ window.MoviesHub = (function(){
     const grid = document.createElement('div');
     grid.className = 'movie-grid';
 
+    // Có hiển thị progress hay không (chỉ tab favorites/history)
+    const showProgress = (state.currentTab === 'favorites' || state.currentTab === 'history');
+
     movies.forEach(m => {
       const card = document.createElement('div');
       card.className = 'movie-card';
@@ -199,6 +214,20 @@ window.MoviesHub = (function(){
       const lang = m.lang || 'Vietsub';
       const year = m.year || '';
       const epCurrent = m.episode_current || '';
+
+      // Lấy progress nếu có
+      const prog = state.progress[m.slug];
+      let progressHTML = '';
+      let resumeBadge = '';
+      if (showProgress && prog) {
+        const pct = prog.duration > 0 ? Math.min(100, (prog.currentTime / prog.duration) * 100) : 0;
+        progressHTML = `<div class="movie-progress-bar"><div class="movie-progress-fill" style="width:${pct}%"></div></div>`;
+        const epLabel = prog.episodeName || ('Tập ' + ((prog.episode || 0) + 1));
+        const timeLabel = prog.duration > 0
+          ? formatTime(prog.currentTime) + ' / ' + formatTime(prog.duration)
+          : 'Đã xem';
+        resumeBadge = `<div class="movie-resume-info">▶ ${epLabel} · ${timeLabel}</div>`;
+      }
 
       card.innerHTML = `
         <div class="movie-badges">
@@ -215,7 +244,9 @@ window.MoviesHub = (function(){
             <span>${year}</span>
             <span>${epCurrent}</span>
           </div>
+          ${resumeBadge}
         </div>
+        ${progressHTML}
       `;
       card.addEventListener('click', () => openMovie(m.slug));
       grid.appendChild(card);
@@ -223,6 +254,16 @@ window.MoviesHub = (function(){
 
     container.innerHTML = '';
     container.appendChild(grid);
+  }
+
+  // Format giây → "mm:ss" hoặc "h:mm:ss"
+  function formatTime(sec) {
+    sec = Math.max(0, Math.floor(sec || 0));
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    const pad = n => n < 10 ? '0' + n : '' + n;
+    return h > 0 ? (h + ':' + pad(m) + ':' + pad(s)) : (pad(m) + ':' + pad(s));
   }
 
   function renderPagination(totalPages) {
@@ -282,11 +323,19 @@ window.MoviesHub = (function(){
     }
 
     state.currentMovie = data;
-    state.currentServer = 0;
-    state.currentEpisode = 0;
+    // Nếu có progress, set server/episode theo progress để UI highlight đúng tập
+    const movie = data.movie;
+    const existingProg = state.progress[movie.slug];
+    if (existingProg) {
+      state.currentServer = existingProg.server || 0;
+      state.currentEpisode = existingProg.episode || 0;
+    } else {
+      state.currentServer = 0;
+      state.currentEpisode = 0;
+    }
+    state.pendingResumeTime = 0;
 
     // Save to history
-    const movie = data.movie;
     const histItem = {
       slug: movie.slug,
       name: movie.name,
@@ -308,12 +357,37 @@ window.MoviesHub = (function(){
     const movie = data.movie;
     const episodes = data.episodes || [];
     const isFav = state.favorites.some(f => f.slug === movie.slug);
+    const prog = state.progress[movie.slug];
 
     let posterUrl = movie.poster_url || movie.thumb_url || '';
     if (posterUrl && !posterUrl.startsWith('http')) posterUrl = `https://phimimg.com/${posterUrl}`;
 
     const categoryTags = (movie.category || []).map(c => `<span class="meta-tag">${c.name}</span>`).join('');
     const countryTags = (movie.country || []).map(c => `<span class="meta-tag">${c.name}</span>`).join('');
+
+    // Resume panel - chỉ hiện nếu có progress và chưa đang phát
+    let resumeHTML = '';
+    const playerHasMedia = !!document.querySelector('#playerWrapper iframe, #playerWrapper video');
+    if (prog && !playerHasMedia) {
+      const epName = prog.episodeName || ('Tập ' + ((prog.episode || 0) + 1));
+      const pct = prog.duration > 0 ? Math.min(100, Math.round((prog.currentTime / prog.duration) * 100)) : 0;
+      const timeText = prog.duration > 0
+        ? `${formatTime(prog.currentTime)} / ${formatTime(prog.duration)} · ${pct}%`
+        : 'Đã xem';
+      resumeHTML = `
+        <div class="resume-panel">
+          <div class="resume-info">
+            <div class="resume-label">⟳ Đang xem dở</div>
+            <div class="resume-detail">${epName} · ${timeText}</div>
+            ${prog.duration > 0 ? `<div class="resume-bar"><div class="resume-bar-fill" style="width:${pct}%"></div></div>` : ''}
+          </div>
+          <div class="resume-actions">
+            <button class="action-btn resume-continue" id="resumeContinueBtn">▶ Xem Tiếp</button>
+            <button class="action-btn resume-restart" id="resumeRestartBtn">↺ Xem Từ Đầu</button>
+          </div>
+        </div>
+      `;
+    }
 
     document.getElementById('modalInfo').innerHTML = `
       <h2 class="modal-title">${movie.name}</h2>
@@ -330,6 +404,8 @@ window.MoviesHub = (function(){
 
       <div class="modal-description">${(movie.content || 'Chưa có mô tả').replace(/<[^>]+>/g, '')}</div>
 
+      ${resumeHTML}
+
       <div class="action-buttons">
         <button class="action-btn ${isFav ? 'active' : ''}" id="favBtn">
           ${isFav ? '♥ Đã Yêu Thích' : '♡ Yêu Thích'}
@@ -343,6 +419,29 @@ window.MoviesHub = (function(){
     // Bind favorite
     document.getElementById('favBtn')?.addEventListener('click', toggleFavorite);
 
+    // Bind resume buttons
+    document.getElementById('resumeContinueBtn')?.addEventListener('click', () => {
+      if (!prog) return;
+      // Set server/episode theo progress, set pendingResumeTime để playEpisode set vào video
+      state.currentServer = prog.server || 0;
+      state.currentEpisode = prog.episode || 0;
+      state.pendingResumeTime = prog.currentTime || 0;
+      playEpisode();
+      renderMovieDetail(data);
+    });
+    document.getElementById('resumeRestartBtn')?.addEventListener('click', () => {
+      if (!prog) return;
+      // Xem từ đầu: vẫn dùng server/episode đã lưu nhưng currentTime = 0
+      state.currentServer = prog.server || 0;
+      state.currentEpisode = prog.episode || 0;
+      state.pendingResumeTime = 0;
+      // Reset progress về đầu (giữ lại record để biết đã xem phim này)
+      state.progress[movie.slug] = Object.assign({}, prog, { currentTime: 0, updatedAt: Date.now() });
+      saveProgress();
+      playEpisode();
+      renderMovieDetail(data);
+    });
+
     // Bind server tabs
     document.querySelectorAll('.server-tab').forEach(tab => {
       tab.addEventListener('click', () => {
@@ -355,15 +454,13 @@ window.MoviesHub = (function(){
     document.querySelectorAll('.episode-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         state.currentEpisode = parseInt(btn.dataset.ep);
+        // Click tay vào tập → bắt đầu từ 0 (trừ khi đúng tập đang xem dở)
+        const sameEp = prog && prog.server === state.currentServer && prog.episode === state.currentEpisode;
+        state.pendingResumeTime = sameEp ? (prog.currentTime || 0) : 0;
         playEpisode();
         renderMovieDetail(data);
       });
     });
-
-    // Auto-play first episode
-    if (episodes.length > 0 && episodes[state.currentServer]?.server_data?.length > 0 && !document.querySelector('.episode-btn.playing')) {
-      // Don't auto-play, let user choose
-    }
   }
 
   function renderEpisodes(episodes) {
@@ -390,13 +487,29 @@ window.MoviesHub = (function(){
   function playEpisode() {
     const data = state.currentMovie;
     if (!data) return;
+    const movie = data.movie;
     const episode = data.episodes?.[state.currentServer]?.server_data?.[state.currentEpisode];
     if (!episode) return;
 
     const wrapper = document.getElementById('playerWrapper');
-    
+    const resumeAt = Math.max(0, state.pendingResumeTime || 0);
+    state.pendingResumeTime = 0; // consume
+
+    // Lưu meta thông tin episode đang xem (gọi cả khi dùng iframe để vẫn nhớ tập)
+    saveCurrentProgress({
+      slug: movie.slug,
+      server: state.currentServer,
+      episode: state.currentEpisode,
+      episodeName: episode.name || ('Tập ' + (state.currentEpisode + 1)),
+      currentTime: resumeAt, // sẽ được update bởi timeupdate (video) hoặc giữ nguyên (iframe)
+      duration: 0,
+      onlyIfNew: true // không ghi đè currentTime/duration đã có nếu chỉ là re-render
+    });
+
     // Prefer embed link (less ad than direct), fallback to m3u8
     if (episode.link_embed) {
+      // Iframe: không track được time → chỉ ghi nhớ tập đang xem
+      // Một số embed hỗ trợ ?t=, ?start= nhưng không chuẩn → bỏ qua resumeAt
       wrapper.innerHTML = `<iframe src="${episode.link_embed}" allowfullscreen allow="autoplay; encrypted-media"></iframe>`;
     } else if (episode.link_m3u8) {
       wrapper.innerHTML = `<video id="hlsPlayer" controls autoplay playsinline></video>`;
@@ -405,15 +518,115 @@ window.MoviesHub = (function(){
         const hls = new Hls();
         hls.loadSource(episode.link_m3u8);
         hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, function() {
+          if (resumeAt > 0) {
+            try { video.currentTime = resumeAt; } catch(e){}
+          }
+        });
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = episode.link_m3u8;
+        video.addEventListener('loadedmetadata', function once() {
+          video.removeEventListener('loadedmetadata', once);
+          if (resumeAt > 0) {
+            try { video.currentTime = resumeAt; } catch(e){}
+          }
+        });
       }
+      bindVideoProgress(video, movie, episode);
     }
 
     // Update playing indicator
     document.querySelectorAll('.episode-btn').forEach((btn, i) => {
       btn.classList.toggle('playing', i === state.currentEpisode);
     });
+  }
+
+  // ========== PROGRESS TRACKING ==========
+  let _progressTimer = null;
+
+  function bindVideoProgress(video, movie, episode) {
+    if (!video) return;
+
+    // Cập nhật progress mỗi ~5s khi đang phát
+    function tick() {
+      if (!video || video.paused) return;
+      const ct = Math.floor(video.currentTime || 0);
+      const dur = Math.floor(video.duration || 0);
+      if (ct < 1) return; // bỏ qua những giây đầu để không ghi đè progress cũ vô lý
+      saveCurrentProgress({
+        slug: movie.slug,
+        server: state.currentServer,
+        episode: state.currentEpisode,
+        episodeName: episode.name || ('Tập ' + (state.currentEpisode + 1)),
+        currentTime: ct,
+        duration: dur > 0 ? dur : 0
+      });
+    }
+
+    if (_progressTimer) clearInterval(_progressTimer);
+    _progressTimer = setInterval(tick, 5000);
+
+    // Save khi pause/seeked/ended để bắt mốc cuối
+    video.addEventListener('pause', tick);
+    video.addEventListener('ended', () => {
+      const dur = Math.floor(video.duration || 0);
+      saveCurrentProgress({
+        slug: movie.slug,
+        server: state.currentServer,
+        episode: state.currentEpisode,
+        episodeName: episode.name || ('Tập ' + (state.currentEpisode + 1)),
+        currentTime: dur,
+        duration: dur
+      });
+    });
+    // Save khi rời trang / đóng tab
+    if (!window._mvUnloadBound) {
+      window._mvUnloadBound = true;
+      window.addEventListener('beforeunload', () => {
+        const v = document.getElementById('hlsPlayer');
+        const cm = state.currentMovie;
+        if (v && cm) {
+          const ep = cm.episodes?.[state.currentServer]?.server_data?.[state.currentEpisode];
+          if (ep) {
+            saveCurrentProgress({
+              slug: cm.movie.slug,
+              server: state.currentServer,
+              episode: state.currentEpisode,
+              episodeName: ep.name || ('Tập ' + (state.currentEpisode + 1)),
+              currentTime: Math.floor(v.currentTime || 0),
+              duration: Math.floor(v.duration || 0)
+            });
+          }
+        }
+      });
+    }
+  }
+
+  function saveCurrentProgress(p) {
+    if (!p || !p.slug) return;
+    const existing = state.progress[p.slug] || {};
+    // onlyIfNew: chỉ ghi khi chưa có record hoặc chuyển sang tập khác
+    if (p.onlyIfNew) {
+      const sameEp = existing.server === p.server && existing.episode === p.episode;
+      if (sameEp && existing.currentTime > 0) return;
+    }
+    state.progress[p.slug] = {
+      server: p.server,
+      episode: p.episode,
+      episodeName: p.episodeName,
+      currentTime: p.currentTime || 0,
+      duration: p.duration || existing.duration || 0,
+      updatedAt: Date.now()
+    };
+    saveProgress();
+  }
+
+  function saveProgress() {
+    saveStorage('progress', state.progress);
+  }
+
+  function clearProgressTimer() {
+    if (_progressTimer) { clearInterval(_progressTimer); _progressTimer = null; }
   }
 
   function toggleFavorite() {
@@ -498,10 +711,36 @@ window.MoviesHub = (function(){
   }
 
   function closeModal() {
+    // Lưu progress lần cuối trước khi đóng (nếu đang dùng video tag)
+    try {
+      const v = document.getElementById('hlsPlayer');
+      const cm = state.currentMovie;
+      if (v && cm && !isNaN(v.currentTime)) {
+        const ep = cm.episodes?.[state.currentServer]?.server_data?.[state.currentEpisode];
+        if (ep && v.currentTime > 1) {
+          saveCurrentProgress({
+            slug: cm.movie.slug,
+            server: state.currentServer,
+            episode: state.currentEpisode,
+            episodeName: ep.name || ('Tập ' + (state.currentEpisode + 1)),
+            currentTime: Math.floor(v.currentTime || 0),
+            duration: Math.floor(v.duration || 0)
+          });
+        }
+      }
+    } catch(e){}
+
+    clearProgressTimer();
     document.getElementById('movieModal').classList.remove('active');
     document.getElementById('playerWrapper').innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--gold);font-family:'Cormorant Garamond',serif;font-style:italic;letter-spacing:0.2em;">Chọn tập phim để bắt đầu xem</div>`;
     document.body.style.overflow = '';
     state.currentMovie = null;
+    state.pendingResumeTime = 0;
+
+    // Nếu đang ở tab favorites/history thì re-render để cập nhật progress bar
+    if (state.currentTab === 'favorites' || state.currentTab === 'history') {
+      loadMovies();
+    }
   }
 
   // ════════════════════════════════════════════════════════════════════════
@@ -547,6 +786,23 @@ window.MoviesHub = (function(){
         _writeLocal('history', d.history);
         changed = true;
       }
+      if (d.progress && typeof d.progress === 'object') {
+        // Merge: ưu tiên record có updatedAt mới hơn (để không mất tiến độ vừa xem ở local)
+        var merged = {};
+        var keys = new Set([].concat(Object.keys(state.progress || {}), Object.keys(d.progress || {})));
+        keys.forEach(function(k){
+          var local = state.progress[k];
+          var remote = d.progress[k];
+          if (local && remote) {
+            merged[k] = (local.updatedAt || 0) >= (remote.updatedAt || 0) ? local : remote;
+          } else {
+            merged[k] = local || remote;
+          }
+        });
+        state.progress = merged;
+        _writeLocal('progress', merged);
+        changed = true;
+      }
       // Re-render only if currently viewing favorites/history tab
       if (changed && (state.currentTab === 'favorites' || state.currentTab === 'history'))
         loadMovies();
@@ -559,6 +815,7 @@ window.MoviesHub = (function(){
     ref.set({
       favorites: state.favorites,
       history:   state.history,
+      progress:  state.progress,
       updatedAt: Date.now()
     }, { merge: true }).catch(function(e){
       console.warn('[Movies] Firestore push fail:', e.message);
