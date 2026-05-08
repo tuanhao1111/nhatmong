@@ -12,7 +12,11 @@
   />
 
   <!-- Firebase SDK v10 (compat mode) -->
+  <!-- LƯU Ý: phải load firebase-auth-compat.js TRƯỚC firebase-firestore-compat.js để
+       Firestore client có thể attach IdToken vào request đầu tiên (rules có
+       request.auth != null sẽ pass ngay từ snapshot đầu, không bị permission-denied). -->
   <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
   <script>
     // Firebase config — Nhất Mộng project
@@ -28,6 +32,15 @@
         appId: "1:814787062547:web:c4ca571227c5a5555688e6",
         measurementId: "G-WH87JWSQGF",
       });
+    }
+    // Persistence LOCAL: auth state lưu trong IndexedDB → reload trang vẫn giữ login.
+    // Cùng origin với app cha (nhatmong.vercel.app) → iframe tự đọc được session
+    // mà parent đã sign in, không phải đăng nhập lại.
+    if (typeof firebase !== 'undefined' && firebase.auth) {
+      try {
+        firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+          .catch(function(e){ console.warn('[MG] setPersistence warn:', e && e.code); });
+      } catch (e) { /* SDK chưa load đủ — bỏ qua, MGFirebase.init() sẽ retry */ }
     }
   </script>
 
@@ -502,6 +515,12 @@
     .mg-sync-badge.online .mg-sync-dot {
       background: #6cd66c;
       box-shadow: 0 0 8px #6cd66c;
+    }
+
+    .mg-sync-badge.connecting .mg-sync-dot {
+      /* Đang xác thực: vàng đèn lồng, vẫn pulse */
+      background: var(--lantern-warm);
+      box-shadow: 0 0 8px var(--lantern-warm);
     }
 
     .mg-sync-badge.offline .mg-sync-dot {
@@ -3053,10 +3072,61 @@
       // Nếu Firebase chưa init → adapter trả về null, GameStatus tự fallback localStorage.
       // ═══════════════════════════════════════════════════════════════════
       const MGFirebase = (function() {
-        let app = null;        // firebase app instance
-        let db = null;         // firestore instance
-        let isReady = false;   // đã init thành công chưa
-        let unsubscribers = []; // các unsubscribe functions để cleanup
+        let app = null;          // firebase app instance
+        let db = null;           // firestore instance
+        let auth = null;         // firebase auth instance
+        let isReady = false;     // đã init Firestore thành công chưa
+        let unsubscribers = [];  // các unsubscribe functions để cleanup
+        let unsubAuth = null;    // unsub onAuthStateChanged
+
+        // ─── AUTH READY STATE ──────────────────────────────────────────
+        // authReady() trả về Promise<{ user, signedIn }>:
+        //   - resolve với { user, signedIn:true } khi onAuthStateChanged fire
+        //     với user != null (đã đăng nhập) → an toàn để đọc/ghi Firestore
+        //     mà rules có request.auth != null sẽ pass.
+        //   - resolve với { user:null, signedIn:false } sau timeout (mặc định 6s)
+        //     hoặc khi auth chắc chắn signed-out → caller tự fallback localStorage.
+        // Cả 2 trường hợp đều resolve, KHÔNG reject — để caller code .then() đơn giản.
+        //
+        // Lý do tồn tại: iframe minigames-hub khi vừa load chạy ngay đã gọi
+        // collection('minigames').doc('status').onSnapshot() trước khi Firebase Auth
+        // kịp khôi phục session từ IndexedDB. Snapshot đầu tiên sẽ bị
+        // permission-denied vì rules check request.auth. authReady() chặn ở đây
+        // tới khi auth thật sự sẵn sàng.
+        let _authReadyPromise = null;
+        let _authReadyResolve = null;
+        let _authResolved = false;
+        let _currentUser = null;
+        const AUTH_READY_TIMEOUT_MS = 6000;
+
+        function _initAuthReady() {
+          _authReadyPromise = new Promise(function(resolve){
+            _authReadyResolve = resolve;
+          });
+        }
+        // Tạo promise ngay từ đầu để code gọi authReady() trước khi init() vẫn ok.
+        _initAuthReady();
+
+        function _resolveAuthReady(user) {
+          if (_authResolved) return;
+          _authResolved = true;
+          _currentUser = user || null;
+          const payload = { user: _currentUser, signedIn: !!_currentUser };
+          if (_currentUser) {
+            console.log('[MGFirebase] authReady → signed in as', _currentUser.email || _currentUser.uid);
+          } else {
+            console.warn('[MGFirebase] authReady → KHÔNG có user (timeout hoặc signed out). Firestore ops sẽ skip.');
+          }
+          if (_authReadyResolve) _authReadyResolve(payload);
+        }
+
+        function authReady() {
+          return _authReadyPromise;
+        }
+
+        function getCurrentUser() {
+          return _currentUser;
+        }
 
         // Kiểm tra Firebase SDK đã load chưa (compat hoặc modular)
         function detectFirebase() {
@@ -3071,7 +3141,10 @@
         function init(config) {
           const mode = detectFirebase();
           if (!mode) {
-            console.warn('[MGFirebase] Firebase SDK chua duoc load. Can them firebase-app-compat.js va firebase-firestore-compat.js truoc file nay. Tam fallback localStorage.');
+            console.warn('[MGFirebase] Firebase SDK chua duoc load. Can them firebase-app-compat.js, firebase-auth-compat.js va firebase-firestore-compat.js truoc file nay. Tam fallback localStorage.');
+            // Không có Firebase SDK → resolve auth ready ngay (signedIn:false)
+            // để code đợi authReady() không bị treo.
+            _resolveAuthReady(null);
             return false;
           }
 
@@ -3084,62 +3157,163 @@
               app = window.firebase.initializeApp(config);
             } else {
               console.warn('[MGFirebase] Không có config và cũng không có app sẵn. Bỏ qua.');
+              _resolveAuthReady(null);
               return false;
             }
             db = window.firebase.firestore(app);
+
+            // Auth: cần thiết cho Firestore rules có request.auth != null.
+            // Nếu firebase-auth-compat.js không load (page chỉ cần Firestore public),
+            // _setupAuthListener sẽ resolve ngay với signedIn:false.
+            if (typeof window.firebase.auth === 'function') {
+              try {
+                auth = window.firebase.auth(app);
+                _setupAuthListener();
+              } catch (e) {
+                console.warn('[MGFirebase] auth() failed, bỏ qua auth listener:', e && e.code);
+                _resolveAuthReady(null);
+              }
+            } else {
+              console.warn('[MGFirebase] firebase.auth không khả dụng (auth SDK chưa load). Skip auth listener.');
+              _resolveAuthReady(null);
+            }
+
             isReady = true;
-            console.log('[MGFirebase] Initialized successfully.');
+            console.log('[MGFirebase] Initialized successfully (Firestore ready, awaiting auth...).');
             return true;
           } catch (e) {
             console.error('[MGFirebase] Init failed:', e);
             isReady = false;
+            _resolveAuthReady(null);
             return false;
           }
         }
 
-        // Subscribe game status với realtime listener
-        function subscribeGameStatus(callback) {
-          if (!isReady) return null;
-          try {
-            const docRef = db.collection('minigames').doc('status');
-            const unsub = docRef.onSnapshot(snapshot => {
-              if (snapshot.exists) {
-                callback(snapshot.data());
-              } else {
-                callback(null); // chưa có document
-              }
-            }, err => {
-              console.error('[MGFirebase] subscribeGameStatus error:', err);
-            });
-            unsubscribers.push(unsub);
-            return unsub;
-          } catch (e) {
-            console.error('[MGFirebase] subscribeGameStatus failed:', e);
-            return null;
+        // Lắng nghe auth state. resolve authReady() ở snapshot đầu tiên có user.
+        // Nếu user đã sign-in từ trước (cached IndexedDB), onAuthStateChanged fire
+        // gần như ngay lập tức (~50-200ms). Nếu chưa, set timeout fallback.
+        function _setupAuthListener() {
+          // Nếu auth.currentUser đã có sẵn (rất nhanh) → resolve liền.
+          if (auth.currentUser) {
+            _resolveAuthReady(auth.currentUser);
           }
+          // Listener chính: cập nhật _currentUser mỗi lần đổi, và resolve lần đầu.
+          unsubAuth = auth.onAuthStateChanged(function(fbUser){
+            _currentUser = fbUser || null;
+            if (!_authResolved) {
+              if (fbUser) {
+                _resolveAuthReady(fbUser);
+              } else {
+                // First snapshot là null → có thể user chưa đăng nhập, hoặc Firebase
+                // còn đang restore từ IndexedDB. KHÔNG resolve ngay với null,
+                // để timeout dưới quyết định.
+              }
+            } else {
+              // Đã resolved trước đó → chỉ log thay đổi (sign-out, đổi user...).
+              if (fbUser) {
+                console.log('[MGFirebase] auth state changed → signed in as', fbUser.email || fbUser.uid);
+              } else {
+                console.log('[MGFirebase] auth state changed → signed out');
+              }
+            }
+          }, function(err){
+            console.error('[MGFirebase] onAuthStateChanged error:', err);
+            if (!_authResolved) _resolveAuthReady(null);
+          });
+
+          // Timeout fallback: nếu sau N giây vẫn chưa có user → resolve null
+          // để app không bị treo. Người dùng thấy badge "Chế độ offline".
+          setTimeout(function(){
+            if (!_authResolved) {
+              _resolveAuthReady(auth && auth.currentUser ? auth.currentUser : null);
+            }
+          }, AUTH_READY_TIMEOUT_MS);
         }
 
-        // Admin set game status → push lên Firestore
+        // Subscribe game status với realtime listener.
+        // Đợi authReady() trước khi attach onSnapshot — tránh permission-denied
+        // do Firestore rules check request.auth.
+        function subscribeGameStatus(callback) {
+          if (!isReady) return null;
+          // Trả về function unsub "deferred": tới khi auth ready mới gắn snapshot,
+          // nhưng caller có thể gọi unsub() bất cứ lúc nào — sẽ huỷ chuỗi.
+          let realUnsub = null;
+          let cancelled = false;
+
+          authReady().then(function(state){
+            if (cancelled) return;
+            if (!state.signedIn) {
+              console.warn('[MGFirebase] subscribeGameStatus: skip (chưa đăng nhập). Caller nên fallback local.');
+              // Báo callback null để GameStatus dùng local cache.
+              try { callback(null, { reason: 'not-signed-in' }); } catch (e) {}
+              return;
+            }
+            try {
+              const docRef = db.collection('minigames').doc('status');
+              realUnsub = docRef.onSnapshot(function(snapshot){
+                if (snapshot.exists) {
+                  callback(snapshot.data());
+                } else {
+                  callback(null); // chưa có document
+                }
+              }, function(err){
+                console.error('[MGFirebase] subscribeGameStatus error:', err && err.code, err && err.message);
+              });
+              unsubscribers.push(realUnsub);
+            } catch (e) {
+              console.error('[MGFirebase] subscribeGameStatus failed:', e);
+            }
+          });
+
+          return function unsubDeferred(){
+            cancelled = true;
+            if (realUnsub) {
+              try { realUnsub(); } catch (e) {}
+              const idx = unsubscribers.indexOf(realUnsub);
+              if (idx !== -1) unsubscribers.splice(idx, 1);
+              realUnsub = null;
+            }
+          };
+        }
+
+        // Admin set game status → push lên Firestore.
+        // Đợi authReady() trước khi gọi set() — nếu chưa đăng nhập, return false
+        // và caller sẽ tự fallback localStorage.
         async function pushGameStatus(status) {
           if (!isReady) return false;
+          const state = await authReady();
+          if (!state.signedIn) {
+            console.warn('[MGFirebase] pushGameStatus: skip (chưa đăng nhập).');
+            return false;
+          }
           try {
             await db.collection('minigames').doc('status').set(status, { merge: true });
             return true;
           } catch (e) {
-            console.error('[MGFirebase] pushGameStatus failed:', e);
+            console.error('[MGFirebase] pushGameStatus failed:', e && e.code, e && e.message);
             return false;
           }
         }
 
         // Cleanup tất cả listeners
         function cleanup() {
-          unsubscribers.forEach(u => { try { u(); } catch (e) {} });
+          unsubscribers.forEach(function(u){ try { u(); } catch (e) {} });
           unsubscribers = [];
+          if (unsubAuth) { try { unsubAuth(); } catch (e) {} unsubAuth = null; }
         }
 
         return {
           init,
-          isReady: () => isReady,
+          isReady: function(){ return isReady; },
+          authReady,
+          getCurrentUser,
+          // Trạng thái auth tổng hợp (dùng cho sync badge):
+          //   'no-firebase' | 'connecting' | 'online' | 'signed-out'
+          getAuthState: function(){
+            if (!isReady) return 'no-firebase';
+            if (!_authResolved) return 'connecting';
+            return _currentUser ? 'online' : 'signed-out';
+          },
           subscribeGameStatus,
           pushGameStatus,
           cleanup,
@@ -3156,17 +3330,42 @@
       // Nếu không có Firebase SDK → tự fallback localStorage (chạy bình thường offline).
       MGFirebase.init();
 
-      // Update sync badge (sau khi DOM ready)
+      // Khi auth thay đổi (lần đầu sign-in xong, hoặc sign-out giữa session)
+      // → cập nhật badge để user thấy trạng thái thực.
+      MGFirebase.authReady().then(function(){
+        updateSyncBadge();
+      });
+
+      // Update sync badge (sau khi DOM ready).
+      // 4 trạng thái dựa vào MGFirebase.getAuthState():
+      //   'no-firebase' → offline (không có SDK → mọi thứ chạy localStorage)
+      //   'connecting'  → đang chờ auth (vàng đèn lồng pulse)
+      //   'online'      → có user, Firestore sync OK (xanh)
+      //   'signed-out'  → có Firebase nhưng không đăng nhập → offline mode
       function updateSyncBadge() {
         const $badge = document.getElementById('mgSyncBadge');
         if (!$badge) return;
         const $text = $badge.querySelector('.mg-sync-text');
-        $badge.classList.remove('online', 'offline', 'error');
-        if (MGFirebase.isReady()) {
+        $badge.classList.remove('online', 'offline', 'error', 'connecting');
+
+        const state = MGFirebase.getAuthState
+          ? MGFirebase.getAuthState()
+          : (MGFirebase.isReady() ? 'online' : 'no-firebase');
+
+        if (state === 'online') {
           $badge.classList.add('online');
           $text.textContent = 'Đang đồng bộ';
-          $badge.title = 'Đã kết nối Firebase — trạng thái game đồng bộ giữa các máy';
+          $badge.title = 'Đã kết nối Firebase + đăng nhập — trạng thái game đồng bộ giữa các máy';
+        } else if (state === 'connecting') {
+          $badge.classList.add('connecting');
+          $text.textContent = 'Đang xác thực…';
+          $badge.title = 'Firebase đã sẵn sàng, đang chờ phiên đăng nhập…';
+        } else if (state === 'signed-out') {
+          $badge.classList.add('offline');
+          $text.textContent = 'Chưa đăng nhập';
+          $badge.title = 'Firebase OK nhưng phiên đăng nhập chưa khôi phục — tạm chạy chế độ local';
         } else {
+          // no-firebase
           $badge.classList.add('offline');
           $text.textContent = 'Chế độ offline';
           $badge.title = 'Không có Firebase — trạng thái chỉ lưu trên máy này';
@@ -3203,17 +3402,31 @@
           } catch (e) {}
         },
 
-        // Init: thử Firebase trước, fallback localStorage
+        // Init: thử Firebase trước, fallback localStorage.
+        // Trả về initial value đồng bộ (local cache) — Firebase snapshot tới sau
+        // sẽ override qua subscribe callback.
         init() {
           if (MGFirebase.isReady()) {
-            // Firebase mode — subscribe realtime
-            MGFirebase.subscribeGameStatus(status => {
+            // Firebase mode — subscribe realtime (subscribe sẽ tự đợi authReady).
+            // callback nhận thêm meta có thể có reason='not-signed-in' → giữ local.
+            const self = this;
+            MGFirebase.subscribeGameStatus(function(status, meta){
+              if (meta && meta.reason === 'not-signed-in') {
+                // Auth không thành công → giữ local cache, không clobber về default.
+                console.warn('[GameStatus] Subscribe skipped vì chưa đăng nhập, dùng local cache.');
+                gameStatus = self.loadLocal();
+                self.notify(gameStatus);
+                return;
+              }
               if (status) {
                 gameStatus = { ...DEFAULT_STATUS, ...status };
               } else {
+                // Document chưa tồn tại trên Firestore → dùng default + cache local.
                 gameStatus = { ...DEFAULT_STATUS };
               }
-              this.notify(gameStatus);
+              // Cache lại để load tức thì lần sau.
+              self.saveLocal(gameStatus);
+              self.notify(gameStatus);
             });
             // Initial value: load local cache trong khi đợi Firebase first snapshot
             return this.loadLocal();
@@ -3222,15 +3435,25 @@
           return this.loadLocal();
         },
 
-        // Save (gọi khi admin toggle)
+        // Save (gọi khi admin toggle).
+        // Khi Firebase ready: push lên cloud (async). Nếu push thành công,
+        // onSnapshot sẽ echo về và notify. Nếu push fail (chưa đăng nhập, rules
+        // deny, network down...) → notify local để UI vẫn responsive ngay.
         save(status) {
+          // Luôn cache local trước — nếu push fail thì user vẫn thấy thay đổi.
+          this.saveLocal(status);
           if (MGFirebase.isReady()) {
-            // Firebase mode → push lên cloud
-            MGFirebase.pushGameStatus(status);
-            // Vẫn cache local để load nhanh lần sau
-            this.saveLocal(status);
+            const self = this;
+            MGFirebase.pushGameStatus(status).then(function(ok){
+              if (!ok) {
+                // Push thất bại → notify local để UI cập nhật (Firebase echo sẽ không tới).
+                self.notify(status);
+              }
+              // Nếu ok → đợi onSnapshot echo, không cần notify thủ công (tránh double).
+            });
           } else {
-            this.saveLocal(status);
+            // Local-only mode → notify ngay.
+            this.notify(status);
           }
         },
 
@@ -3247,11 +3470,8 @@
 
       function setGameStatus(gameId, isOpen) {
         gameStatus[gameId] = isOpen;
+        // GameStatus.save() đã tự xử lý cả 2 path (Firebase echo / local notify).
         GameStatus.save(gameStatus);
-        // Local mode → notify ngay; Firebase mode → onSnapshot sẽ tự notify khi server confirm
-        if (!MGFirebase.isReady()) {
-          GameStatus.notify(gameStatus);
-        }
       }
 
 

@@ -16,12 +16,15 @@
 
 ## 3. Tích hợp Firebase — bước 1: load SDK
 
-Trước file `minigames-hub.html` (hoặc trong `<head>` Nhất Mộng), thêm 2 script Firebase compat (v10 hoặc tương đương):
+Trước file `minigames-hub.html` (hoặc trong `<head>` Nhất Mộng), thêm 3 script Firebase compat (v10 hoặc tương đương):
 
 ```html
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 ```
+
+**Quan trọng:** load `firebase-auth-compat.js` TRƯỚC `firebase-firestore-compat.js` để Firestore client tự attach IdToken vào request đầu tiên (rules có `request.auth != null` sẽ pass ngay từ snapshot đầu, không bị permission-denied).
 
 Nếu Nhất Mộng đã dùng Firebase rồi → dùng chung version với app chính, không cần load lại.
 
@@ -47,6 +50,34 @@ MGFirebase.init({
 **Quan trọng**: gọi `MGFirebase.init()` **TRƯỚC** khi script chính của hub chạy. Cách dễ nhất: paste 1 đoạn `<script>` ngay trên dòng `<script>` của hub.
 
 Nếu chưa init Firebase → hub tự fallback localStorage, chạy bình thường nhưng admin tắt game chỉ ảnh hưởng máy admin (không sync toàn bang).
+
+## 4.5. Auth gating — `MGFirebase.authReady()`
+
+Hub không tự đăng nhập — nó dựa vào parent app (Nhất Mộng) đã sign in qua `firebase.auth().signInWithEmailAndPassword(...)`. Vì iframe cùng origin, Firebase Auth state được share qua IndexedDB → iframe tự pick up user.
+
+`authReady()` chặn các Firestore op cho tới khi auth thực sự sẵn sàng:
+
+```javascript
+// Trả về Promise<{ user, signedIn }>:
+//   - { user: <FirebaseUser>, signedIn: true }  → đã đăng nhập, an toàn đọc/ghi
+//   - { user: null, signedIn: false }           → timeout (mặc định 6s) hoặc signed out
+// LUÔN resolve, không bao giờ reject.
+MGFirebase.authReady().then(function(state){
+  if (state.signedIn) {
+    console.log('Đã đăng nhập:', state.user.email);
+  } else {
+    console.log('Chưa đăng nhập → fallback local');
+  }
+});
+```
+
+`MGFirebase.subscribeGameStatus()` và `MGFirebase.pushGameStatus()` đã tự gọi `authReady()` bên trong → caller code không cần đợi.
+
+`MGFirebase.getAuthState()` trả về 1 trong 4 string để hiển thị UI:
+- `'no-firebase'` → không có Firebase SDK
+- `'connecting'` → đang chờ auth (badge: "Đang xác thực…", vàng đèn lồng)
+- `'online'` → có user, Firestore sync OK (badge: "Đang đồng bộ", xanh)
+- `'signed-out'` → Firebase OK nhưng không user (badge: "Chưa đăng nhập", xám)
 
 ## 5. Firestore structure
 
