@@ -257,18 +257,24 @@ function _kpInjectStyles() {
 
     .kp-loading { text-align: center; padding: 40px; color: var(--text-muted); font-size: 13px; }
 
-    /* Modal viewer with anti-leak */
+    /* Modal viewer with anti-leak — fullscreen */
     .kp-modal {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 9000;
-      padding: 20px; overflow-y: auto; display: none;
+      position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 9000;
+      padding: 0; overflow: hidden; display: none;
     }
-    .kp-modal.open { display: flex; align-items: center; justify-content: center; }
-    .kp-modal-inner { background: var(--bg-card); border-radius: 10px; max-width: 900px; width: 100%; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; }
-    .kp-modal-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--border-color); gap: 8px; flex-wrap: wrap; }
+    .kp-modal.open { display: flex; align-items: stretch; justify-content: stretch; }
+    .kp-modal-inner {
+      background: var(--bg-card);
+      width: 100%; height: 100vh;
+      max-width: none; max-height: none;
+      border-radius: 0;
+      overflow: hidden; display: flex; flex-direction: column;
+    }
+    .kp-modal-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--border-color); gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
     .kp-modal-title { font-size: 14px; font-weight: 600; margin: 0; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .kp-modal-body { padding: 0; overflow: hidden; background: #000; flex: 1; min-height: 400px; position: relative; }
+    .kp-modal-body { padding: 0; overflow: hidden; background: #000; flex: 1; min-height: 0; position: relative; }
     .kp-iframe-wrap { position: relative; width: 100%; height: 100%; }
-    .kp-iframe-wrap iframe { width: 100%; height: 70vh; border: 0; display: block; }
+    .kp-iframe-wrap iframe { width: 100%; height: 100%; border: 0; display: block; }
     /* Cover Drive's "Open in new tab" button */
     .kp-drive-overlay {
       position: absolute; top: 0; right: 0; width: 90px; height: 50px;
@@ -287,7 +293,9 @@ function _kpInjectStyles() {
     .kp-modal-close:hover { border-color: var(--accent-gold-text); color: var(--accent-gold-text); }
 
     @media (max-width: 600px) {
-      .kp-iframe-wrap iframe { height: 50vh; }
+      .kp-iframe-wrap iframe { height: 100%; }
+      .kp-modal-head { padding: 8px 12px; }
+      .kp-modal-title { font-size: 13px; }
     }
   `;
   var s = document.createElement('style');
@@ -424,7 +432,7 @@ function renderKhoPovPage() {
       <div class="kp-modal-inner">
         <div class="kp-modal-head">
           <div class="kp-modal-title" id="kp-modal-title"></div>
-          <button class="kp-modal-close" id="kp-modal-close">Đóng</button>
+          <button class="kp-modal-close" id="kp-modal-close" title="Đóng (ESC)">Đóng</button>
         </div>
         <div class="kp-modal-body">
           <div class="kp-iframe-wrap">
@@ -793,6 +801,11 @@ function _kpDelete(id) {
 }
 
 // ── Modal viewer ─────────────────────────────────────────────────────────────
+// Handler riêng để có thể remove đúng reference khi đóng modal
+function _kpEscHandler(e) {
+  if (e.key === 'Escape') _kpCloseViewer();
+}
+
 function _kpViewFile(matchId, idx) {
   var m = _kpMatches.find(function(x){ return x.id === matchId; });
   if (!m || !m.links || !m.links[idx]) return;
@@ -827,6 +840,9 @@ function _kpViewFile(matchId, idx) {
     watermarkEl.textContent = (u && (u.username || u.name)) || '';
   }
   modalEl.classList.add('open');
+
+  // Bind ESC để đóng (gỡ khi đóng để không leak)
+  document.addEventListener('keydown', _kpEscHandler);
 }
 
 function _kpCloseViewer() {
@@ -834,4 +850,5 @@ function _kpCloseViewer() {
   var contentEl = document.getElementById('kp-modal-content');
   if (modalEl) modalEl.classList.remove('open');
   if (contentEl) contentEl.innerHTML = '';
+  document.removeEventListener('keydown', _kpEscHandler);
 }
