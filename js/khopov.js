@@ -21,7 +21,7 @@
  */
 
 // ── State ────────────────────────────────────────────────────────────────────
-var KP_VERSION = 'kp-v6-grid-fix';
+var KP_VERSION = 'kp-v7-js-size';
 console.log('[KP] khopov.js loaded, version:', KP_VERSION);
 var KP_COLLECTION = 'guild_war_matches';
 var _kpMatches    = [];
@@ -285,17 +285,11 @@ function _kpInjectStyles() {
     .kp-modal-title { font-size: 14px; font-weight: 600; margin: 0; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .kp-modal-body {
       padding: 0; overflow: hidden; background: #000; flex: 1; min-height: 0; position: relative;
-      display: grid;
-      place-items: center;
+      display: flex; align-items: center; justify-content: center;
     }
-    /* Aspect ratio modes — wrap fit theo ratio.
-       Dùng grid place-items để center mà không phá aspect-ratio như flex.
-       Mỗi mode set width 100% nhưng cap max-width theo (viewport-height × ratio)
-       để không vượt khỏi modal-body khi màn hình thấp. */
-    .kp-iframe-wrap { position: relative; max-width: 100%; max-height: 100%; }
-    .kp-iframe-wrap.kp-ar-16-9 { width: 100%; aspect-ratio: 16 / 9; max-width: calc((100vh - 100px) * 16 / 9); }
-    .kp-iframe-wrap.kp-ar-21-9 { width: 100%; aspect-ratio: 21 / 9; max-width: calc((100vh - 100px) * 21 / 9); }
-    .kp-iframe-wrap.kp-ar-4-3  { width: 100%; aspect-ratio: 4 / 3;  max-width: calc((100vh - 100px) * 4 / 3);  }
+    /* Aspect ratio: JS tính size chính xác và set inline width/height vào wrap.
+       CSS chỉ để fallback khi JS chưa chạy + cho mode "free". */
+    .kp-iframe-wrap { position: relative; max-width: 100%; max-height: 100%; background: #000; }
     .kp-iframe-wrap.kp-ar-free { width: 100%; height: 100%; }
     .kp-iframe-wrap iframe { width: 100%; height: 100%; border: 0; display: block; }
 
@@ -896,25 +890,84 @@ function _kpGetSavedRatio() {
   } catch (e) { return '16-9'; }
 }
 
+// Map ratio → giá trị numeric width/height
+var _KP_AR_VALUES = {
+  '16-9': { w: 16, h: 9 },
+  '21-9': { w: 21, h: 9 },
+  '4-3':  { w: 4,  h: 3 }
+};
+
+function _kpApplyRatioSize() {
+  var modalEl = document.getElementById('kp-modal');
+  if (!modalEl || !modalEl.classList.contains('open')) return;
+  var iframeWrap = modalEl.querySelector('.kp-iframe-wrap');
+  var modalBody = modalEl.querySelector('.kp-modal-body');
+  if (!iframeWrap || !modalBody) return;
+
+  // Image mode hoặc free mode → không tính, để CSS lo
+  if (iframeWrap.classList.contains('kp-img-mode')) return;
+  if (iframeWrap.classList.contains('kp-ar-free')) {
+    iframeWrap.style.width = '';
+    iframeWrap.style.height = '';
+    return;
+  }
+
+  // Tìm ratio đang active
+  var ar = null;
+  for (var key in _KP_AR_VALUES) {
+    if (iframeWrap.classList.contains('kp-ar-' + key)) { ar = _KP_AR_VALUES[key]; break; }
+  }
+  if (!ar) return;
+
+  // Tính size: fit-to-container theo ratio
+  var bw = modalBody.clientWidth;
+  var bh = modalBody.clientHeight;
+  if (bw <= 0 || bh <= 0) return;
+
+  var ratioWH = ar.w / ar.h;        // vd 21/9 ≈ 2.33
+  var bodyRatio = bw / bh;
+  var w, h;
+  if (bodyRatio > ratioWH) {
+    // Body rộng hơn ratio → height giới hạn, width tính theo height
+    h = bh;
+    w = h * ratioWH;
+  } else {
+    // Body hẹp/cao hơn ratio → width giới hạn, height tính theo width
+    w = bw;
+    h = w / ratioWH;
+  }
+  iframeWrap.style.width  = Math.floor(w) + 'px';
+  iframeWrap.style.height = Math.floor(h) + 'px';
+}
+
 function _kpSetRatio(ar, persist) {
   if (_KP_VALID_AR.indexOf(ar) < 0) ar = '16-9';
   var modalEl = document.getElementById('kp-modal');
   if (!modalEl) return;
   var iframeWrap = modalEl.querySelector('.kp-iframe-wrap');
   var btns = modalEl.querySelectorAll('.kp-ar-controls button');
-  if (iframeWrap) {
-    // Nếu đang ở image-mode thì không apply (ảnh không bị letterbox)
-    if (!iframeWrap.classList.contains('kp-img-mode')) {
-      _KP_VALID_AR.forEach(function(r){ iframeWrap.classList.remove('kp-ar-' + r); });
-      iframeWrap.classList.add('kp-ar-' + ar);
-      console.log('[KP] _kpSetRatio:', ar, '→ classes:', iframeWrap.className);
-    }
+  if (iframeWrap && !iframeWrap.classList.contains('kp-img-mode')) {
+    _KP_VALID_AR.forEach(function(r){ iframeWrap.classList.remove('kp-ar-' + r); });
+    iframeWrap.classList.add('kp-ar-' + ar);
+    // Reset inline size khi đổi mode
+    iframeWrap.style.width = '';
+    iframeWrap.style.height = '';
+    // Tính size mới (free mode sẽ tự bỏ qua)
+    requestAnimationFrame(_kpApplyRatioSize);
   }
   btns.forEach(function(b){ b.classList.toggle('active', b.dataset.ar === ar); });
   if (persist) {
     try { localStorage.setItem(_KP_AR_KEY, ar); } catch (e) {}
   }
+  console.log('[KP] _kpSetRatio:', ar);
 }
+
+// Re-tính size khi resize cửa sổ (vd. user toggle DevTools)
+window.addEventListener('resize', function(){
+  if (document.getElementById('kp-modal') && document.getElementById('kp-modal').classList.contains('open')) {
+    _kpApplyRatioSize();
+  }
+});
 
 function _kpViewFile(matchId, idx) {
   var m = _kpMatches.find(function(x){ return x.id === matchId; });
@@ -985,6 +1038,12 @@ function _kpViewFile(matchId, idx) {
     watermarkEl.textContent = (u && (u.username || u.name)) || '';
   }
   modalEl.classList.add('open');
+
+  // Quan trọng: tính lại size SAU khi modal đã visible (modal-body có
+  // clientWidth/Height thật). Dùng rAF để đợi browser layout xong.
+  requestAnimationFrame(function(){
+    requestAnimationFrame(_kpApplyRatioSize);
+  });
 
   // Bind ESC để đóng (gỡ khi đóng để không leak)
   document.addEventListener('keydown', _kpEscHandler);
