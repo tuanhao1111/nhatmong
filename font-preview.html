@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nhất Mộng — Font Preview</title>
+
+<!-- Tải tất cả font candidate cùng lúc -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=Cinzel:wght@500;600;700;900&family=Noto+Serif+Display:wght@400;500;600;700;800&family=Lora:wght@400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&family=Crimson+Text:wght@400;600;700&family=Playfair+Display:wght@400;500;600;700;800;900&family=Source+Serif+4:wght@400;500;600;700&family=DM+Serif+Display&family=Cardo:wght@400;700&family=ZCOOL+XiaoWei&family=Bodoni+Moda:wght@400;500;600;700;800&display=swap">
+
+<style>
+  /* ───── Tokens (subset từ variables.css cho preview standalone) ───── */
+  :root {
+    --sand-1:  #111110;
+    --sand-2:  #191918;
+    --sand-3:  #222221;
+    --sand-4:  #2a2a28;
+    --sand-5:  #31312e;
+    --sand-6:  #3b3a37;
+    --sand-7:  #494844;
+    --sand-10: #7c7b74;
+    --sand-11: #b5b3ad;
+    --sand-12: #eeeeec;
+    --tomato-9:  #e54d2e;
+    --tomato-10: #ec6142;
+    --tomato-11: #ff977d;
+    --amber-9:  #ffc53d;
+    --amber-11: #ffca16;
+    --amber-12: #ffe7b3;
+    --bronze-9: #a18072;
+    --bronze-11: #d4b3a5;
+    --amber-a3: rgba(255, 197, 61, 0.10);
+    --amber-a6: rgba(255, 197, 61, 0.22);
+    --tomato-a3: rgba(255, 49, 22, 0.16);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--sand-1);
+    color: var(--sand-12);
+    min-height: 100vh;
+    padding: 32px 16px 64px;
+    font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+    line-height: 1.5;
+  }
+
+  .page {
+    max-width: 1080px;
+    margin: 0 auto;
+  }
+
+  /* ───── Header ───── */
+  .page-head {
+    text-align: center;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--sand-5);
+  }
+  .page-head h1 {
+    font-size: 32px;
+    color: var(--amber-11);
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+    font-weight: 700;
+  }
+  .page-head p {
+    color: var(--sand-11);
+    font-size: 14px;
+    max-width: 540px;
+    margin: 0 auto;
+  }
+
+  /* ───── Combo selector (sticky toolbar) ───── */
+  .toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: rgba(17, 17, 16, 0.92);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--sand-5);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin: 0 0 28px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+  .toolbar-label {
+    font-size: 11px;
+    color: var(--sand-11);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-right: 4px;
+  }
+  .combo-btn {
+    background: var(--sand-3);
+    border: 1px solid var(--sand-5);
+    color: var(--sand-11);
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Be Vietnam Pro', sans-serif;
+    transition: all 0.15s;
+  }
+  .combo-btn:hover {
+    border-color: var(--sand-7);
+    color: var(--sand-12);
+  }
+  .combo-btn.is-active {
+    background: var(--amber-a3);
+    border-color: var(--amber-9);
+    color: var(--amber-11);
+  }
+  .toolbar .sep {
+    width: 1px;
+    height: 20px;
+    background: var(--sand-5);
+    margin: 0 4px;
+  }
+  .show-all-btn {
+    background: var(--tomato-a3);
+    border-color: var(--tomato-9);
+    color: var(--tomato-11);
+  }
+
+  /* ───── Combo card ───── */
+  .combo {
+    margin-bottom: 28px;
+    border: 1px solid var(--sand-5);
+    border-radius: 14px;
+    overflow: hidden;
+    background: var(--sand-2);
+  }
+  .combo-head {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--sand-5);
+    background: var(--sand-3);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .combo-head .num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    background: var(--amber-9);
+    color: var(--sand-1);
+    font-weight: 800;
+    font-size: 13px;
+    font-family: 'Be Vietnam Pro', sans-serif;
+  }
+  .combo-head .title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--sand-12);
+    font-family: 'Be Vietnam Pro', sans-serif;
+  }
+  .combo-head .stack {
+    font-size: 11px;
+    color: var(--sand-10);
+    font-family: 'Manrope', sans-serif;
+    letter-spacing: 0.04em;
+  }
+  .combo-head .vibe {
+    font-size: 11px;
+    color: var(--bronze-11);
+    font-style: italic;
+    font-family: 'Be Vietnam Pro', sans-serif;
+  }
+
+  /* Body của mỗi combo — chứa các block sample */
+  .combo-body {
+    padding: 24px 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 720px) {
+    .combo-body { grid-template-columns: 1fr; }
+  }
+
+  /* ─── SAMPLE BLOCKS ─── */
+  .sample {
+    background: var(--sand-1);
+    border: 1px solid var(--sand-4);
+    border-radius: 10px;
+    padding: 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .sample-label {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    font-size: 9px;
+    color: var(--sand-10);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-family: 'Manrope', sans-serif;
+    font-weight: 600;
+  }
+
+  /* Sidebar mock */
+  .s-sidebar { display: flex; align-items: center; gap: 10px; }
+  .s-sidebar .logo {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--tomato-9), var(--tomato-10));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .s-sidebar .name {
+    font-size: 18px;
+    color: var(--amber-11);
+    letter-spacing: 0.04em;
+    font-weight: 700;
+    /* font-family set via combo */
+  }
+  .s-sidebar .sub {
+    font-size: 11px;
+    color: var(--sand-10);
+    margin-top: 2px;
+    font-family: 'Be Vietnam Pro', sans-serif;
+  }
+
+  /* Page title mock */
+  .s-page-title {
+    font-size: 28px;
+    color: var(--amber-11);
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin-bottom: 4px;
+    /* font-family set via combo */
+  }
+  .s-page-subtitle {
+    font-size: 13px;
+    color: var(--sand-11);
+    font-family: 'Be Vietnam Pro', sans-serif;
+  }
+
+  /* Stat tile mock */
+  .s-stat-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+  .s-stat {
+    background: var(--sand-2);
+    border: 1px solid var(--sand-5);
+    border-radius: 8px;
+    padding: 10px 8px;
+    text-align: center;
+  }
+  .s-stat-label {
+    font-size: 9px;
+    color: var(--sand-11);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 4px;
+    /* UI font set via combo */
+  }
+  .s-stat-value {
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--sand-12);
+    /* display font set via combo */
+  }
+
+  /* Button mock */
+  .s-btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .s-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 6px;
+    padding: 9px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    border: 1px solid transparent;
+    /* font-family set via combo (UI font) */
+  }
+  .s-btn.primary { background: var(--tomato-9); color: var(--sand-1); }
+  .s-btn.amber { background: var(--amber-9); color: var(--sand-1); }
+  .s-btn.outline {
+    background: transparent;
+    border-color: var(--sand-6);
+    color: var(--sand-12);
+  }
+
+  /* Modal heading + body */
+  .s-modal-h {
+    font-size: 18px;
+    color: var(--amber-11);
+    margin-bottom: 8px;
+    /* display font */
+  }
+  .s-modal-body {
+    font-size: 13px;
+    color: var(--sand-11);
+    line-height: 1.65;
+    /* body font */
+  }
+
+  /* Team / leader badge */
+  .s-team-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    background: linear-gradient(180deg, var(--sand-2), var(--sand-1));
+    border: 1px solid var(--sand-4);
+    border-radius: 8px;
+  }
+  .s-team-no {
+    font-size: 26px;
+    font-weight: 900;
+    line-height: 1;
+    color: var(--tomato-11);
+    letter-spacing: 0.06em;
+    /* display */
+  }
+  .s-team-name {
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: 0.18em;
+    color: var(--sand-12);
+    /* display */
+  }
+  .s-leader {
+    font-size: 10px;
+    font-weight: 900;
+    padding: 2px 7px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, var(--amber-9), var(--amber-11));
+    color: var(--sand-1);
+    letter-spacing: 0.04em;
+    margin-left: auto;
+    /* display */
+  }
+
+  /* Body paragraph */
+  .s-paragraph {
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--sand-11);
+    /* body font */
+  }
+
+  /* Numbers showcase (UI font test) */
+  .s-numbers {
+    display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;
+    /* UI font */
+  }
+  .s-numbers .big {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--sand-12);
+    line-height: 1;
+  }
+  .s-numbers .label {
+    font-size: 11px;
+    color: var(--sand-10);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* ───── Verdict footer ───── */
+  .verdict {
+    margin-top: 40px;
+    padding: 24px;
+    border: 1px dashed var(--sand-6);
+    border-radius: 12px;
+    background: var(--sand-2);
+    text-align: center;
+  }
+  .verdict h3 {
+    color: var(--amber-11);
+    font-size: 16px;
+    margin-bottom: 8px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-family: 'Be Vietnam Pro', sans-serif;
+    font-weight: 700;
+  }
+  .verdict p {
+    color: var(--sand-11);
+    font-size: 13px;
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.65;
+    font-family: 'Be Vietnam Pro', sans-serif;
+  }
+
+  /* ───── Hide combos when filtered ───── */
+  .combo.is-hidden { display: none; }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <header class="page-head">
+    <h1>NHẤT MỘNG · FONT PREVIEW</h1>
+    <p>So sánh 8 combo font trong context thực: sidebar logo, page title, stat tile, button, modal, team card, body text. Click vào số để xem 1 combo, hoặc "Hiện tất cả".</p>
+  </header>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <span class="toolbar-label">XEM:</span>
+    <button class="combo-btn show-all-btn is-active" data-combo="all">Hiện tất cả</button>
+    <span class="sep"></span>
+    <button class="combo-btn" data-combo="0">0 · Hiện tại</button>
+    <button class="combo-btn" data-combo="1">1 · Noto Serif</button>
+    <button class="combo-btn" data-combo="2">2 · Cormorant</button>
+    <button class="combo-btn" data-combo="3">3 · Playfair</button>
+    <button class="combo-btn" data-combo="4">4 · DM Serif</button>
+    <button class="combo-btn" data-combo="5">5 · Cardo</button>
+    <button class="combo-btn" data-combo="6">6 · ZCOOL</button>
+    <button class="combo-btn" data-combo="7">7 · Bodoni</button>
+  </div>
+
+  <!-- ============================================================
+       SAMPLE TEMPLATE (rendered 8 times with different fonts via JS)
+       ============================================================ -->
+
+  <div id="combos"></div>
+
+  <div class="verdict">
+    <h3>Cách quyết định</h3>
+    <p>Tập trung vào 3 điểm: (1) <strong>tên bang "Nhất Mộng"</strong> ở sidebar — vibe có hợp tửu quán giang hồ không; (2) <strong>page title "Chiến Lượt"</strong> — có dấu á đông không; (3) <strong>body Vietnamese đầy đủ dấu</strong> — nhìn có dễ đọc và tự nhiên không. Khi đã chọn combo nào, nói số (0–7) là mình sẽ migrate vào variables.css + tokens-preview.html.</p>
+  </div>
+
+</div>
+
+<script>
+  // ═══════════════════════════════════════════════════════════════
+  // FONT COMBO DEFINITIONS
+  //   - display: dùng cho heading (h1-h6, page-title, sidebar-guild-name, .team-no, .team-name, .stat-tile-value, leader-badge, modal-h)
+  //   - ui:      dùng cho numbers, button, stat-label, badge text
+  //   - body:    dùng cho text dài, paragraph, modal-body, sidebar-sub
+  //   Vietnamese support được test bằng paragraph có đủ dấu (`á à ả ã ạ ă â ê ô ơ ư đ ...`)
+  // ═══════════════════════════════════════════════════════════════
+  const COMBOS = [
+    {
+      n: 0,
+      title: 'Hiện tại — Cinzel + Be Vietnam Pro + Manrope',
+      stack: 'Cinzel · Be Vietnam Pro · Manrope',
+      vibe: 'Roman classical · không có vibe Á Đông',
+      display: "'Cinzel', serif",
+      ui:      "'Manrope', sans-serif",
+      body:    "'Be Vietnam Pro', sans-serif"
+    },
+    {
+      n: 1,
+      title: 'Noto Serif Display + Lora',
+      stack: 'Noto Serif Display · Lora · Be Vietnam Pro',
+      vibe: 'Cổ điển sách văn học · dễ đọc, neutral, VN tốt',
+      display: "'Noto Serif Display', serif",
+      ui:      "'Be Vietnam Pro', sans-serif",
+      body:    "'Lora', serif"
+    },
+    {
+      n: 2,
+      title: 'Cormorant Garamond + Crimson Text',
+      stack: 'Cormorant Garamond · Crimson Text · Be Vietnam Pro',
+      vibe: 'Thanh thoát · sách thơ cổ · contrast cao, mảnh',
+      display: "'Cormorant Garamond', serif",
+      ui:      "'Be Vietnam Pro', sans-serif",
+      body:    "'Crimson Text', serif"
+    },
+    {
+      n: 3,
+      title: 'Playfair Display + Source Serif 4',
+      stack: 'Playfair Display · Source Serif 4 · Be Vietnam Pro',
+      vibe: 'Editorial drama · contrast mạnh · magazine cổ điển',
+      display: "'Playfair Display', serif",
+      ui:      "'Be Vietnam Pro', sans-serif",
+      body:    "'Source Serif 4', serif"
+    },
+    {
+      n: 4,
+      title: 'DM Serif Display + Be Vietnam Pro',
+      stack: 'DM Serif Display · Be Vietnam Pro',
+      vibe: 'Modern serif · VN render rất tốt · weight đậm',
+      display: "'DM Serif Display', serif",
+      ui:      "'Be Vietnam Pro', sans-serif",
+      body:    "'Be Vietnam Pro', sans-serif"
+    },
+    {
+      n: 5,
+      title: 'Cardo + Lora',
+      stack: 'Cardo · Lora · Be Vietnam Pro',
+      vibe: 'Sách giấy cũ · cổ điển · scholarly',
+      display: "'Cardo', serif",
+      ui:      "'Be Vietnam Pro', sans-serif",
+      body:    "'Lora', serif"
+    },
+    {
+      n: 6,
+      title: 'ZCOOL XiaoWei + Be Vietnam Pro',
+      stack: 'ZCOOL XiaoWei · Be Vietnam Pro',
+      vibe: 'Chinese-inspired · ⚠️ test render Vietnamese kỹ',
+      display: "'ZCOOL XiaoWei', 'Be Vietnam Pro', serif",
+      ui:      "'Be Vietnam Pro', sans-serif",
+      body:    "'Be Vietnam Pro', sans-serif"
+    },
+    {
+      n: 7,
+      title: 'Bodoni Moda + Be Vietnam Pro',
+      stack: 'Bodoni Moda · Be Vietnam Pro',
+      vibe: 'Editorial cổ · contrast cực cao · luxury fashion',
+      display: "'Bodoni Moda', serif",
+      ui:      "'Be Vietnam Pro', sans-serif",
+      body:    "'Be Vietnam Pro', sans-serif"
+    }
+  ];
+
+  // ═══════════════════════════════════════════════════════════════
+  // RENDER 1 COMBO CARD với fonts truyền vào
+  // ═══════════════════════════════════════════════════════════════
+  function renderCombo(c) {
+    const $body = (val, extra = '') =>
+      `style="font-family:${val}${extra ? ';' + extra : ''}"`;
+
+    return `
+    <article class="combo" data-combo-n="${c.n}">
+      <header class="combo-head">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span class="num">${c.n}</span>
+          <span class="title">${c.title}</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+          <span class="stack">${c.stack}</span>
+          <span class="vibe">${c.vibe}</span>
+        </div>
+      </header>
+
+      <div class="combo-body">
+
+        <!-- Sample 1: Sidebar logo + guild name -->
+        <div class="sample">
+          <span class="sample-label">SIDEBAR</span>
+          <div class="s-sidebar">
+            <div class="logo">⚔</div>
+            <div>
+              <div class="name" ${$body(c.display)}>NHẤT MỘNG</div>
+              <div class="sub">一夢江湖 · Tửu Quán Giang Hồ</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sample 2: Page title + subtitle -->
+        <div class="sample">
+          <span class="sample-label">PAGE HEAD</span>
+          <h2 class="s-page-title" ${$body(c.display)}>Chiến Lượt</h2>
+          <div class="s-page-subtitle">Phân chia đội hình bang chiến · 12 đội chính + dự bị</div>
+        </div>
+
+        <!-- Sample 3: Stat tiles row -->
+        <div class="sample">
+          <span class="sample-label">STAT TILES</span>
+          <div class="s-stat-row">
+            <div class="s-stat">
+              <div class="s-stat-label" ${$body(c.ui)}>THÀNH VIÊN</div>
+              <div class="s-stat-value" ${$body(c.display)}>42</div>
+            </div>
+            <div class="s-stat">
+              <div class="s-stat-label" ${$body(c.ui)}>HIỆN TRẬN</div>
+              <div class="s-stat-value" ${$body(c.display)}>36</div>
+            </div>
+            <div class="s-stat">
+              <div class="s-stat-label" ${$body(c.ui)}>VẮNG MẶT</div>
+              <div class="s-stat-value" ${$body(c.display)}>6</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sample 4: Buttons -->
+        <div class="sample">
+          <span class="sample-label">BUTTONS</span>
+          <div class="s-btn-row">
+            <button class="s-btn primary" ${$body(c.ui)}>Lưu Đội Hình</button>
+            <button class="s-btn amber" ${$body(c.ui)}>Mở Gacha</button>
+            <button class="s-btn outline" ${$body(c.ui)}>Huỷ</button>
+          </div>
+        </div>
+
+        <!-- Sample 5: Modal heading + body -->
+        <div class="sample">
+          <span class="sample-label">MODAL</span>
+          <h3 class="s-modal-h" ${$body(c.display)}>Thêm Thành Viên Mới</h3>
+          <div class="s-modal-body" ${$body(c.body)}>
+            Nhập tên nhân vật, môn phái và vai trò trong bang. Thông tin sẽ được lưu vào Firestore và đồng bộ ngay với mọi thiết bị đang đăng nhập.
+          </div>
+        </div>
+
+        <!-- Sample 6: Team card row (giống dashboard) -->
+        <div class="sample">
+          <span class="sample-label">TEAM CARD</span>
+          <div class="s-team-row">
+            <span class="s-team-no" ${$body(c.display)}>03</span>
+            <span class="s-team-name" ${$body(c.display)}>HẮC LONG ĐOÀN</span>
+            <span class="s-leader" ${$body(c.display)}>LEADER</span>
+          </div>
+        </div>
+
+        <!-- Sample 7: Body paragraph (Vietnamese full diacritics) -->
+        <div class="sample" style="grid-column:1/-1">
+          <span class="sample-label">BODY · VIETNAMESE</span>
+          <p class="s-paragraph" ${$body(c.body)}>
+            Đêm xuống, đèn lồng đỏ son lung linh trên mái tửu quán cổ. Bang chủ Hắc Long Đoàn nâng chén rượu Thiệu Hưng,
+            ngắm kẻ giang hồ tứ phương vào ra. Mộng đời như sương khói — một giấc thoáng qua mà ngỡ trăm năm.
+            <em>Nhất mộng nhân sinh</em>, hỏi ai biết đường về cố hương?
+          </p>
+        </div>
+
+        <!-- Sample 8: Numbers (UI font test) -->
+        <div class="sample" style="grid-column:1/-1">
+          <span class="sample-label">NUMBERS · UI FONT</span>
+          <div class="s-numbers" ${$body(c.ui)}>
+            <div>
+              <div class="big">1,234</div>
+              <div class="label">Tổng Trận</div>
+            </div>
+            <div>
+              <div class="big">87.5%</div>
+              <div class="label">Tỉ Lệ Thắng</div>
+            </div>
+            <div>
+              <div class="big">2025-11-08</div>
+              <div class="label">Bang Chiến Gần Nhất</div>
+            </div>
+            <div>
+              <div class="big">42 / 60</div>
+              <div class="label">Slot Đội Chính</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </article>
+    `;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // INIT
+  // ═══════════════════════════════════════════════════════════════
+  const $combos = document.getElementById('combos');
+  $combos.innerHTML = COMBOS.map(renderCombo).join('');
+
+  // Toolbar filter
+  document.querySelectorAll('.combo-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.combo;
+      document.querySelectorAll('.combo-btn').forEach(b => b.classList.toggle('is-active', b === btn));
+
+      document.querySelectorAll('.combo').forEach(card => {
+        if (target === 'all') card.classList.remove('is-hidden');
+        else card.classList.toggle('is-hidden', card.dataset.comboN !== target);
+      });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  });
+</script>
+
+</body>
+</html>

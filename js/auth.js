@@ -51,7 +51,7 @@ function requireAuth() {
       '<div style="position:fixed;inset:0;background:#0a0a0f;display:flex;flex-direction:column;' +
       'align-items:center;justify-content:center;font-family:sans-serif">' +
         '<div style="font-size:52px;margin-bottom:16px">⚔️</div>' +
-        '<div style="font-size:24px;color:#f0c040;letter-spacing:2px;margin-bottom:8px;font-family:Cinzel,serif">NHẤT MỘNG</div>' +
+        '<div style="font-size:24px;color:#f0c040;letter-spacing:2px;margin-bottom:8px;font-family:var(--font-display)">NHẤT MỘNG</div>' +
         '<div style="color:#808090;margin-bottom:28px">Vui lòng đăng nhập để tiếp tục</div>' +
         '<button onclick="window.location.href=\'login.html\'" ' +
           'style="padding:12px 32px;background:#f0c040;color:#111;border:none;border-radius:8px;' +

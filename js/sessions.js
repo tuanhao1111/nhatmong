@@ -18,7 +18,7 @@ function renderSessionsPage() {
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
         <div>
           <div class="badge" style="background:var(--accent-green)22;color:var(--accent-green);margin-bottom:8px">ĐANG CHẠY</div>
-          <div style="font-family:'Cinzel',serif;font-size:20px;font-weight:700">${escHtml(current.name)}</div>
+          <div style="font-family:var(--font-display);font-size:20px;font-weight:700">${escHtml(current.name)}</div>
           <div style="color:var(--text-secondary);font-size:12px;margin-top:4px">${formatDateTime(current.createdAt)}</div>
         </div>
         <div style="display:flex;gap:16px">

@@ -1,11 +1,21 @@
-/* ===== LAYOUT: Sidebar + Main Content ===== */
+/* =============================================================================
+   NHẤT MỘNG · LAYOUT
+   =============================================================================
+   - Desktop (≥769px): sidebar trái + topbar + content
+   - Mobile (≤768px):  bottom-nav 5 mục + topbar gọn + content fullwidth
+                       sidebar trở thành drawer (mở từ "More")
+   ========================================================================== */
 
 .app-layout {
   display: flex;
   min-height: 100vh;
+  min-height: 100dvh;        /* dynamic viewport height — fix iOS Safari nav bar */
 }
 
-/* SIDEBAR */
+/* =============================================================================
+   SIDEBAR · desktop chính, mobile drawer
+   ========================================================================== */
+
 .sidebar {
   width: var(--sidebar-width);
   background: var(--bg-sidebar);
@@ -16,251 +26,432 @@
   top: 0;
   left: 0;
   height: 100vh;
-  z-index: 100;
-  transition: transform 0.3s ease;
+  height: 100dvh;
+  z-index: var(--z-drawer);
+  transition: transform var(--dur-slow) var(--ease-out);
 }
 
 .sidebar-header {
-  padding: 20px 16px;
+  padding: var(--sp-5) var(--sp-4);
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-2_5);
+  min-height: var(--topbar-height);
 }
 
 .sidebar-logo {
   width: 36px;
   height: 36px;
-  background: linear-gradient(135deg, var(--accent-gold), var(--accent-gold-dim));
-  border-radius: 8px;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-primary-hover));
+  border-radius: var(--r-md);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 18px;
+  box-shadow: var(--sh-glow-tomato);
+  flex-shrink: 0;
 }
 
 .sidebar-guild-name {
-  font-family: 'Cinzel', serif;
-  font-size: 15px;
-  color: var(--accent-gold);
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  color: var(--accent-gold-text);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tr-wide);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sidebar-nav {
   flex: 1;
-  padding: 16px 0;
+  padding: var(--sp-3) 0;
+  overflow-y: auto;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 11px 16px;
+  gap: var(--sp-2_5);
+  padding: var(--sp-3) var(--sp-4);
   color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--dur-fast) var(--ease-out);
   border-left: 3px solid transparent;
   text-decoration: none;
+  min-height: var(--tap-min);
+  user-select: none;
 }
 
 .nav-item:hover {
   color: var(--text-primary);
-  background: rgba(255,255,255,0.04);
+  background: var(--sand-a4);
 }
 
 .nav-item.active {
-  color: var(--accent-gold);
-  background: rgba(240,192,64,0.08);
+  color: var(--accent-gold-text);
+  background: var(--accent-gold-bg);
   border-left-color: var(--accent-gold);
+  font-weight: var(--fw-semibold);
 }
 
 .nav-item .nav-icon {
   font-size: 16px;
   width: 20px;
   text-align: center;
-}
-
-.sidebar-footer {
-  padding: 12px 16px;
-  border-top: 1px solid var(--border-color);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.user-avatar {
-  width: 32px;
-  height: 32px;
-  background: linear-gradient(135deg, var(--accent-purple), var(--accent-cyan));
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: 700;
-  color: white;
   flex-shrink: 0;
 }
 
-.user-info {
-  flex: 1;
-  min-width: 0;
+.sidebar-footer {
+  padding: var(--sp-3) var(--sp-4);
+  padding-bottom: calc(var(--sp-3) + var(--safe-bottom));
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2_5);
 }
 
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, var(--accent-bronze), var(--bronze-7));
+  border-radius: var(--r-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  color: var(--sand-12);
+  flex-shrink: 0;
+  box-shadow: var(--sh-sm);
+}
+
+.user-info { flex: 1; min-width: 0; }
+
 .user-name {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: var(--text-primary);
 }
 
 .user-role {
-  font-size: 10px;
-  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
 }
 
-/* MAIN CONTENT */
+/* =============================================================================
+   MAIN CONTENT
+   ========================================================================== */
+
 .main-content {
   margin-left: var(--sidebar-width);
   flex: 1;
   min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
 }
 
+/* Topbar */
 .page-topbar {
   height: var(--topbar-height);
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
-  padding: 0 24px;
-  gap: 12px;
+  padding: 0 var(--sp-6);
+  gap: var(--sp-3);
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: var(--z-sticky);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .topbar-breadcrumb {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
+  min-width: 0;
 }
 
 .topbar-breadcrumb .current {
   color: var(--text-primary);
-  font-weight: 500;
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .topbar-actions {
   margin-left: auto;
   display: flex;
-  gap: 10px;
+  gap: var(--sp-2_5);
   align-items: center;
 }
 
 .page-content {
-  padding: 24px;
+  padding: var(--sp-6);
+  flex: 1;
 }
 
 .page-header {
-  margin-bottom: 24px;
+  margin-bottom: var(--sp-6);
 }
 
 .page-title {
-  font-size: 22px;
-  color: var(--accent-gold);
-  margin-bottom: 4px;
+  font-family: var(--font-display);
+  font-size: var(--fs-3xl);
+  color: var(--accent-gold-text);
+  margin-bottom: var(--sp-1);
+  letter-spacing: var(--tr-tight);
 }
 
 .page-subtitle {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 
-/* Admin badge */
+/* =============================================================================
+   ADMIN BADGE
+   ========================================================================== */
 .admin-badge {
-  background: rgba(240,192,64,0.15);
-  border: 1px solid rgba(240,192,64,0.3);
-  color: var(--accent-gold);
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  background: var(--accent-gold-bg);
+  border: 1px solid var(--amber-7);
+  color: var(--accent-gold-text);
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--r-full);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tr-widest);
   text-transform: uppercase;
 }
 
-/* Stats row */
+/* =============================================================================
+   STATS ROW (legacy class — giữ nhưng restyle)
+   ========================================================================== */
 .stats-row {
-  display: flex;
-  gap: 1px;
-  background: var(--border-color);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  overflow: hidden;
-  margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-5);
 }
 
 .stat-item {
-  flex: 1;
   background: var(--bg-card);
-  padding: 12px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--r-md);
+  padding: var(--sp-3) var(--sp-4);
   text-align: center;
 }
 
 .stat-label {
-  font-size: 10px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
-  letter-spacing: 1px;
+  letter-spacing: var(--tr-wider);
   text-transform: uppercase;
-  margin-bottom: 4px;
+  font-weight: var(--fw-semibold);
+  margin-bottom: var(--sp-1);
 }
 
 .stat-value {
-  font-family: 'Cinzel', serif;
-  font-size: 20px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-bold);
+  line-height: 1.1;
 }
 
-/* Section headers */
+/* =============================================================================
+   SECTION HEADER
+   ========================================================================== */
 .section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+  flex-wrap: wrap;
 }
 
 .section-title {
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 1px;
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tr-widest);
   text-transform: uppercase;
-  color: var(--accent-cyan);
+  color: var(--accent-gold-text);
 }
 
-/* Mobile sidebar toggle */
+/* =============================================================================
+   MOBILE TOGGLE BUTTON · ẩn ở desktop
+   ========================================================================== */
 .sidebar-toggle {
   display: none;
-  position: fixed;
-  top: 12px;
-  left: 12px;
-  z-index: 200;
   background: var(--bg-card);
   border: 1px solid var(--border-accent);
   color: var(--text-primary);
-  padding: 8px;
-  border-radius: 6px;
-  font-size: 16px;
+  padding: var(--sp-2);
+  border-radius: var(--r-md);
+  font-size: 18px;
+  cursor: pointer;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  align-items: center;
+  justify-content: center;
+}
+.sidebar-toggle:hover { background: var(--bg-card-hover); }
+
+/* Sidebar backdrop khi mở drawer trên mobile */
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  z-index: calc(var(--z-drawer) - 1);
+  animation: overlay-in var(--dur-base) var(--ease-out);
+}
+.sidebar-backdrop.is-open { display: block; }
+
+/* =============================================================================
+   BOTTOM NAVIGATION · mobile only
+   ========================================================================== */
+
+.bottom-nav {
+  display: none;          /* ẩn desktop, hiện ≤768px */
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: calc(var(--bottom-nav-height) + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  z-index: var(--z-sticky);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.3);
 }
 
+.bottom-nav-list {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  height: 100%;
+  width: 100%;
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: var(--sp-1) var(--sp-1);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: var(--fw-medium);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out);
+  position: relative;
+  min-height: var(--tap-min);
+  user-select: none;
+}
+
+.bottom-nav-item:hover { color: var(--text-secondary); }
+
+.bottom-nav-item.active {
+  color: var(--accent-gold-text);
+}
+
+.bottom-nav-item.active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 25%;
+  right: 25%;
+  height: 2px;
+  background: var(--accent-gold);
+  border-radius: 0 0 var(--r-full) var(--r-full);
+}
+
+.bottom-nav-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.bottom-nav-label {
+  font-size: 10px;
+  letter-spacing: 0.2px;
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* =============================================================================
+   MOBILE BREAKPOINT (≤768px)
+   ========================================================================== */
 @media (max-width: 768px) {
-  .sidebar { transform: translateX(-100%); }
-  .sidebar.open { transform: translateX(0); }
-  .main-content { margin-left: 0; }
-  .sidebar-toggle { display: block; }
-  .page-content { padding: 16px; }
+  /* Sidebar trở thành drawer */
+  .sidebar {
+    transform: translateX(-100%);
+    width: min(280px, 85vw);
+  }
+  .sidebar.is-open { transform: translateX(0); }
+  
+  /* Main content fullwidth + padding bottom cho bottom-nav */
+  .main-content {
+    margin-left: 0;
+    padding-bottom: calc(var(--bottom-nav-height) + var(--safe-bottom));
+  }
+  
+  /* Topbar gọn hơn */
+  .page-topbar {
+    padding: 0 var(--sp-3);
+    gap: var(--sp-2);
+  }
+  
+  /* Show toggle button */
+  .sidebar-toggle {
+    display: inline-flex;
+  }
+  
+  /* Show bottom nav */
+  .bottom-nav {
+    display: block;
+  }
+  
+  /* Page content padding nhỏ hơn */
+  .page-content {
+    padding: var(--sp-4);
+  }
+  
+  .page-title {
+    font-size: var(--fs-2xl);
+  }
+}
+
+/* =============================================================================
+   COMPACT MOBILE (≤480px) · phone nhỏ
+   ========================================================================== */
+@media (max-width: 480px) {
+  .page-content { padding: var(--sp-3); }
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  
+  .topbar-breadcrumb { font-size: var(--fs-xs); }
+  .topbar-breadcrumb .current { font-size: var(--fs-sm); }
 }

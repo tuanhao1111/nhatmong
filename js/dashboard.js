@@ -368,7 +368,7 @@ function initDashMap() {
       el.textContent = 'T' + (ti + 1);
       el.style.cssText = 'position:absolute;width:32px;height:32px;border-radius:50%;' +
         'display:flex;align-items:center;justify-content:center;' +
-        'font-weight:800;font-size:12px;font-family:Cinzel,serif;color:#111;' +
+        'font-weight:800;font-size:12px;font-family:var(--font-display);color:#111;' +
         'border:2px solid rgba(255,255,255,0.35);box-shadow:0 2px 8px rgba(0,0,0,0.7);' +
         'transform:translate(-50%,-50%);z-index:10;touch-action:none;user-select:none;' +
         'background:' + mk.color + ';left:' + mk.x + '%;top:' + mk.y + '%;' +

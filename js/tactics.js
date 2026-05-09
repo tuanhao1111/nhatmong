@@ -88,7 +88,7 @@ function _tmRenderTeam() {
     el.style.cssText =
       'position:absolute;width:36px;height:36px;border-radius:50%;'+
       'display:flex;align-items:center;justify-content:center;'+
-      'font-weight:800;font-size:13px;font-family:Cinzel,serif;color:#111;'+
+      'font-weight:800;font-size:13px;font-family:var(--font-display);color:#111;'+
       'border:2px solid rgba(255,255,255,0.35);'+
       'box-shadow:0 2px 10px rgba(0,0,0,0.8);'+
       'transform:translate(-50%,-50%);'+
@@ -275,7 +275,7 @@ function renderTacticsPage() {
       panelsHtml +=
         '<div class="team-panel" id="tpanel-'+ti+'" style="border-top:3px solid '+tc+';background:var(--bg-card);border-radius:8px;overflow:hidden">'+
           '<div class="tp-header" onclick="_tmFocusTeam('+ti+')" style="padding:8px 10px;background:#0c0c1c;display:flex;align-items:center;gap:7px;cursor:pointer">'+
-            '<span style="background:'+tc+';color:#111;padding:2px 9px;border-radius:12px;font-size:12px;font-weight:800;font-family:Cinzel,serif;flex-shrink:0">T'+(ti+1)+'</span>'+
+            '<span style="background:'+tc+';color:#111;padding:2px 9px;border-radius:12px;font-size:12px;font-weight:800;font-family:var(--font-display);flex-shrink:0">T'+(ti+1)+'</span>'+
             '<span style="font-size:10px;color:'+tc+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">'+escHtml(tgName)+'</span>'+
             '<span style="font-size:11px;color:var(--text-muted);flex-shrink:0">'+filled+'/'+team.slots.length+'</span>'+
           '</div>'+
