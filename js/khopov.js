@@ -54,6 +54,40 @@ function _kpDrivePreviewUrl(url) {
   return id ? ('https://drive.google.com/file/d/' + id + '/preview') : url;
 }
 
+// ── YouTube helpers ──────────────────────────────────────────────────────────
+// Hỗ trợ các format:
+//   https://www.youtube.com/watch?v=VIDEO_ID
+//   https://youtu.be/VIDEO_ID
+//   https://www.youtube.com/embed/VIDEO_ID
+//   https://www.youtube.com/shorts/VIDEO_ID
+//   https://m.youtube.com/watch?v=VIDEO_ID
+function _kpYoutubeId(url) {
+  if (!url) return null;
+  var m;
+  // youtu.be/VIDEO_ID
+  m = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+  if (m) return m[1];
+  // youtube.com/embed/VIDEO_ID
+  m = url.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/);
+  if (m) return m[1];
+  // youtube.com/shorts/VIDEO_ID
+  m = url.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/);
+  if (m) return m[1];
+  // youtube.com/watch?v=VIDEO_ID (kể cả có thêm tham số)
+  m = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+  if (m) return m[1];
+  return null;
+}
+
+function _kpYoutubeEmbedUrl(url) {
+  var id = _kpYoutubeId(url);
+  if (!id) return url;
+  // rel=0: hạn chế video gợi ý (nhưng YouTube giờ chỉ giới hạn cùng channel)
+  // modestbranding=1: bớt logo YouTube (deprecated nhưng vẫn vô hại)
+  // playsinline=1: cho phép play inline trên iOS thay vì auto fullscreen
+  return 'https://www.youtube.com/embed/' + id + '?rel=0&modestbranding=1&playsinline=1';
+}
+
 function _kpGetDb() {
   // firebase compat v9 — đã init trong firebase.js
   if (typeof firebase === 'undefined' || !firebase.apps.length) return null;
@@ -366,7 +400,10 @@ function renderKhoPovPage() {
           <label>Link POV (Google Drive)</label>
           <div id="kp-links" class="kp-links"></div>
           <button type="button" class="kp-add-link" id="kp-add-link-btn">+ Thêm link</button>
-          <div class="kp-hint">Upload video/ảnh lên folder Google Drive của bang trước, rồi copy link "Xem chung" và dán vào đây. Đặt Drive folder ở chế độ "Hạn chế" và share riêng với email các thành viên trong whitelist để bảo mật cao nhất.</div>
+          <div class="kp-hint">
+            <strong>Drive:</strong> Upload video/ảnh lên folder Google Drive của bang, share riêng cho email các admin, rồi paste link "Xem chung" vào đây.<br>
+            <strong>YouTube:</strong> Upload video lên YouTube ở chế độ <strong>Unlisted</strong> (Không công khai - có link mới xem được), bật "Allow embedding" trong Settings, rồi paste link. Lưu ý: bất kỳ ai có link YouTube đều xem được — không share link ra ngoài bang.
+          </div>
         </div>
         <div class="kp-form-actions">
           <button class="kp-btn-save"   id="kp-save-btn">Lưu trận</button>
@@ -451,15 +488,22 @@ function _kpRender() {
   if (emptyEl) emptyEl.style.display = 'none';
 
   var labels = { win: 'Thắng', loss: 'Thua', draw: 'Hòa' };
+  // Mapping cho 3 loại file: icon + label hiển thị
+  var typeMeta = {
+    video:   { icon: '▶', label: 'video Drive', iconColor: '' },
+    image:   { icon: '◇', label: 'ảnh',         iconColor: '' },
+    youtube: { icon: '▶', label: 'YouTube',     iconColor: '#ff0000' }
+  };
   listEl.innerHTML = filtered.map(function(m){
     var links = m.links || [];
     var filesHtml = links.length > 0
       ? '<div class="kp-files">' + links.map(function(l, i){
-          var isVid = l.type === 'video';
+          var meta = typeMeta[l.type] || typeMeta.video;
+          var iconStyle = meta.iconColor ? ' style="color:' + meta.iconColor + '"' : '';
           return '<div class="kp-file" data-mid="' + escHtml(m.id) + '" data-idx="' + i + '">' +
-            '<div class="kp-file-icon">' + (isVid ? '▶' : '◇') + '</div>' +
+            '<div class="kp-file-icon"' + iconStyle + '>' + meta.icon + '</div>' +
             '<div class="kp-file-name">' + escHtml(l.name || ('POV ' + (i+1))) + '</div>' +
-            '<div class="kp-file-type">' + (isVid ? 'video' : 'ảnh') + '</div>' +
+            '<div class="kp-file-type">' + meta.label + '</div>' +
             '</div>';
         }).join('') + '</div>'
       : '<div class="kp-no-files">Chưa có POV upload</div>';
@@ -552,15 +596,29 @@ function _kpAddLinkRow(data) {
   if (!wrap) return;
   var row = document.createElement('div');
   row.className = 'kp-link-row';
+  var t = (data && data.type) || 'video';
   row.innerHTML =
     '<input type="text" class="kp-ln" placeholder="Tên (vd: Trận 1 - tướng X)" value="' + escHtml((data && data.name) || '') + '">' +
-    '<input type="url"  class="kp-lu" placeholder="https://drive.google.com/..." value="' + escHtml((data && data.url) || '') + '">' +
+    '<input type="url"  class="kp-lu" placeholder="Link Drive hoặc YouTube..." value="' + escHtml((data && data.url) || '') + '">' +
     '<select class="kp-lt">' +
-      '<option value="video"' + (data && data.type === 'video' ? ' selected' : '') + '>Video</option>' +
-      '<option value="image"' + (data && data.type === 'image' ? ' selected' : '') + '>Ảnh</option>' +
+      '<option value="video"'   + (t === 'video'   ? ' selected' : '') + '>Video (Drive)</option>' +
+      '<option value="image"'   + (t === 'image'   ? ' selected' : '') + '>Ảnh (Drive)</option>' +
+      '<option value="youtube"' + (t === 'youtube' ? ' selected' : '') + '>YouTube</option>' +
     '</select>' +
     '<button type="button" class="kp-rm">×</button>';
   row.querySelector('.kp-rm').onclick = function(){ row.remove(); };
+
+  // Auto-detect type khi user paste link YouTube → tự đổi select sang "youtube"
+  var urlInput = row.querySelector('.kp-lu');
+  var typeSelect = row.querySelector('.kp-lt');
+  urlInput.addEventListener('input', function(){
+    var v = urlInput.value.trim();
+    if (!v) return;
+    if (_kpYoutubeId(v) && typeSelect.value !== 'youtube') {
+      typeSelect.value = 'youtube';
+    }
+  });
+
   wrap.appendChild(row);
 }
 
@@ -637,15 +695,45 @@ function _kpSave() {
   }
 
   var links = [];
+  var linkError = null;
   document.querySelectorAll('#kp-links .kp-link-row').forEach(function(row){
+    if (linkError) return;
     var url = row.querySelector('.kp-lu').value.trim();
     if (!url) return;
+    var linkType = row.querySelector('.kp-lt').value;
+    var name = _clean(row.querySelector('.kp-ln').value, 80) || 'POV';
+
+    // Validate URL khớp với type đã chọn
+    if (linkType === 'youtube') {
+      if (!_kpYoutubeId(url)) {
+        linkError = 'Link "' + name + '" không phải YouTube hợp lệ. Đổi type sang Drive hoặc paste link YouTube đúng.';
+        return;
+      }
+    } else if (linkType === 'video' || linkType === 'image') {
+      // Drive link cần có file ID extract được
+      if (!_kpDriveFileId(url)) {
+        // Cho phép link không phải Drive nhưng cảnh báo (vd. user paste link khác)
+        // — nếu là YouTube thì gợi ý đổi type
+        if (_kpYoutubeId(url)) {
+          linkError = 'Link "' + name + '" là YouTube — đổi type sang YouTube thay vì ' + (linkType === 'video' ? 'Video Drive' : 'Ảnh Drive') + '.';
+          return;
+        }
+        // Link lạ: không chặn nhưng iframe có thể không load — chỉ log
+        console.warn('[KP] Link không phải Drive cũng không phải YouTube:', url);
+      }
+    }
+
     links.push({
-      name: _clean(row.querySelector('.kp-ln').value, 80) || 'POV',
+      name: name,
       url:  url.slice(0, 500),
-      type: row.querySelector('.kp-lt').value
+      type: linkType
     });
   });
+
+  if (linkError) {
+    showToast('❌ ' + linkError, 'error', 5000);
+    return;
+  }
 
   var saveBtn = document.getElementById('kp-save-btn');
   if (saveBtn) { saveBtn.textContent = 'Đang lưu...'; saveBtn.disabled = true; }
@@ -713,11 +801,27 @@ function _kpViewFile(matchId, idx) {
   var contentEl = document.getElementById('kp-modal-content');
   var watermarkEl = document.getElementById('kp-watermark');
   var modalEl = document.getElementById('kp-modal');
+  var driveOverlay = modalEl ? modalEl.querySelector('.kp-drive-overlay') : null;
   if (!titleEl || !contentEl || !modalEl) return;
 
   titleEl.textContent = 'vs ' + (m.opponent || '?') + ' — ' + (link.name || 'POV');
-  // Sandboxed iframe — chặn navigation/popups/downloads từ trong iframe
-  contentEl.innerHTML = '<iframe src="' + escHtml(_kpDrivePreviewUrl(link.url)) + '" sandbox="allow-scripts allow-same-origin allow-presentation" allow="autoplay; fullscreen" referrerpolicy="no-referrer"></iframe>';
+
+  var embedUrl, isYoutube = (link.type === 'youtube');
+  if (isYoutube) {
+    embedUrl = _kpYoutubeEmbedUrl(link.url);
+  } else {
+    embedUrl = _kpDrivePreviewUrl(link.url);
+  }
+
+  // Drive overlay (che nút "Open in new tab" góc phải) chỉ cần cho Drive,
+  // YouTube không có nút đó nên ẩn đi (đỡ che mất thanh điều khiển video).
+  if (driveOverlay) {
+    driveOverlay.style.display = isYoutube ? 'none' : 'block';
+  }
+
+  // Sandbox iframe — chặn navigation/popups/downloads từ trong iframe
+  // YouTube và Drive đều OK với set sandbox này
+  contentEl.innerHTML = '<iframe src="' + escHtml(embedUrl) + '" sandbox="allow-scripts allow-same-origin allow-presentation" allow="autoplay; fullscreen; encrypted-media" referrerpolicy="no-referrer"></iframe>';
   if (watermarkEl) {
     var u = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
     watermarkEl.textContent = (u && (u.username || u.name)) || '';
