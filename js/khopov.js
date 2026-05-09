@@ -54,6 +54,15 @@ function _kpDrivePreviewUrl(url) {
   return id ? ('https://drive.google.com/file/d/' + id + '/preview') : url;
 }
 
+// URL hiển thị ảnh trực tiếp qua thumbnail service của Google.
+// =s2000 = max dimension 2000px. Fallback nếu fail: iframe /preview.
+// Lưu ý: chỉ load được nếu file Drive có thumbnail public hoặc user đang
+// đăng nhập đúng account đã được share.
+function _kpDriveImageUrl(url) {
+  var id = _kpDriveFileId(url);
+  return id ? ('https://lh3.googleusercontent.com/d/' + id + '=s2000') : url;
+}
+
 // ── YouTube helpers ──────────────────────────────────────────────────────────
 // Hỗ trợ các format:
 //   https://www.youtube.com/watch?v=VIDEO_ID
@@ -274,17 +283,33 @@ function _kpInjectStyles() {
     .kp-modal-title { font-size: 14px; font-weight: 600; margin: 0; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .kp-modal-body {
       padding: 0; overflow: hidden; background: #000; flex: 1; min-height: 0; position: relative;
-      display: flex; align-items: center; justify-content: center;
     }
-    /* Wrap dùng aspect-ratio 16:9 để Drive video lấp đầy đều, không bị lệch lên trên.
-       Width tối đa 100%, height tối đa 100% — kích thước nhỏ hơn sẽ thắng. */
-    .kp-iframe-wrap {
-      position: relative;
-      width: 100%; aspect-ratio: 16 / 9;
-      max-height: 100%;
-      max-width: calc(100vh * 16 / 9);
-    }
+    /* Iframe lấp đầy modal-body — Drive/YouTube tự fit theo aspect ratio gốc.
+       Với file ngang dài (vd ảnh ghép panorama), Drive sẽ render letterbox đen
+       trên/dưới nhưng đó là hành vi bình thường của Drive player, không thể
+       override từ ngoài. */
+    .kp-iframe-wrap { position: relative; width: 100%; height: 100%; }
     .kp-iframe-wrap iframe { width: 100%; height: 100%; border: 0; display: block; }
+
+    /* Image viewer mode — hiển thị ảnh size gốc, có scroll */
+    .kp-iframe-wrap.kp-img-mode {
+      overflow: auto;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      background: #0a0a0a;
+    }
+    .kp-iframe-wrap.kp-img-mode img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      -webkit-user-select: none; user-select: none;
+      pointer-events: none;  /* chặn drag-save ảnh */
+    }
+    .kp-img-loading {
+      color: var(--text-muted); font-size: 13px;
+      padding: 40px; text-align: center;
+    }
     /* Cover Drive's "Open in new tab" button */
     .kp-drive-overlay {
       position: absolute; top: 0; right: 0; width: 90px; height: 50px;
@@ -825,26 +850,50 @@ function _kpViewFile(matchId, idx) {
   var watermarkEl = document.getElementById('kp-watermark');
   var modalEl = document.getElementById('kp-modal');
   var driveOverlay = modalEl ? modalEl.querySelector('.kp-drive-overlay') : null;
+  var iframeWrap = modalEl ? modalEl.querySelector('.kp-iframe-wrap') : null;
   if (!titleEl || !contentEl || !modalEl) return;
 
   titleEl.textContent = 'vs ' + (m.opponent || '?') + ' — ' + (link.name || 'POV');
 
-  var embedUrl, isYoutube = (link.type === 'youtube');
-  if (isYoutube) {
-    embedUrl = _kpYoutubeEmbedUrl(link.url);
+  var isYoutube = (link.type === 'youtube');
+  var isImage   = (link.type === 'image');
+
+  // Reset class iframe wrap
+  if (iframeWrap) iframeWrap.classList.remove('kp-img-mode');
+
+  if (isImage) {
+    // ẢNH: thử <img> trực tiếp (size gốc, scroll được).
+    // Nếu thumbnail service từ chối (file restricted), fallback iframe /preview.
+    if (iframeWrap) iframeWrap.classList.add('kp-img-mode');
+    if (driveOverlay) driveOverlay.style.display = 'none';
+
+    var imgUrl = _kpDriveImageUrl(link.url);
+    var fallbackUrl = _kpDrivePreviewUrl(link.url);
+    contentEl.innerHTML = '<div class="kp-img-loading">Đang tải ảnh...</div>';
+
+    var img = new Image();
+    img.referrerPolicy = 'no-referrer';
+    img.onload = function() {
+      contentEl.innerHTML = '';
+      contentEl.appendChild(img);
+    };
+    img.onerror = function() {
+      // Fallback: dùng iframe /preview như video. Bỏ class img-mode để
+      // iframe lấp đầy bình thường.
+      console.warn('[KP] Image direct load failed, fallback to iframe preview');
+      if (iframeWrap) iframeWrap.classList.remove('kp-img-mode');
+      if (driveOverlay) driveOverlay.style.display = 'block';
+      contentEl.innerHTML = '<iframe src="' + escHtml(fallbackUrl) + '" sandbox="allow-scripts allow-same-origin allow-presentation" allow="autoplay; fullscreen" referrerpolicy="no-referrer"></iframe>';
+    };
+    img.src = imgUrl;
   } else {
-    embedUrl = _kpDrivePreviewUrl(link.url);
+    // VIDEO Drive hoặc YouTube: dùng iframe
+    var embedUrl = isYoutube ? _kpYoutubeEmbedUrl(link.url) : _kpDrivePreviewUrl(link.url);
+    // Drive overlay (che nút "Open in new tab") chỉ cần cho Drive
+    if (driveOverlay) driveOverlay.style.display = isYoutube ? 'none' : 'block';
+    contentEl.innerHTML = '<iframe src="' + escHtml(embedUrl) + '" sandbox="allow-scripts allow-same-origin allow-presentation" allow="autoplay; fullscreen; encrypted-media" referrerpolicy="no-referrer"></iframe>';
   }
 
-  // Drive overlay (che nút "Open in new tab" góc phải) chỉ cần cho Drive,
-  // YouTube không có nút đó nên ẩn đi (đỡ che mất thanh điều khiển video).
-  if (driveOverlay) {
-    driveOverlay.style.display = isYoutube ? 'none' : 'block';
-  }
-
-  // Sandbox iframe — chặn navigation/popups/downloads từ trong iframe
-  // YouTube và Drive đều OK với set sandbox này
-  contentEl.innerHTML = '<iframe src="' + escHtml(embedUrl) + '" sandbox="allow-scripts allow-same-origin allow-presentation" allow="autoplay; fullscreen; encrypted-media" referrerpolicy="no-referrer"></iframe>';
   if (watermarkEl) {
     var u = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
     watermarkEl.textContent = (u && (u.username || u.name)) || '';
