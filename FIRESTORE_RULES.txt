@@ -131,6 +131,13 @@ service cloud.firestore {
                     || (isSignedIn() && resource.data.hostUid == request.auth.uid);
     }
 
+    // ── /guild_war_matches — Kho POV bang chiến (admin-only) ────────────
+    // Read & Write: chỉ admin (member/guest không thấy nút Kho POV trong sidebar
+    // và cũng không đọc được data từ Firestore)
+    match /guild_war_matches/{matchId} {
+      allow read, write: if isAdmin();
+    }
+
     // ── Catch-all: deny ──────────────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;

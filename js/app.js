@@ -9,8 +9,9 @@ const PAGES = {
   movies:    { label:'Xem Phim',    icon:'🎬', render: renderMoviesPage    },
   gacha:     { label:'Gacha',       icon:'🎰', render: renderGachaPage     },
   minigames: { label:'Mini Game',   icon:'🎲', render: renderMinigamesPage },
-  settings:  { label:'Cấu Hình',    icon:'⚙',  render: renderSettingsPage, adminOnly:true },
-  accounts:  { label:'Tài Khoản',   icon:'🔑', render: renderAccountsPage, adminOnly:true }
+  khopov:    { label:'Kho POV',     icon:'🎥', render: renderKhoPovPage,    adminOnly:true },
+  settings:  { label:'Cấu Hình',    icon:'⚙',  render: renderSettingsPage,  adminOnly:true },
+  accounts:  { label:'Tài Khoản',   icon:'🔑', render: renderAccountsPage,  adminOnly:true }
 };
 
 let currentPage = 'dashboard';
@@ -23,7 +24,7 @@ function renderPage(page) {
   // Bottom-nav active state
   document.querySelectorAll('.bottom-nav-item').forEach(el => {
     const k = el.dataset.page;
-    const active = (k === page) || (k === '__more' && ['settings','accounts','sessions','movies'].includes(page));
+    const active = (k === page) || (k === '__more' && ['settings','accounts','sessions','movies','khopov'].includes(page));
     el.classList.toggle('active', active);
   });
   const topbar = document.getElementById('topbar-current');
@@ -80,7 +81,7 @@ function buildBottomNav() {
   ];
   const items = TABS.map(t => {
     const isActive = (t.key === currentPage) ||
-                     (t.key === '__more' && ['settings','accounts','sessions','movies'].includes(currentPage));
+                     (t.key === '__more' && ['settings','accounts','sessions','movies','khopov'].includes(currentPage));
     const onClick = t.key === '__more'
       ? `openSidebar()`
       : `renderPage('${t.key}')`;
