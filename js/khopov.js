@@ -21,6 +21,8 @@
  */
 
 // ── State ────────────────────────────────────────────────────────────────────
+var KP_VERSION = 'kp-v6-grid-fix';
+console.log('[KP] khopov.js loaded, version:', KP_VERSION);
 var KP_COLLECTION = 'guild_war_matches';
 var _kpMatches    = [];
 var _kpUnsub      = null;        // unsubscribe Firestore listener
@@ -283,15 +285,17 @@ function _kpInjectStyles() {
     .kp-modal-title { font-size: 14px; font-weight: 600; margin: 0; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .kp-modal-body {
       padding: 0; overflow: hidden; background: #000; flex: 1; min-height: 0; position: relative;
-      display: flex; align-items: center; justify-content: center;
+      display: grid;
+      place-items: center;
     }
-    /* Aspect ratio modes — wrap fit theo ratio, max 100% width và height của body.
-       Default 16:9. User có thể đổi qua nút trên header modal.
-       Mode "free" thì wrap full container (kp-iframe-wrap không có aspect class). */
-    .kp-iframe-wrap { position: relative; }
-    .kp-iframe-wrap.kp-ar-16-9 { width: 100%; aspect-ratio: 16 / 9; max-height: 100%; max-width: calc(100vh * 16 / 9); }
-    .kp-iframe-wrap.kp-ar-21-9 { width: 100%; aspect-ratio: 21 / 9; max-height: 100%; max-width: calc(100vh * 21 / 9); }
-    .kp-iframe-wrap.kp-ar-4-3  { width: 100%; aspect-ratio: 4 / 3;  max-height: 100%; max-width: calc(100vh * 4 / 3);  }
+    /* Aspect ratio modes — wrap fit theo ratio.
+       Dùng grid place-items để center mà không phá aspect-ratio như flex.
+       Mỗi mode set width 100% nhưng cap max-width theo (viewport-height × ratio)
+       để không vượt khỏi modal-body khi màn hình thấp. */
+    .kp-iframe-wrap { position: relative; max-width: 100%; max-height: 100%; }
+    .kp-iframe-wrap.kp-ar-16-9 { width: 100%; aspect-ratio: 16 / 9; max-width: calc((100vh - 100px) * 16 / 9); }
+    .kp-iframe-wrap.kp-ar-21-9 { width: 100%; aspect-ratio: 21 / 9; max-width: calc((100vh - 100px) * 21 / 9); }
+    .kp-iframe-wrap.kp-ar-4-3  { width: 100%; aspect-ratio: 4 / 3;  max-width: calc((100vh - 100px) * 4 / 3);  }
     .kp-iframe-wrap.kp-ar-free { width: 100%; height: 100%; }
     .kp-iframe-wrap iframe { width: 100%; height: 100%; border: 0; display: block; }
 
@@ -903,6 +907,7 @@ function _kpSetRatio(ar, persist) {
     if (!iframeWrap.classList.contains('kp-img-mode')) {
       _KP_VALID_AR.forEach(function(r){ iframeWrap.classList.remove('kp-ar-' + r); });
       iframeWrap.classList.add('kp-ar-' + ar);
+      console.log('[KP] _kpSetRatio:', ar, '→ classes:', iframeWrap.className);
     }
   }
   btns.forEach(function(b){ b.classList.toggle('active', b.dataset.ar === ar); });
