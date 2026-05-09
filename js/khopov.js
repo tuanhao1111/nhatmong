@@ -291,6 +291,12 @@ function _kpInjectStyles() {
        CSS chỉ để fallback khi JS chưa chạy + cho mode "free". */
     .kp-iframe-wrap { position: relative; max-width: 100%; max-height: 100%; background: #000; }
     .kp-iframe-wrap.kp-ar-free { width: 100%; height: 100%; }
+    /* #kp-modal-content phải fill wrap (trừ chế độ xem ảnh) để iframe con
+       có chỗ co giãn width/height 100%. Nếu không, iframe lấy intrinsic
+       size (~300×150) và bị flex-center trong wrap, trông như "video nhỏ". */
+    .kp-iframe-wrap:not(.kp-img-mode) > #kp-modal-content {
+      width: 100%; height: 100%; display: block;
+    }
     .kp-iframe-wrap iframe { width: 100%; height: 100%; border: 0; display: block; }
 
     /* Nút chuyển aspect ratio trên header modal */
