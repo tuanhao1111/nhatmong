@@ -21,7 +21,7 @@
  */
 
 // ── State ────────────────────────────────────────────────────────────────────
-var KP_VERSION = 'kp-v7-js-size';
+var KP_VERSION = 'kp-v8-sandbox-fix';
 console.log('[KP] khopov.js loaded, version:', KP_VERSION);
 var KP_COLLECTION = 'guild_war_matches';
 var _kpMatches    = [];
@@ -1020,7 +1020,8 @@ function _kpViewFile(matchId, idx) {
       if (driveOverlay) driveOverlay.style.display = 'block';
       if (arControls) arControls.classList.remove('kp-ar-hidden');
       _kpSetRatio(_kpGetSavedRatio(), false);
-      contentEl.innerHTML = '<iframe src="' + escHtml(fallbackUrl) + '" sandbox="allow-scripts allow-same-origin allow-presentation" allow="autoplay; fullscreen" referrerpolicy="no-referrer"></iframe>';
+      var sandboxAttrs = 'allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox allow-forms';
+      contentEl.innerHTML = '<iframe src="' + escHtml(fallbackUrl) + '" sandbox="' + sandboxAttrs + '" allow="autoplay; fullscreen" referrerpolicy="no-referrer"></iframe>';
     };
     img.src = imgUrl;
   } else {
@@ -1028,7 +1029,12 @@ function _kpViewFile(matchId, idx) {
     var embedUrl = isYoutube ? _kpYoutubeEmbedUrl(link.url) : _kpDrivePreviewUrl(link.url);
     // Drive overlay (che nút "Open in new tab") chỉ cần cho Drive
     if (driveOverlay) driveOverlay.style.display = isYoutube ? 'none' : 'block';
-    contentEl.innerHTML = '<iframe src="' + escHtml(embedUrl) + '" sandbox="allow-scripts allow-same-origin allow-presentation" allow="autoplay; fullscreen; encrypted-media" referrerpolicy="no-referrer"></iframe>';
+    // Sandbox: cho phép script + same-origin + presentation + popups + forms.
+    // Drive player CẦN allow-popups và allow-forms để khởi tạo player full-size,
+    // nếu thiếu Drive sẽ fallback về player nhỏ. KHÔNG cho allow-top-navigation
+    // để chặn iframe redirect trang top-level (anti-leak).
+    var sandboxAttrs = 'allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox allow-forms';
+    contentEl.innerHTML = '<iframe src="' + escHtml(embedUrl) + '" sandbox="' + sandboxAttrs + '" allow="autoplay; fullscreen; encrypted-media" referrerpolicy="no-referrer"></iframe>';
     // Áp ratio đã lưu (default 16:9 cho lần đầu)
     _kpSetRatio(_kpGetSavedRatio(), false);
   }
