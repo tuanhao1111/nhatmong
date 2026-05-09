@@ -257,23 +257,33 @@ function _kpInjectStyles() {
 
     .kp-loading { text-align: center; padding: 40px; color: var(--text-muted); font-size: 13px; }
 
-    /* Modal viewer with anti-leak — fullscreen */
+    /* Modal viewer with anti-leak — large but not fullscreen */
     .kp-modal {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 9000;
-      padding: 0; overflow: hidden; display: none;
+      position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 9000;
+      padding: 24px; overflow: hidden; display: none;
     }
-    .kp-modal.open { display: flex; align-items: stretch; justify-content: stretch; }
+    .kp-modal.open { display: flex; align-items: center; justify-content: center; }
     .kp-modal-inner {
       background: var(--bg-card);
-      width: 100%; height: 100vh;
-      max-width: none; max-height: none;
-      border-radius: 0;
+      width: 100%; max-width: 1400px;
+      height: 100%; max-height: calc(100vh - 48px);
+      border-radius: 10px;
       overflow: hidden; display: flex; flex-direction: column;
     }
     .kp-modal-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--border-color); gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
     .kp-modal-title { font-size: 14px; font-weight: 600; margin: 0; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .kp-modal-body { padding: 0; overflow: hidden; background: #000; flex: 1; min-height: 0; position: relative; }
-    .kp-iframe-wrap { position: relative; width: 100%; height: 100%; }
+    .kp-modal-body {
+      padding: 0; overflow: hidden; background: #000; flex: 1; min-height: 0; position: relative;
+      display: flex; align-items: center; justify-content: center;
+    }
+    /* Wrap dùng aspect-ratio 16:9 để Drive video lấp đầy đều, không bị lệch lên trên.
+       Width tối đa 100%, height tối đa 100% — kích thước nhỏ hơn sẽ thắng. */
+    .kp-iframe-wrap {
+      position: relative;
+      width: 100%; aspect-ratio: 16 / 9;
+      max-height: 100%;
+      max-width: calc(100vh * 16 / 9);
+    }
     .kp-iframe-wrap iframe { width: 100%; height: 100%; border: 0; display: block; }
     /* Cover Drive's "Open in new tab" button */
     .kp-drive-overlay {
