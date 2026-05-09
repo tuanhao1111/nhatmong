@@ -283,16 +283,39 @@ function _kpInjectStyles() {
     .kp-modal-title { font-size: 14px; font-weight: 600; margin: 0; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .kp-modal-body {
       padding: 0; overflow: hidden; background: #000; flex: 1; min-height: 0; position: relative;
+      display: flex; align-items: center; justify-content: center;
     }
-    /* Iframe lấp đầy modal-body — Drive/YouTube tự fit theo aspect ratio gốc.
-       Với file ngang dài (vd ảnh ghép panorama), Drive sẽ render letterbox đen
-       trên/dưới nhưng đó là hành vi bình thường của Drive player, không thể
-       override từ ngoài. */
-    .kp-iframe-wrap { position: relative; width: 100%; height: 100%; }
+    /* Aspect ratio modes — wrap fit theo ratio, max 100% width và height của body.
+       Default 16:9. User có thể đổi qua nút trên header modal.
+       Mode "free" thì wrap full container (kp-iframe-wrap không có aspect class). */
+    .kp-iframe-wrap { position: relative; }
+    .kp-iframe-wrap.kp-ar-16-9 { width: 100%; aspect-ratio: 16 / 9; max-height: 100%; max-width: calc(100vh * 16 / 9); }
+    .kp-iframe-wrap.kp-ar-21-9 { width: 100%; aspect-ratio: 21 / 9; max-height: 100%; max-width: calc(100vh * 21 / 9); }
+    .kp-iframe-wrap.kp-ar-4-3  { width: 100%; aspect-ratio: 4 / 3;  max-height: 100%; max-width: calc(100vh * 4 / 3);  }
+    .kp-iframe-wrap.kp-ar-free { width: 100%; height: 100%; }
     .kp-iframe-wrap iframe { width: 100%; height: 100%; border: 0; display: block; }
 
-    /* Image viewer mode — hiển thị ảnh size gốc, có scroll */
+    /* Nút chuyển aspect ratio trên header modal */
+    .kp-ar-controls { display: flex; gap: 4px; align-items: center; }
+    .kp-ar-controls button {
+      padding: 4px 10px; font-size: 12px; cursor: pointer; border-radius: 5px;
+      background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-secondary);
+      font-family: inherit; line-height: 1;
+    }
+    .kp-ar-controls button:hover { color: var(--text-primary); border-color: var(--text-secondary); }
+    .kp-ar-controls button.active {
+      background: var(--amber-a3); border-color: var(--accent-gold-text); color: var(--accent-gold-text);
+    }
+    .kp-ar-controls.kp-ar-hidden { display: none; }
+
+    /* Image viewer mode — hiển thị ảnh size gốc, có scroll.
+       Override luôn các class aspect ratio để ảnh dùng full container. */
     .kp-iframe-wrap.kp-img-mode {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: none !important;
+      max-height: none !important;
+      aspect-ratio: auto !important;
       overflow: auto;
       display: flex;
       align-items: flex-start;
@@ -328,9 +351,9 @@ function _kpInjectStyles() {
     .kp-modal-close:hover { border-color: var(--accent-gold-text); color: var(--accent-gold-text); }
 
     @media (max-width: 600px) {
-      .kp-iframe-wrap iframe { height: 100%; }
       .kp-modal-head { padding: 8px 12px; }
       .kp-modal-title { font-size: 13px; }
+      .kp-ar-controls button { padding: 3px 6px; font-size: 11px; }
     }
   `;
   var s = document.createElement('style');
@@ -467,6 +490,12 @@ function renderKhoPovPage() {
       <div class="kp-modal-inner">
         <div class="kp-modal-head">
           <div class="kp-modal-title" id="kp-modal-title"></div>
+          <div class="kp-ar-controls" id="kp-ar-controls" title="Chọn tỷ lệ khung hình">
+            <button data-ar="16-9" title="Tỷ lệ 16:9 — phim chuẩn">16:9</button>
+            <button data-ar="21-9" title="Tỷ lệ 21:9 — phim siêu rộng / panorama">21:9</button>
+            <button data-ar="4-3"  title="Tỷ lệ 4:3 — chụp vuông cũ">4:3</button>
+            <button data-ar="free" title="Tự do — lấp đầy modal, video có thể bị viền đen">Tự do</button>
+          </div>
           <button class="kp-modal-close" id="kp-modal-close" title="Đóng (ESC)">Đóng</button>
         </div>
         <div class="kp-modal-body">
@@ -621,6 +650,16 @@ function _kpBindToolbar() {
   if (addLinkBtn) addLinkBtn.onclick = function(){ _kpAddLinkRow(); };
   if (modalClose) modalClose.onclick = _kpCloseViewer;
   if (modal) modal.onclick = function(ev){ if (ev.target === modal) _kpCloseViewer(); };
+
+  // Bind nút aspect ratio
+  var arControls = document.getElementById('kp-ar-controls');
+  if (arControls) {
+    arControls.onclick = function(ev){
+      var btn = ev.target.closest('button[data-ar]');
+      if (!btn) return;
+      _kpSetRatio(btn.dataset.ar, true);   // persist=true → nhớ choice
+    };
+  }
 
   // Style cho radio "checked"
   if (resultRadios) {
@@ -841,6 +880,37 @@ function _kpEscHandler(e) {
   if (e.key === 'Escape') _kpCloseViewer();
 }
 
+// Aspect ratio cho video Drive / YouTube. Lưu lựa chọn last-used vào localStorage
+// để lần sau mở video khác đỡ phải click lại.
+var _KP_AR_KEY = 'kp_last_aspect_ratio';
+var _KP_VALID_AR = ['16-9', '21-9', '4-3', 'free'];
+
+function _kpGetSavedRatio() {
+  try {
+    var v = localStorage.getItem(_KP_AR_KEY);
+    return _KP_VALID_AR.indexOf(v) >= 0 ? v : '16-9';
+  } catch (e) { return '16-9'; }
+}
+
+function _kpSetRatio(ar, persist) {
+  if (_KP_VALID_AR.indexOf(ar) < 0) ar = '16-9';
+  var modalEl = document.getElementById('kp-modal');
+  if (!modalEl) return;
+  var iframeWrap = modalEl.querySelector('.kp-iframe-wrap');
+  var btns = modalEl.querySelectorAll('.kp-ar-controls button');
+  if (iframeWrap) {
+    // Nếu đang ở image-mode thì không apply (ảnh không bị letterbox)
+    if (!iframeWrap.classList.contains('kp-img-mode')) {
+      _KP_VALID_AR.forEach(function(r){ iframeWrap.classList.remove('kp-ar-' + r); });
+      iframeWrap.classList.add('kp-ar-' + ar);
+    }
+  }
+  btns.forEach(function(b){ b.classList.toggle('active', b.dataset.ar === ar); });
+  if (persist) {
+    try { localStorage.setItem(_KP_AR_KEY, ar); } catch (e) {}
+  }
+}
+
 function _kpViewFile(matchId, idx) {
   var m = _kpMatches.find(function(x){ return x.id === matchId; });
   if (!m || !m.links || !m.links[idx]) return;
@@ -851,6 +921,7 @@ function _kpViewFile(matchId, idx) {
   var modalEl = document.getElementById('kp-modal');
   var driveOverlay = modalEl ? modalEl.querySelector('.kp-drive-overlay') : null;
   var iframeWrap = modalEl ? modalEl.querySelector('.kp-iframe-wrap') : null;
+  var arControls = modalEl ? modalEl.querySelector('.kp-ar-controls') : null;
   if (!titleEl || !contentEl || !modalEl) return;
 
   titleEl.textContent = 'vs ' + (m.opponent || '?') + ' — ' + (link.name || 'POV');
@@ -858,8 +929,14 @@ function _kpViewFile(matchId, idx) {
   var isYoutube = (link.type === 'youtube');
   var isImage   = (link.type === 'image');
 
-  // Reset class iframe wrap
-  if (iframeWrap) iframeWrap.classList.remove('kp-img-mode');
+  // Reset classes iframe wrap
+  if (iframeWrap) {
+    iframeWrap.classList.remove('kp-img-mode');
+    _KP_VALID_AR.forEach(function(r){ iframeWrap.classList.remove('kp-ar-' + r); });
+  }
+
+  // Nút aspect ratio chỉ hiển thị cho video/youtube, ẩn khi xem ảnh
+  if (arControls) arControls.classList.toggle('kp-ar-hidden', isImage);
 
   if (isImage) {
     // ẢNH: thử <img> trực tiếp (size gốc, scroll được).
@@ -878,11 +955,13 @@ function _kpViewFile(matchId, idx) {
       contentEl.appendChild(img);
     };
     img.onerror = function() {
-      // Fallback: dùng iframe /preview như video. Bỏ class img-mode để
-      // iframe lấp đầy bình thường.
+      // Fallback: dùng iframe /preview như video. Bỏ class img-mode + áp ratio
+      // mặc định để có khung container.
       console.warn('[KP] Image direct load failed, fallback to iframe preview');
       if (iframeWrap) iframeWrap.classList.remove('kp-img-mode');
       if (driveOverlay) driveOverlay.style.display = 'block';
+      if (arControls) arControls.classList.remove('kp-ar-hidden');
+      _kpSetRatio(_kpGetSavedRatio(), false);
       contentEl.innerHTML = '<iframe src="' + escHtml(fallbackUrl) + '" sandbox="allow-scripts allow-same-origin allow-presentation" allow="autoplay; fullscreen" referrerpolicy="no-referrer"></iframe>';
     };
     img.src = imgUrl;
@@ -892,6 +971,8 @@ function _kpViewFile(matchId, idx) {
     // Drive overlay (che nút "Open in new tab") chỉ cần cho Drive
     if (driveOverlay) driveOverlay.style.display = isYoutube ? 'none' : 'block';
     contentEl.innerHTML = '<iframe src="' + escHtml(embedUrl) + '" sandbox="allow-scripts allow-same-origin allow-presentation" allow="autoplay; fullscreen; encrypted-media" referrerpolicy="no-referrer"></iframe>';
+    // Áp ratio đã lưu (default 16:9 cho lần đầu)
+    _kpSetRatio(_kpGetSavedRatio(), false);
   }
 
   if (watermarkEl) {
