@@ -1204,21 +1204,22 @@
     .gh-modal-name {
       font-family: 'Be Vietnam Pro', sans-serif;
       font-size: clamp(2.8rem, 8vw, 4.6rem);
-      color: var(--lantern-glow);
+      color: var(--text-bright);
       letter-spacing: -0.02em;
       line-height: 1.1;
       margin: 0;
       position: relative;
       z-index: 1;
       font-weight: 800;
-      /* Multi-stroke text shadow để chữ rõ trên mọi nền + có "khí" đỏ-vàng */
+      /* Viền tối quanh chữ (giữ mép sắc) + halo ấm vừa phải (giữ không khí) */
       text-shadow:
-        0 0 4px var(--lantern-glow),
-        0 0 14px rgba(255, 184, 107, 0.9),
-        0 0 28px rgba(255, 184, 107, 0.7),
-        0 0 50px rgba(204, 56, 56, 0.5),
-        2px 2px 0 rgba(107, 26, 20, 0.6),
-        -1px -1px 0 rgba(255, 244, 214, 0.4);
+        -1.5px -1.5px 0 rgba(26, 15, 10, 0.95),
+        1.5px -1.5px 0 rgba(26, 15, 10, 0.95),
+        -1.5px  1.5px 0 rgba(26, 15, 10, 0.95),
+        1.5px  1.5px 0 rgba(26, 15, 10, 0.95),
+        0 2px 3px rgba(26, 15, 10, 0.85),
+        0 0 12px rgba(255, 184, 107, 0.55),
+        0 0 28px rgba(204, 56, 56, 0.35);
       word-break: break-word;
       animation: nameGlow 2s ease-in-out infinite;
     }
@@ -1226,21 +1227,23 @@
     @keyframes nameGlow {
       0%, 100% {
         text-shadow:
-          0 0 4px var(--lantern-glow),
-          0 0 14px rgba(255, 184, 107, 0.9),
-          0 0 28px rgba(255, 184, 107, 0.7),
-          0 0 50px rgba(204, 56, 56, 0.5),
-          2px 2px 0 rgba(107, 26, 20, 0.6),
-          -1px -1px 0 rgba(255, 244, 214, 0.4);
+          -1.5px -1.5px 0 rgba(26, 15, 10, 0.95),
+          1.5px -1.5px 0 rgba(26, 15, 10, 0.95),
+          -1.5px  1.5px 0 rgba(26, 15, 10, 0.95),
+          1.5px  1.5px 0 rgba(26, 15, 10, 0.95),
+          0 2px 3px rgba(26, 15, 10, 0.85),
+          0 0 12px rgba(255, 184, 107, 0.55),
+          0 0 28px rgba(204, 56, 56, 0.35);
       }
       50% {
         text-shadow:
-          0 0 4px var(--lantern-glow),
-          0 0 20px rgba(255, 244, 214, 1),
-          0 0 40px rgba(255, 184, 107, 0.95),
-          0 0 70px rgba(232, 80, 80, 0.7),
-          2px 2px 0 rgba(107, 26, 20, 0.6),
-          -1px -1px 0 rgba(255, 244, 214, 0.6);
+          -1.5px -1.5px 0 rgba(26, 15, 10, 0.95),
+          1.5px -1.5px 0 rgba(26, 15, 10, 0.95),
+          -1.5px  1.5px 0 rgba(26, 15, 10, 0.95),
+          1.5px  1.5px 0 rgba(26, 15, 10, 0.95),
+          0 2px 3px rgba(26, 15, 10, 0.85),
+          0 0 18px rgba(255, 210, 140, 0.75),
+          0 0 40px rgba(232, 80, 80, 0.5);
       }
     }
 
