@@ -9,6 +9,7 @@
 
   const KEY = 'guild_raffle_v1';
   const hasGSAP = typeof window.gsap !== 'undefined';
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ── State ─────────────────────────────────────────────────────────────
   function load() {
@@ -30,7 +31,9 @@
 
   // ── DOM ───────────────────────────────────────────────────────────────
   const el = {
-    slotName: document.getElementById('slot-name'),
+    slot: document.getElementById('raffle-slot'),
+    reel: document.getElementById('reel'),
+    strip: document.getElementById('reel-strip'),
     slotSub: document.getElementById('slot-sub'),
     statMembers: document.getElementById('stat-members'),
     statPrizes: document.getElementById('stat-prizes'),
@@ -71,11 +74,53 @@
     }[c]));
   }
 
+  // ── Animation helpers ─────────────────────────────────────────────────
+  // Show a single static name in the reel (idle / fallback / reset).
+  function setName(text) {
+    if (hasGSAP) gsap.set(el.strip, { y: 0 });
+    else el.strip.style.transform = 'none';
+    el.strip.innerHTML = '<div class="raffle-reel__item">' + escapeHTML(text) + '</div>';
+  }
+
+  // Animate a number from its current value up to `to`.
+  function countTo(node, to) {
+    if (!hasGSAP || reduceMotion) { node.textContent = to; return; }
+    const obj = { v: parseInt(node.textContent, 10) || 0 };
+    gsap.to(obj, { v: to, duration: 0.6, ease: 'power2.out',
+      onUpdate: () => { node.textContent = Math.round(obj.v); } });
+  }
+
+  // Particle burst inside the reveal modal.
+  function burstConfetti() {
+    if (!hasGSAP || reduceMotion) return;
+    const colors = ['#f4b740', '#1e9be0', '#ffffff', '#ff5d8f', '#7CFC98'];
+    const box = document.createElement('div');
+    box.className = 'confetti';
+    el.reveal.appendChild(box);
+    for (let i = 0; i < 48; i++) {
+      const d = document.createElement('i');
+      d.style.background = colors[i % colors.length];
+      box.appendChild(d);
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 120 + Math.random() * 280;
+      gsap.set(d, { x: 0, y: 0, opacity: 1 });
+      gsap.to(d, {
+        x: Math.cos(angle) * dist,
+        y: Math.sin(angle) * dist + 140, // gravity bias
+        rotation: Math.random() * 720 - 360,
+        opacity: 0,
+        duration: 1.1 + Math.random() * 0.7,
+        ease: 'power2.out',
+      });
+    }
+    gsap.delayedCall(2.2, () => box.remove());
+  }
+
   // ── Render ────────────────────────────────────────────────────────────
   function renderStats() {
-    el.statMembers.textContent = state.members.length;
+    countTo(el.statMembers, state.members.length);
     el.statPrizes.textContent = state.prizes;
-    el.statDraws.textContent = state.draws;
+    countTo(el.statDraws, state.draws);
   }
 
   function renderMembers() {
@@ -138,6 +183,7 @@
       </div>`).join('');
     el.reveal.classList.add('open');
     el.reveal.setAttribute('aria-hidden', 'false');
+    burstConfetti();
     const cards = el.revealInner.querySelectorAll('.wcard');
     if (hasGSAP) {
       gsap.fromTo(cards,
@@ -159,7 +205,7 @@
   function spin() {
     if (busy) return;
     if (state.members.length < 1) {
-      el.slotName.textContent = t('Chưa có thành viên!', 'No members!');
+      setName(t('Chưa có thành viên!', 'No members!'));
       el.slotSub.innerHTML = t(
         '<span>Thêm tên ở ô bên dưới đã nhé.</span>',
         '<span>Add some names below first.</span>'
@@ -168,30 +214,50 @@
     }
     busy = true;
     el.spin.disabled = true;
+    el.slotSub.innerHTML = '<span>' + t('Đang quay…', 'Spinning…') + '</span>';
 
     const winners = pickWinners(state.prizes);
 
-    // Slot shuffle animation
-    const names = state.members;
-    const start = performance.now();
-    const duration = 2600; // ms
-    function frame(now) {
-      const p = Math.min((now - start) / duration, 1);
-      // ease-out: interval grows toward the end
-      el.slotName.textContent = names[Math.floor(Math.random() * names.length)];
-      if (p < 1) {
-        const delay = 40 + p * p * 220; // 40ms -> 260ms
-        setTimeout(() => requestAnimationFrame(frame), delay);
-      } else {
-        finish(winners);
-      }
+    // No GSAP / reduced motion → land instantly.
+    if (!hasGSAP || reduceMotion) {
+      setName(winners[0]);
+      finish(winners);
+      return;
     }
-    el.slotSub.innerHTML = '<span>' + t('Đang quay…', 'Spinning…') + '</span>';
-    requestAnimationFrame(frame);
+
+    // Build a long reel strip of random names ending on the real winner.
+    const names = state.members;
+    const reelLen = Math.max(24, names.length * 3);
+    const items = [];
+    for (let i = 0; i < reelLen; i++) items.push(names[Math.floor(Math.random() * names.length)]);
+    items.push(winners[0]); // landing row
+    el.strip.innerHTML = items.map((n) => '<div class="raffle-reel__item">' + escapeHTML(n) + '</div>').join('');
+
+    const rowH = el.strip.children[0].offsetHeight;
+    const dist = (items.length - 1) * rowH;
+    gsap.set(el.strip, { y: 0 });
+
+    // Charge glow on the slot while the reel spins.
+    gsap.fromTo(el.slot,
+      { boxShadow: '0 30px 80px -30px rgba(30,155,224,0.5)' },
+      { boxShadow: '0 30px 120px -16px rgba(30,155,224,0.95)', duration: 0.5, repeat: 4, yoyo: true,
+        onComplete: () => gsap.set(el.slot, { clearProps: 'boxShadow' }) });
+
+    // Motion blur that sharpens before the reel settles.
+    gsap.fromTo(el.strip, { filter: 'blur(5px)' }, { filter: 'blur(0px)', duration: 2.0, ease: 'power2.out' });
+
+    // The reel itself: long fast travel, decelerating into the winner.
+    gsap.to(el.strip, {
+      y: -dist, duration: 2.9, ease: 'power4.out',
+      onComplete: () => {
+        // tiny elastic settle (bounce) on the landing row
+        gsap.fromTo(el.strip, { y: -dist + 10 }, { y: -dist, duration: 0.6, ease: 'elastic.out(1, 0.5)' });
+        finish(winners);
+      },
+    });
   }
 
   function finish(winners) {
-    el.slotName.textContent = winners[0];
     el.slotSub.innerHTML = '<span>' + (winners.length > 1
       ? t('+ ' + (winners.length - 1) + ' người khác', '+ ' + (winners.length - 1) + ' more')
       : t('Chúc mừng!', 'Congrats!')) + '</span>';
@@ -207,7 +273,7 @@
       showReveal(winners);
       busy = false;
       el.spin.disabled = false;
-    }, 450);
+    }, 550);
   }
 
   // ── Bind ──────────────────────────────────────────────────────────────
@@ -232,7 +298,7 @@
   el.spin.addEventListener('click', spin);
 
   el.clearWinners.addEventListener('click', () => {
-    el.slotName.textContent = '—';
+    setName('—');
     el.slotSub.innerHTML = '<span data-vi>Nhấn “Quay” để bắt đầu</span><span data-en>Press “Spin” to start</span>';
   });
 

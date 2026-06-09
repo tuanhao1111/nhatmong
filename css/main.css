@@ -31,9 +31,9 @@
   --line:      rgba(255, 255, 255, 0.14);
 
   /* ── Type ────────────────────────────────────────────────────────────── */
-  --font-display: 'Syne', 'Segoe UI', sans-serif;
-  --font-mono:    'Space Mono', 'Courier New', monospace;
-  --font-body:    'Syne', 'Segoe UI', system-ui, sans-serif;
+  --font-display: 'Be Vietnam Pro', 'Segoe UI', sans-serif;
+  --font-mono:    'JetBrains Mono', 'Courier New', monospace;
+  --font-body:    'Be Vietnam Pro', 'Segoe UI', system-ui, sans-serif;
 
   /* fluid type */
   --fs-hero:  clamp(2.4rem, 10.5vw, 12rem);
