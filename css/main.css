@@ -210,11 +210,17 @@ main { position: relative; z-index: var(--z-content); }
 
 /* Shared sub-page header (phim / gacha) */
 .page-sub { background: var(--bg); }
+/* Scrim above the fixed birds (z0) but below content (z10) so the flock
+   stays a faint backdrop instead of clashing behind text on sub-pages. */
+.page-sub::before {
+  content: ''; position: fixed; inset: 0; z-index: 2;
+  background: rgba(5, 7, 10, 0.92); pointer-events: none;
+}
 .page-head { padding: clamp(7rem, 16vh, 12rem) var(--pad-x) clamp(2rem, 5vh, 4rem); max-width: var(--maxw); margin: 0 auto; }
 .page-title { font-size: clamp(3rem, 14vw, 12rem); font-weight: 800; line-height: 0.85; letter-spacing: -0.05em; }
 .page-sub-text { font-size: var(--fs-lead); color: var(--text-soft); margin-top: 1.2rem; max-width: 50ch; }
 .section { padding: clamp(5rem, 14vh, 12rem) var(--pad-x); max-width: var(--maxw); margin: 0 auto; }
-.section--dark { background: transparent; color: var(--text); max-width: none; }
+.section--dark { background: rgba(5, 7, 10, 0.94); color: var(--text); max-width: none; }
 .section--dark .inner { max-width: var(--maxw); margin: 0 auto; }
 
 .eyebrow {
