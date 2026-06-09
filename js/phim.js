@@ -8,7 +8,7 @@
   const API = 'https://phimapi.com';
   const IMG = 'https://phimimg.com/';
   const PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><rect fill="#dfe4ea" width="200" height="300"/><text x="100" y="155" fill="#9aa4b2" font-size="34" font-family="sans-serif" text-anchor="middle">NM</text></svg>');
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><rect fill="#10151c" width="200" height="300"/><text x="100" y="155" fill="#5b6573" font-size="34" font-family="sans-serif" text-anchor="middle">NM</text></svg>');
 
   const T = (vi, en) => (document.body.dataset.lang === 'en' ? en : vi);
 

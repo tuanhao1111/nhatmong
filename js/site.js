@@ -83,22 +83,23 @@
   function initBackground() {
     const vantaEl = document.getElementById('vanta-bg');
     const canvas = document.getElementById('bg-canvas');
-    if (vantaEl && window.VANTA && window.VANTA.CLOUDS) {
+    if (vantaEl && window.VANTA && window.VANTA.BIRDS) {
       try {
-        window.VANTA.CLOUDS({
+        window.VANTA.BIRDS({
           el: vantaEl,
           mouseControls: !reduceMotion,
           touchControls: !reduceMotion,
           gyroControls: false,
           minHeight: 200.0,
           minWidth: 200.0,
-          skyColor: 0xbcd4e6,        // soft blue-gray
-          cloudColor: 0xf2f5f8,      // off-white (paper)
-          cloudShadowColor: 0x9aa4b2,// theme gray
-          sunColor: 0x1e9be0,        // sea-bright
-          sunGlareColor: 0x0a6ebd,   // sea
-          sunlightColor: 0xffffff,
-          speed: reduceMotion ? 0 : 0.9,
+          scale: 1.0,
+          scaleMobile: 1.0,
+          backgroundColor: 0x05070a, // match site bg (near-black)
+          color1: 0x7171ff,          // violet
+          color2: 0x00b9ff,          // cyan
+          birdSize: 1.0,
+          quantity: 3.0,
+          speedLimit: reduceMotion ? 0 : 5.0,
         });
         if (canvas) canvas.style.display = 'none';
         return;

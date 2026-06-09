@@ -20,15 +20,15 @@
   --c-sea-bright:#1e9be0;
   --c-sea-glow: rgba(30, 155, 224, 0.45);
 
-  /* Semantic */
-  --bg:        var(--c-white);
-  --bg-alt:    var(--c-paper);
-  --bg-dark:   var(--c-black);
-  --text:      var(--c-ink);
-  --text-soft: var(--c-graphite);
-  --text-mut:  var(--c-gray);
-  --accent:    var(--c-sea);
-  --line:      rgba(12, 15, 20, 0.12);
+  /* Semantic — DARK THEME */
+  --bg:        #05070a;   /* near-black */
+  --bg-alt:    #10151c;   /* elevated dark surface (cards, inputs) */
+  --bg-dark:   #05070a;
+  --text:      #eef2f7;   /* light */
+  --text-soft: #a7b2c0;
+  --text-mut:  #707b8a;
+  --accent:    var(--c-sea-bright);
+  --line:      rgba(255, 255, 255, 0.14);
 
   /* ── Type ────────────────────────────────────────────────────────────── */
   --font-display: 'Syne', 'Segoe UI', sans-serif;
@@ -214,7 +214,7 @@ main { position: relative; z-index: var(--z-content); }
 .page-title { font-size: clamp(3rem, 14vw, 12rem); font-weight: 800; line-height: 0.85; letter-spacing: -0.05em; }
 .page-sub-text { font-size: var(--fs-lead); color: var(--text-soft); margin-top: 1.2rem; max-width: 50ch; }
 .section { padding: clamp(5rem, 14vh, 12rem) var(--pad-x); max-width: var(--maxw); margin: 0 auto; }
-.section--dark { background: var(--c-black); color: var(--c-white); max-width: none; }
+.section--dark { background: transparent; color: var(--text); max-width: none; }
 .section--dark .inner { max-width: var(--maxw); margin: 0 auto; }
 
 .eyebrow {

@@ -46,7 +46,7 @@
   text-transform: uppercase; letter-spacing: 0.12em; font-size: var(--fs-mono); font-weight: 700;
   transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease), background var(--dur) var(--ease);
 }
-.gbtn--1 { background: var(--c-ink); color: #fff; }
+.gbtn--1 { background: rgba(255,255,255,0.08); color: var(--text); border: 1px solid var(--line); }
 .gbtn--10 { background: var(--accent); color: #fff; box-shadow: 0 10px 36px -10px var(--c-sea-glow); }
 .gbtn--ghost { background: transparent; border: 1px solid var(--line); color: var(--text-soft); }
 .gbtn:hover { transform: translateY(-3px); }
