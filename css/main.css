@@ -70,7 +70,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-h1,h2,h3,h4 { font-family: var(--font-display); font-weight: 800; line-height: 2; letter-spacing: -0.01em; }
+h1,h2,h3,h4 { font-family: var(--font-display); font-weight: 800; line-height: 0.95; letter-spacing: -0.01em; }
 a { color: inherit; text-decoration: none; }
 ul { list-style: none; }
 img, canvas, video { display: block; max-width: 100%; }
@@ -220,7 +220,14 @@ main { position: relative; z-index: var(--z-content); }
 .page-title { font-size: clamp(3rem, 14vw, 12rem); font-weight: 800; line-height: 0.9; letter-spacing: -0.01em; }
 .page-sub-text { font-size: var(--fs-lead); color: var(--text-soft); margin-top: 1.2rem; max-width: 50ch; }
 .section { padding: clamp(5rem, 14vh, 12rem) var(--pad-x); max-width: var(--maxw); margin: 0 auto; }
-.section--dark { background: rgba(5, 7, 10, 0.94); color: var(--text); max-width: none; }
+.section--dark { background: rgba(5, 7, 10, 0.94); color: var(--text); max-width: none; position: relative; }
+.section--dark > * { position: relative; z-index: 1; }
+.section--dark::before { /* cursor spotlight */
+  content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: radial-gradient(260px circle at var(--sx, -300px) var(--sy, -300px), rgba(30, 155, 224, 0.13), transparent 70%);
+  opacity: 0; transition: opacity 0.4s var(--ease);
+}
+.section--dark:hover::before { opacity: 1; }
 .section--dark .inner { max-width: var(--maxw); margin: 0 auto; }
 
 .eyebrow {
@@ -396,15 +403,48 @@ body[data-lang="vi"] .hero__title .line > span[data-vi] { display: inline-block;
    ========================================================================== */
 .cursor {
   position: fixed; top: 0; left: 0; z-index: var(--z-cursor); pointer-events: none;
-  width: 12px; height: 12px; border-radius: 50%; background: var(--accent);
+  width: 7px; height: 7px; border-radius: 50%; background: #fff;
   transform: translate(-50%, -50%); mix-blend-mode: difference; will-change: transform;
 }
 .cursor--ring {
-  width: 42px; height: 42px; background: transparent; border: 1px solid var(--accent);
-  transition: width 0.3s var(--ease), height 0.3s var(--ease), background 0.3s var(--ease);
+  width: 38px; height: 38px; background: transparent; border: 1.5px solid rgba(255, 255, 255, 0.55);
+  display: grid; place-items: center; mix-blend-mode: difference; will-change: transform;
+  transition: width 0.35s var(--ease), height 0.35s var(--ease), background 0.35s var(--ease),
+              border-color 0.35s var(--ease), padding 0.3s var(--ease), border-radius 0.3s var(--ease);
 }
-.cursor--ring.hovering { width: 70px; height: 70px; background: var(--c-sea-glow); border-color: transparent; }
+.cursor--ring.hovering { width: 58px; height: 58px; border-color: rgba(255, 255, 255, 0.9); }
+.cursor--ring.labeled {
+  mix-blend-mode: normal; width: auto; height: auto;
+  padding: 0.55rem 0.95rem; border-radius: 999px;
+  background: var(--accent); border-color: transparent;
+  box-shadow: 0 10px 30px -8px var(--c-sea-glow);
+}
+.cursor__label {
+  font-family: var(--font-mono); font-size: 0.62rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.12em; color: #fff;
+  white-space: nowrap; opacity: 0; transition: opacity 0.2s var(--ease);
+}
+.cursor--ring.labeled .cursor__label { opacity: 1; }
 @media (hover: none), (pointer: coarse) { .cursor { display: none; } }
+
+/* ── Scroll progress ───────────────────────────────────────────────────── */
+.scroll-progress {
+  position: fixed; top: 0; left: 0; height: 3px; width: 100%; transform-origin: 0 50%;
+  transform: scaleX(0); background: linear-gradient(90deg, var(--c-sea-bright), #7fd4ff);
+  z-index: calc(var(--z-nav) + 5); pointer-events: none;
+}
+
+/* ── SFX toggle ────────────────────────────────────────────────────────── */
+.sfx-toggle {
+  position: fixed; bottom: 1.4rem; left: 1.4rem; z-index: 70;
+  padding: 0.5rem 0.85rem; border-radius: 999px; background: var(--c-black); color: var(--text-mut);
+  font-family: var(--font-mono); font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em;
+  border: 1px solid var(--line); box-shadow: 0 8px 30px -6px rgba(0, 0, 0, 0.5);
+  transition: color var(--dur) var(--ease), transform var(--dur) var(--ease);
+}
+.sfx-toggle.on { color: var(--c-sea-bright); border-color: rgba(30, 155, 224, 0.5); }
+.sfx-toggle:hover { transform: translateY(-2px); }
+@media (hover: none), (pointer: coarse) { .sfx-toggle { display: none; } }
 
 /* =============================================================================
    REVEAL HELPERS (used by GSAP, with no-JS fallback)

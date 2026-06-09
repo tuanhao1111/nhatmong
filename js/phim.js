@@ -52,12 +52,12 @@
   function cardHTML(m) {
     const badge = m.episode_current || m.quality || '';
     return `
-      <div class="film" data-slug="${m.slug}" data-cursor>
+      <div class="film" data-slug="${m.slug}" data-cursor="Xem" data-cursor-en="Watch">
         <div class="film__poster">
           ${badge ? `<span class="film__badge">${badge}</span>` : ''}
           <img src="${posterOf(m)}" alt="${(m.name || '').replace(/"/g, '')}" loading="lazy"
                onerror="this.onerror=null;this.src='${PLACEHOLDER}'">
-          <span class="film__play">▶</span>
+          <span class="film__play">▶<em>Xem</em></span>
         </div>
         <div class="film__info">
           <div class="film__name">${m.name || ''}</div>

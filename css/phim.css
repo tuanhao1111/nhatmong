@@ -38,17 +38,25 @@
 .film {
   position: relative; border-radius: 12px; overflow: hidden; background: var(--bg-alt);
   border: 1px solid var(--line); cursor: pointer;
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease), transform var(--dur) var(--ease);
 }
+.film:hover { border-color: var(--accent); box-shadow: 0 16px 40px -16px var(--c-sea-glow); transform: translateY(-3px); }
 .film__poster { position: relative; aspect-ratio: 2/3; overflow: hidden; background: var(--bg-alt); }
-.film__poster img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.7s var(--ease); }
-.film:hover .film__poster img { transform: scale(1.08); }
+.film__poster img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.7s var(--ease), filter 0.5s var(--ease); }
+.film:hover .film__poster img { transform: scale(1.08); filter: brightness(1.12); }
 .film__badge {
   position: absolute; top: 8px; left: 8px; padding: 2px 8px; border-radius: 999px;
   background: var(--accent); color: #fff; font-family: var(--font-mono); font-size: 0.62rem; font-weight: 700;
 }
 .film__play {
-  position: absolute; inset: 0; display: grid; place-items: center; background: rgba(5,7,10,0.45);
-  color: #fff; font-size: 2.4rem; opacity: 0; transition: opacity var(--dur) var(--ease);
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem;
+  background: linear-gradient(180deg, rgba(5,7,10,0.15), rgba(5,7,10,0.62));
+  color: #fff; font-size: 2.2rem; opacity: 0; transition: opacity var(--dur) var(--ease);
+}
+.film__play em {
+  font-family: var(--font-mono); font-style: normal; font-size: 0.66rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.2em;
+  padding: 0.3rem 0.9rem; border: 1px solid rgba(255,255,255,0.7); border-radius: 999px;
 }
 .film:hover .film__play { opacity: 1; }
 .film__info { padding: 0.7rem 0.8rem 0.9rem; }
