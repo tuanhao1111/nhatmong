@@ -19,6 +19,7 @@
   function initLenis() {
     if (!hasLenis || reduceMotion) return;
     lenis = new Lenis({ lerp: 0.1, smoothWheel: true, wheelMultiplier: 1 });
+    window.lenis = lenis;
     if (hasST) {
       lenis.on('scroll', ScrollTrigger.update);
       gsap.ticker.add((t) => lenis.raf(t * 1000));
@@ -221,6 +222,48 @@
     });
   }
 
+  /* ── Scroll-driven hero (converge → center → zoom through) ───────────── */
+  function scrollHero() {
+    if (!hasGSAP || !hasST || reduceMotion) return;
+    const hero = document.querySelector('.hero');
+    const title = document.querySelector('.hero__title');
+    const lines = gsap.utils.toArray('.hero__title .line');
+    if (!hero || !title || !lines.length) return;
+
+    gsap.set(title, { transformOrigin: '50% 50%', willChange: 'transform' });
+
+    const tl = gsap.timeline({
+      scrollTrigger: {
+        trigger: hero,
+        start: 'top top',
+        end: '+=130%',
+        pin: true,
+        scrub: 1,
+        invalidateOnRefresh: true,
+      },
+    });
+
+    // (1) DỒN DÒNG: các dòng so le trượt gộp về dòng giữa
+    tl.to(lines[0], { yPercent: 60, ease: 'power1.inOut', duration: 0.4 }, 0);
+    tl.to(lines[2], { yPercent: -60, ease: 'power1.inOut', duration: 0.4 }, 0);
+    // mờ phần meta + chỉ dẫn cuộn
+    tl.to('.hero__meta, .hero__scroll', { autoAlpha: 0, y: -24, duration: 0.25 }, 0);
+
+    // (2) THU VỀ GIỮA: cả tiêu đề nhỏ lại và dịch vào chính giữa màn hình
+    tl.to(title, {
+      scale: 0.42,
+      y: () => {
+        const r = title.getBoundingClientRect();
+        return window.innerHeight / 2 - (r.top + r.height / 2);
+      },
+      ease: 'power1.inOut',
+      duration: 0.6,
+    }, 0);
+
+    // (3) ZOOM XUYÊN QUA: phóng to & mờ dần để lộ section kế tiếp
+    tl.to(title, { scale: 2.4, autoAlpha: 0, ease: 'power2.in', duration: 0.4 }, 0.62);
+  }
+
   /* ── Splash loader ───────────────────────────────────────────────────── */
   function initSplash(done) {
     const splash = document.getElementById('splash');
@@ -330,6 +373,7 @@
     initMenu();
     initAnchors();
     initReveals();
+    scrollHero();
     initAudio();
     initSplash(heroIntro);
   }
