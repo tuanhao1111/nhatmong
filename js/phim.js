@@ -94,7 +94,9 @@
   async function loadCats() {
     try {
       const data = await fetchAPI(`${API}/the-loai`);
-      const cats = Array.isArray(data) ? data : (data.data && data.data.items) || [];
+      let cats = Array.isArray(data) ? data : (data.data && data.data.items) || [];
+      // Bỏ thể loại 18+
+      cats = cats.filter((c) => c.slug !== 'phim-18' && !/18\+?/.test(c.name || ''));
       el.cats.innerHTML =
         `<button class="cat-chip active" data-slug=""><span data-vi>Mới nhất</span><span data-en>Latest</span></button>` +
         cats.slice(0, 14).map((c) => `<button class="cat-chip" data-slug="${c.slug}">${c.name}</button>`).join('');

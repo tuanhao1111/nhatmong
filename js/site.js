@@ -79,8 +79,36 @@
     });
   }
 
-  /* ── Canvas particle background ──────────────────────────────────────── */
+  /* ── Animated background: Vanta CLOUDS (fallback: canvas particles) ───── */
   function initBackground() {
+    const vantaEl = document.getElementById('vanta-bg');
+    const canvas = document.getElementById('bg-canvas');
+    if (vantaEl && window.VANTA && window.VANTA.CLOUDS) {
+      try {
+        window.VANTA.CLOUDS({
+          el: vantaEl,
+          mouseControls: !reduceMotion,
+          touchControls: !reduceMotion,
+          gyroControls: false,
+          minHeight: 200.0,
+          minWidth: 200.0,
+          skyColor: 0xbcd4e6,        // soft blue-gray
+          cloudColor: 0xf2f5f8,      // off-white (paper)
+          cloudShadowColor: 0x9aa4b2,// theme gray
+          sunColor: 0x1e9be0,        // sea-bright
+          sunGlareColor: 0x0a6ebd,   // sea
+          sunlightColor: 0xffffff,
+          speed: reduceMotion ? 0 : 0.9,
+        });
+        if (canvas) canvas.style.display = 'none';
+        return;
+      } catch (e) { console.warn('Vanta failed, using particle fallback', e); }
+    }
+    initParticles();
+  }
+
+  /* ── Canvas particle background (fallback) ───────────────────────────── */
+  function initParticles() {
     const canvas = document.getElementById('bg-canvas');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -182,10 +210,12 @@
   function heroIntro() {
     if (!hasGSAP || reduceMotion) return;
     const spans = gsap.utils.toArray('.hero__title .line > span');
+    if (!spans.length) return; // not on a page with a hero
     gsap.from(spans, {
       yPercent: 115, duration: 1.1, ease: 'power4.out', stagger: 0.08,
     });
-    gsap.from('.hero__meta, .hero__scroll', {
+    const meta = gsap.utils.toArray('.hero__meta, .hero__scroll');
+    if (meta.length) gsap.from(meta, {
       opacity: 0, y: 20, duration: 1, ease: 'power3.out', delay: 0.5, stagger: 0.1,
     });
   }
