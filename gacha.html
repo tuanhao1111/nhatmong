@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="vi" class="no-js">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gacha — Nhất Mộng</title>
+  <meta name="description" content="Khu quay Gacha — thử vận may săn vật phẩm hiếm." />
+  <script>document.documentElement.classList.remove('no-js');</script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/gacha.css" />
+</head>
+<body data-lang="vi" class="page-sub">
+
+  <audio id="bg-music" src="phung thanh do.mp3" loop preload="auto"></audio>
+  <canvas id="bg-canvas"></canvas>
+  <div class="grain"></div>
+  <div class="cursor" id="cursor-dot"></div>
+  <div class="cursor cursor--ring" id="cursor-ring"></div>
+
+  <!-- Nav -->
+  <nav class="nav">
+    <a href="index.html" class="nav__brand" data-cursor>NHẤT<b>MỘNG</b></a>
+    <div class="nav__right">
+      <div class="lang-toggle" id="lang-toggle">
+        <button data-set-lang="vi" class="active">VI</button>
+        <button data-set-lang="en">EN</button>
+      </div>
+      <button class="menu-btn" id="menu-btn" data-cursor aria-label="Menu">
+        <span></span><span></span><em>Menu</em>
+      </button>
+    </div>
+  </nav>
+
+  <div class="menu-overlay" id="menu-overlay" aria-hidden="true">
+    <nav class="menu-nav">
+      <a href="index.html" class="menu-link" data-cursor><span class="menu-no">01</span><span data-vi>Trang chủ</span><span data-en>Home</span></a>
+      <a href="phim.html" class="menu-link" data-cursor><span class="menu-no">02</span><span data-vi>Xem phim</span><span data-en>Movies</span></a>
+      <a href="gacha.html" class="menu-link" data-cursor><span class="menu-no">03</span><span data-vi>Quay Gacha</span><span data-en>Gacha</span></a>
+      <a href="index.html#contact" class="menu-link" data-cursor><span class="menu-no">04</span><span data-vi>Liên hệ</span><span data-en>Contact</span></a>
+    </nav>
+    <div class="menu-foot">
+      <a href="https://discord.gg/jnbNkaNZ" target="_blank" rel="noopener" data-cursor>Discord — emancomchua</a>
+      <span>© 2026 Nhất Mộng</span>
+    </div>
+  </div>
+
+  <main class="gacha-page">
+    <header class="page-head">
+      <div class="eyebrow"><span data-vi>Quay Gacha</span><span data-en>Gacha</span> · 03</div>
+      <h1 class="page-title">GACHA</h1>
+      <p class="page-sub-text">
+        <span data-vi>Thử vận may — săn vật phẩm hiếm R · SR · SSR.</span>
+        <span data-en>Try your luck — hunt for rare R · SR · SSR items.</span>
+      </p>
+    </header>
+
+    <section class="gacha-stage">
+      <!-- Orb / machine -->
+      <div class="gacha-orb" id="gacha-orb">
+        <div class="gacha-orb__core">✦</div>
+        <div class="gacha-orb__ring"></div>
+      </div>
+
+      <!-- Stats -->
+      <div class="gacha-stats">
+        <div class="gstat"><span class="gstat__num" id="stat-total">0</span><span class="gstat__lbl"><span data-vi>Lượt quay</span><span data-en>Pulls</span></span></div>
+        <div class="gstat"><span class="gstat__num" id="stat-ssr">0</span><span class="gstat__lbl">SSR</span></div>
+        <div class="gstat"><span class="gstat__num" id="stat-pity">0</span><span class="gstat__lbl"><span data-vi>Cận SSR</span><span data-en>Pity</span></span></div>
+      </div>
+
+      <!-- Controls -->
+      <div class="gacha-controls">
+        <button class="gbtn gbtn--1" id="pull-1" data-cursor>
+          <span data-vi>Quay ×1</span><span data-en>Pull ×1</span>
+        </button>
+        <button class="gbtn gbtn--10" id="pull-10" data-cursor>
+          <span data-vi>Quay ×10</span><span data-en>Pull ×10</span>
+        </button>
+        <button class="gbtn gbtn--ghost" id="reset" data-cursor>
+          <span data-vi>Đặt lại</span><span data-en>Reset</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Collection / history -->
+    <section class="gacha-collection">
+      <div class="eyebrow"><span data-vi>Bộ sưu tập</span><span data-en>Collection</span></div>
+      <div class="gacha-grid" id="gacha-grid">
+        <p class="gacha-empty"><span data-vi>Chưa có gì — quay thử ngay!</span><span data-en>Nothing yet — try a pull!</span></p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Reveal modal -->
+  <div class="reveal" id="reveal" aria-hidden="true">
+    <div class="reveal__inner" id="reveal-inner"></div>
+    <button class="reveal__close" id="reveal-close" data-cursor>
+      <span data-vi>Đóng</span><span data-en>Close</span>
+    </button>
+  </div>
+
+  <!-- Audio widget -->
+  <div class="audio-widget" id="audio-widget" data-cursor>
+    <span class="eq"><i></i><i></i><i></i></span>
+    <span id="audio-label" data-vi>Phát nhạc</span>
+    <span id="audio-label-en" data-en>Play music</span>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
+  <script src="js/site.js"></script>
+  <script src="js/gacha.js"></script>
+</body>
+</html>

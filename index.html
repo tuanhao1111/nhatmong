@@ -1,426 +1,175 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" class="no-js">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Nhất Mộng - Quản Lý Bang Hội</title>
-  
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400;1,600&family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  
-  <link rel="stylesheet" href="css/variables.css">
-  <link rel="stylesheet" href="css/utilities.css">
-  
-  <style>
-    /* ─────────────────────────────────────────────────────────────────────────────
-       LANDING PAGE - WUXIA AESTHETIC WITH GLASSMORPHISM
-       ───────────────────────────────────────────────────────────────────────────── */
-    body {
-      color: var(--text-primary);
-      font-family: var(--font-sans);
-      margin: 0;
-      overflow-x: hidden;
-    }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nhất Mộng — Creative Portfolio</title>
+  <meta name="description" content="Personal portfolio — code & interactive design." />
 
-    /* Vanta.js Background */
-    #vanta-bg {
-      position: fixed;
-      inset: 0;
-      z-index: -2;
-      width: 100vw;
-      height: 100vh;
-    }
+  <script>document.documentElement.classList.remove('no-js');</script>
 
-    /* Navbar */
-    .navbar {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      padding: var(--sp-4) var(--sp-8);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      z-index: 100;
-      background: var(--glass-bg);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      border-bottom: 1px solid var(--glass-border);
-      box-shadow: var(--glass-shadow);
-    }
-    .nav-brand {
-      display: flex;
-      align-items: center;
-      gap: var(--sp-3);
-    }
-    .nav-logo {
-      font-family: var(--font-display);
-      font-size: 28px;
-      font-weight: 800;
-      color: var(--accent-primary);
-      text-shadow: var(--sh-glow-primary);
-    }
-    .nav-title {
-      font-family: var(--font-display);
-      font-size: var(--fs-2xl);
-      font-weight: var(--fw-bold);
-      color: var(--accent-gold);
-      letter-spacing: var(--tr-widest);
-    }
-    
-    .nav-btn {
-      padding: var(--sp-2) var(--sp-6);
-      background: transparent;
-      border: 1px solid var(--accent-gold);
-      color: var(--accent-gold);
-      font-family: var(--font-display);
-      font-weight: var(--fw-bold);
-      font-size: var(--fs-md);
-      text-transform: uppercase;
-      letter-spacing: var(--tr-wider);
-      cursor: pointer;
-      transition: all var(--dur-base) var(--ease-out);
-      position: relative;
-      overflow: hidden;
-      border-radius: var(--r-sm);
-    }
-    .nav-btn::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: var(--accent-gold);
-      transform: scaleX(0);
-      transform-origin: right;
-      transition: transform var(--dur-base) var(--ease-out);
-      z-index: -1;
-    }
-    .nav-btn:hover { color: #000; box-shadow: var(--sh-glow-gold); }
-    .nav-btn:hover::before { transform: scaleX(1); transform-origin: left; }
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
 
-    /* Hero Section */
-    .hero {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: var(--sp-8);
-      position: relative;
-    }
-    
-    .hero-content {
-      max-width: 800px;
-      z-index: 10;
-      animation: fadeIn 1.5s ease-out;
-    }
-    
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    /* Hero Title */
-    .hero-title {
-      font-family: var(--font-display);
-      font-size: 5rem;
-      font-weight: 700;
-      line-height: 1.1;
-      margin-bottom: var(--sp-4);
-      background: linear-gradient(to bottom, #f3e5ab, #d4af37);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      text-shadow: 2px 2px 10px rgba(0,0,0,0.8);
-      letter-spacing: var(--tr-widest);
-    }
-    
-    .hero-subtitle {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: var(--fs-2xl);
-      color: var(--text-secondary);
-      margin-bottom: var(--sp-8);
-      font-style: italic;
-      letter-spacing: var(--tr-wide);
-    }
-
-    /* Buttons */
-    .btn-group {
-      display: flex;
-      gap: var(--sp-4);
-      justify-content: center;
-      margin-top: var(--sp-8);
-    }
-    
-    .btn-primary {
-      padding: var(--sp-4) var(--sp-8);
-      background: var(--accent-primary);
-      color: #fff;
-      font-family: var(--font-display);
-      font-size: var(--fs-lg);
-      font-weight: var(--fw-bold);
-      letter-spacing: var(--tr-wider);
-      border: 1px solid #ff4d4d;
-      border-radius: var(--r-sm);
-      cursor: pointer;
-      transition: all var(--dur-base) var(--ease-out);
-      box-shadow: 0 0 15px rgba(138, 21, 27, 0.4);
-      position: relative;
-    }
-    .btn-primary:hover {
-      background: var(--accent-primary-hover);
-      transform: translateY(-2px);
-      box-shadow: var(--sh-glow-primary);
-    }
-
-    .btn-secondary {
-      padding: var(--sp-4) var(--sp-8);
-      background: var(--glass-bg);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      color: var(--accent-gold);
-      font-family: var(--font-display);
-      font-size: var(--fs-lg);
-      font-weight: var(--fw-bold);
-      letter-spacing: var(--tr-wider);
-      border: 1px solid var(--accent-gold);
-      border-radius: var(--r-sm);
-      cursor: pointer;
-      transition: all var(--dur-base) var(--ease-out);
-    }
-    .btn-secondary:hover {
-      background: rgba(212, 175, 55, 0.15);
-      box-shadow: var(--sh-glow-gold);
-    }
-
-    /* Feature Cards (Glassmorphism) */
-    .features-section {
-      padding: var(--sp-12) var(--sp-8);
-      position: relative;
-      z-index: 10;
-    }
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: var(--sp-6);
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    .feature-card {
-      background: var(--glass-bg);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid var(--glass-border);
-      border-radius: var(--r-md);
-      padding: var(--sp-8);
-      text-align: center;
-      transition: all var(--dur-base) var(--ease-out);
-      position: relative;
-      box-shadow: var(--glass-shadow);
-    }
-    
-    .feature-card:hover {
-      border-color: var(--accent-gold);
-      transform: translateY(-8px);
-      box-shadow: 0 15px 35px rgba(0,0,0,0.8), 0 0 15px rgba(212, 175, 55, 0.2);
-    }
-
-    .feature-icon {
-      font-size: 48px;
-      margin-bottom: var(--sp-4);
-      color: var(--accent-primary);
-      text-shadow: var(--sh-glow-primary);
-    }
-    .feature-title {
-      font-family: var(--font-display);
-      font-size: var(--fs-xl);
-      font-weight: var(--fw-bold);
-      color: var(--accent-gold);
-      margin-bottom: var(--sp-3);
-      letter-spacing: var(--tr-wide);
-    }
-    .feature-desc {
-      color: var(--text-secondary);
-      line-height: var(--lh-relaxed);
-      font-size: var(--fs-md);
-    }
-
-    /* Audio Player Widget */
-    .audio-widget {
-      position: fixed;
-      bottom: var(--sp-6);
-      right: var(--sp-6);
-      z-index: 1000;
-      background: var(--glass-bg);
-      backdrop-filter: blur(10px);
-      border: 1px solid var(--accent-gold);
-      border-radius: var(--r-full);
-      display: flex;
-      align-items: center;
-      gap: var(--sp-2);
-      padding: var(--sp-2) var(--sp-4);
-      box-shadow: var(--glass-shadow);
-      cursor: pointer;
-      transition: all var(--dur-base);
-    }
-    .audio-widget:hover {
-      background: rgba(212, 175, 55, 0.1);
-      box-shadow: var(--sh-glow-gold);
-    }
-    .audio-icon {
-      font-size: 20px;
-      color: var(--accent-gold);
-      animation: pulseMusic 2s infinite;
-      animation-play-state: paused;
-    }
-    .audio-icon.playing {
-      animation-play-state: running;
-    }
-    .audio-text {
-      font-family: var(--font-display);
-      font-size: var(--fs-sm);
-      color: var(--text-secondary);
-      font-weight: var(--fw-bold);
-      letter-spacing: var(--tr-wider);
-    }
-    @keyframes pulseMusic {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.2); text-shadow: var(--sh-glow-gold); }
-      100% { transform: scale(1); }
-    }
-
-  </style>
+  <link rel="stylesheet" href="css/main.css" />
 </head>
-<body>
+<body data-lang="vi">
 
-  <!-- Audio Element -->
+  <!-- Background music -->
   <audio id="bg-music" src="phung thanh do.mp3" loop preload="auto"></audio>
 
-  <!-- Background Vanta -->
-  <div id="vanta-bg"></div>
+  <!-- Animated background -->
+  <canvas id="bg-canvas"></canvas>
+  <div class="grain"></div>
 
-  <!-- Navbar -->
-  <nav class="navbar">
-    <div class="nav-brand">
-      <div class="nav-logo">NM</div>
-      <div class="nav-title">NHẤT MỘNG</div>
-    </div>
-    <div class="nav-links">
-      <button class="nav-btn" onclick="startAudioAndGo('login.html')">Gia Nhập</button>
+  <!-- Custom cursor -->
+  <div class="cursor" id="cursor-dot"></div>
+  <div class="cursor cursor--ring" id="cursor-ring"></div>
+
+  <!-- Splash loader -->
+  <div id="splash">
+    <div class="splash-word"><span data-vi>Đang vào giang hồ</span><span data-en>Entering</span></div>
+    <div class="splash-count" id="splash-count">0</div>
+    <div class="splash-bar" id="splash-bar"></div>
+  </div>
+
+  <!-- Nav -->
+  <nav class="nav">
+    <a href="index.html" class="nav__brand" data-cursor>NHẤT<b>MỘNG</b></a>
+    <div class="nav__right">
+      <div class="lang-toggle" id="lang-toggle">
+        <button data-set-lang="vi" class="active">VI</button>
+        <button data-set-lang="en">EN</button>
+      </div>
+      <button class="menu-btn" id="menu-btn" data-cursor aria-label="Menu">
+        <span></span><span></span>
+        <em data-vi>Menu</em><em data-en>Menu</em>
+      </button>
     </div>
   </nav>
 
-  <!-- Hero Section -->
-  <section class="hero">
-    <div class="hero-content">
-      <h1 class="hero-title">Nhất Mộng Giang Hồ</h1>
-      <p class="hero-subtitle">"Thiên hạ phong vân xuất ngã bối,<br>Nhất nhập giang hồ tuế nguyệt thôi."</p>
-      
-      <div class="btn-group">
-        <button class="btn-primary" onclick="startAudioAndGo('login.html')">Tiến Nhập Giang Hồ</button>
-        <button class="btn-secondary" onclick="document.getElementById('features').scrollIntoView({behavior: 'smooth'})">Cẩm Nang Bang Hội</button>
-      </div>
+  <!-- Fullscreen menu overlay -->
+  <div class="menu-overlay" id="menu-overlay" aria-hidden="true">
+    <nav class="menu-nav">
+      <a href="index.html" class="menu-link" data-cursor>
+        <span class="menu-no">01</span><span data-vi>Trang chủ</span><span data-en>Home</span>
+      </a>
+      <a href="phim.html" class="menu-link" data-cursor>
+        <span class="menu-no">02</span><span data-vi>Xem phim</span><span data-en>Movies</span>
+      </a>
+      <a href="gacha.html" class="menu-link" data-cursor>
+        <span class="menu-no">03</span><span data-vi>Quay Gacha</span><span data-en>Gacha</span>
+      </a>
+      <a href="index.html#contact" class="menu-link" data-cursor>
+        <span class="menu-no">04</span><span data-vi>Liên hệ</span><span data-en>Contact</span>
+      </a>
+    </nav>
+    <div class="menu-foot">
+      <a href="https://discord.gg/jnbNkaNZ" target="_blank" rel="noopener" data-cursor>Discord — emancomchua</a>
+      <span>© 2026 Nhất Mộng</span>
     </div>
-  </section>
-
-  <!-- Features -->
-  <section class="features-section" id="features">
-    <div class="features-grid">
-      <div class="feature-card">
-        <div class="feature-icon">📜</div>
-        <h3 class="feature-title">Sổ Cái Điểm Danh</h3>
-        <p class="feature-desc">Ghi nhận công trạng, quản lý tham gia hoạt động, theo dõi chuyên cần của từng bằng hữu trong bang.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">⚔️</div>
-        <h3 class="feature-title">Chiến Thuật Công Thành</h3>
-        <p class="feature-desc">Hệ thống phân chia tổ đội, sắp xếp vị trí chiến đấu và chiến thuật linh hoạt trên sa bàn.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">💰</div>
-        <h3 class="feature-title">Quản Lý Ngân Quỹ</h3>
-        <p class="feature-desc">Minh bạch thu chi ngân phiếu bang hội, hệ thống chia thưởng công bằng cho mọi thành viên.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- Audio Widget -->
-  <div class="audio-widget" onclick="toggleAudio()">
-    <div class="audio-icon" id="audio-icon">♫</div>
-    <div class="audio-text" id="audio-text">Phát Nhạc</div>
   </div>
 
-  <!-- Vanta.js Scripts -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.clouds2.min.js"></script>
-  
-  <script>
-    // Initialize Vanta.js Background
-    document.addEventListener("DOMContentLoaded", function() {
-      VANTA.CLOUDS2({
-        el: "#vanta-bg",
-        mouseControls: true,
-        touchControls: true,
-        gyroControls: false,
-        minHeight: 200.00,
-        minWidth: 200.00,
-        scale: 1.00,
-        speed: 2.70,
-        // Dùng ảnh noise mặc định của Vanta nếu thư mục local không có
-        texturePath: "https://cdn.jsdelivr.net/npm/vanta@latest/gallery/noise.png"
-      });
-    });
+  <main>
+    <!-- HERO -->
+    <section class="hero" id="hero">
+      <h1 class="hero__title">
+        <span class="line"><span data-vi>Sáng tạo</span><span data-en>Creative</span></span>
+        <span class="line"><span class="accent" data-vi>kỹ thuật số</span><span class="accent" data-en>developer</span></span>
+        <span class="line"><span data-vi>& thiết kế</span><span data-en>& designer</span></span>
+      </h1>
+      <div class="hero__meta">
+        <span><span data-vi>Tên</span><span data-en>Name</span> · <b>Nhất Mộng</b></span>
+        <span><span data-vi>Vai trò</span><span data-en>Role</span> · <b><span data-vi>Lập trình & Thiết kế</span><span data-en>Code & Design</span></b></span>
+        <span><span data-vi>Cơ sở</span><span data-en>Based in</span> · <b>Việt Nam</b></span>
+        <span>© 2026</span>
+      </div>
+      <div class="hero__scroll">
+        <span class="dot"></span><span data-vi>Cuộn xuống</span><span data-en>Scroll</span>
+      </div>
+    </section>
 
-    // Audio Control
-    const bgMusic = document.getElementById('bg-music');
-    const audioIcon = document.getElementById('audio-icon');
-    const audioText = document.getElementById('audio-text');
-    let isPlaying = false;
+    <!-- MARQUEE -->
+    <div class="marquee" id="marquee">
+      <div class="marquee__track">
+        <span>Creative</span><span class="star">✦</span><span>Interactive</span><span class="star">✦</span>
+        <span>Motion</span><span class="star">✦</span><span>Design</span><span class="star">✦</span>
+        <span>Creative</span><span class="star">✦</span><span>Interactive</span><span class="star">✦</span>
+        <span>Motion</span><span class="star">✦</span><span>Design</span><span class="star">✦</span>
+      </div>
+    </div>
 
-    // Check if audio was playing in previous session (localStorage)
-    const wasPlaying = localStorage.getItem('music_playing') === 'true';
+    <!-- EXPLORE -->
+    <section class="section--dark" id="explore">
+      <div class="inner section" style="padding-left:0;padding-right:0;">
+        <div class="eyebrow"><span data-vi>Khám phá</span><span data-en>Explore</span> · 01</div>
+        <div class="explore__grid">
+          <a class="xcard anim" href="phim.html" data-cursor>
+            <div class="xcard__media xcard__media--film">
+              <span class="xcard__icon">▶</span>
+            </div>
+            <div class="xcard__head">
+              <span class="xcard__title"><span data-vi>Xem phim</span><span data-en>Movies</span></span>
+              <span class="xcard__arrow">↗</span>
+            </div>
+            <p class="xcard__desc"><span data-vi>Kho phim cập nhật liên tục — duyệt, tìm kiếm và xem ngay.</span><span data-en>Always-fresh movie library — browse, search and watch instantly.</span></p>
+          </a>
+          <a class="xcard anim" href="gacha.html" data-cursor>
+            <div class="xcard__media xcard__media--gacha">
+              <span class="xcard__icon">✦</span>
+            </div>
+            <div class="xcard__head">
+              <span class="xcard__title"><span data-vi>Quay Gacha</span><span data-en>Gacha</span></span>
+              <span class="xcard__arrow">↗</span>
+            </div>
+            <p class="xcard__desc"><span data-vi>Thử vận may — quay để săn vật phẩm hiếm R · SR · SSR.</span><span data-en>Try your luck — pull for rare R · SR · SSR items.</span></p>
+          </a>
+        </div>
+      </div>
+    </section>
 
-    function toggleAudio() {
-      if (isPlaying) {
-        bgMusic.pause();
-        isPlaying = false;
-        audioIcon.classList.remove('playing');
-        audioText.textContent = "Phát Nhạc";
-        localStorage.setItem('music_playing', 'false');
-      } else {
-        bgMusic.play().then(() => {
-          isPlaying = true;
-          audioIcon.classList.add('playing');
-          audioText.textContent = "Đang Phát";
-          localStorage.setItem('music_playing', 'true');
-        }).catch(err => {
-          console.log("Autoplay blocked:", err);
-        });
-      }
-    }
+    <!-- CONTACT -->
+    <section class="section--dark" id="contact">
+      <div class="inner section contact" style="padding-left:0;padding-right:0;">
+        <div class="eyebrow" style="justify-content:center;"><span data-vi>Liên hệ</span><span data-en>Get in touch</span> · 02</div>
+        <h2 class="contact__big">
+          <span data-vi>Cùng nhau<br><span class="accent">tạo điều gì đó</span></span>
+          <span data-en>Let's build<br><span class="accent">something</span></span>
+        </h2>
+        <a class="btn-discord" href="https://discord.gg/jnbNkaNZ" target="_blank" rel="noopener" data-cursor>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.317 4.369A19.79 19.79 0 0 0 16.558 3c-.2.36-.43.84-.59 1.22a18.27 18.27 0 0 0-3.94 0A12.6 12.6 0 0 0 11.43 3a19.74 19.74 0 0 0-3.76 1.37C3.42 8.78 2.62 13.07 2.98 17.3a19.9 19.9 0 0 0 6.06 3.06c.49-.67.93-1.38 1.3-2.13-.71-.27-1.39-.6-2.03-.99.17-.13.34-.26.5-.4 3.93 1.82 8.18 1.82 12.06 0 .16.14.33.27.5.4-.64.39-1.32.72-2.03.99.37.75.81 1.46 1.3 2.13a19.86 19.86 0 0 0 6.06-3.06c.43-4.9-.73-9.15-3.68-12.93ZM9.68 14.85c-1.18 0-2.15-1.08-2.15-2.41 0-1.33.95-2.42 2.15-2.42 1.21 0 2.18 1.09 2.16 2.42 0 1.33-.95 2.41-2.16 2.41Zm4.64 0c-1.18 0-2.15-1.08-2.15-2.41 0-1.33.95-2.42 2.15-2.42 1.21 0 2.18 1.09 2.16 2.42 0 1.33-.95 2.41-2.16 2.41Z"/></svg>
+          <span>Discord — emancomchua</span>
+        </a>
+        <div class="contact__links">
+          <span data-vi>discord.gg/jnbNkaNZ</span>
+          <span data-en>discord.gg/jnbNkaNZ</span>
+        </div>
+      </div>
+    </section>
 
-    function startAudioAndGo(url) {
-      if (!isPlaying) {
-        bgMusic.play().catch(e => console.log(e));
-        localStorage.setItem('music_playing', 'true');
-      }
-      // Small delay to let audio start before navigation
-      setTimeout(() => {
-        window.location.href = url;
-      }, 300);
-    }
+    <footer class="section--dark">
+      <div class="footer">
+        <span>© 2026 Nhất Mộng</span>
+        <span data-vi>Làm bằng ♥ với GSAP & Lenis</span>
+        <span data-en>Built with ♥ using GSAP & Lenis</span>
+        <a href="#hero" data-cursor>↑ TOP</a>
+      </div>
+    </footer>
+  </main>
 
-    // Try to autoplay on load if it was playing before
-    window.addEventListener('DOMContentLoaded', () => {
-      if (wasPlaying) {
-        // Many browsers will still block this unless user clicks first
-        bgMusic.play().then(() => {
-          isPlaying = true;
-          audioIcon.classList.add('playing');
-          audioText.textContent = "Đang Phát";
-        }).catch(() => {
-          console.log("Autoplay blocked on reload");
-          localStorage.setItem('music_playing', 'false');
-        });
-      }
-    });
-  </script>
+  <!-- Audio widget -->
+  <div class="audio-widget" id="audio-widget" data-cursor>
+    <span class="eq"><i></i><i></i><i></i></span>
+    <span id="audio-label" data-vi>Phát nhạc</span>
+    <span id="audio-label-en" data-en>Play music</span>
+  </div>
+
+  <!-- Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
+
+  <script src="js/site.js"></script>
 </body>
 </html>
