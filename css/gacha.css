@@ -138,26 +138,58 @@
   opacity: 0; pointer-events: none; transition: opacity var(--dur) var(--ease); padding: 1.5rem;
 }
 .reveal.open { opacity: 1; pointer-events: auto; }
-.reveal__head { font-family: var(--font-display); font-weight: 800; font-size: clamp(1.3rem, 4vw, 2rem); color: #fff; text-align: center; }
+.reveal__head { display: flex; flex-direction: column; align-items: center; gap: 0.55rem; text-align: center; }
+.reveal__eyebrow {
+  font-family: var(--font-mono); font-size: var(--fs-mono); text-transform: uppercase;
+  letter-spacing: 0.22em; color: var(--c-sea-bright);
+  display: inline-flex; align-items: center; gap: 0.7rem;
+}
+.reveal__eyebrow::before, .reveal__eyebrow::after {
+  content: ''; width: clamp(18px, 6vw, 40px); height: 1px; background: linear-gradient(90deg, transparent, var(--c-sea-bright));
+}
+.reveal__eyebrow::after { background: linear-gradient(90deg, var(--c-sea-bright), transparent); }
+.reveal__title {
+  font-family: var(--font-display); font-weight: 800; letter-spacing: -0.02em; line-height: 1.08;
+  font-size: clamp(1.6rem, 5.5vw, 2.8rem); color: #fff;
+}
 .reveal__inner {
-  display: grid; gap: 0.9rem; max-width: min(92vw, 760px);
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); justify-items: center;
+  display: grid; gap: clamp(0.8rem, 2vw, 1.1rem); max-width: min(92vw, 820px);
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); justify-items: center;
 }
 .wcard {
-  position: relative; overflow: hidden; width: clamp(120px, 22vw, 170px); aspect-ratio: 3/4; border-radius: 14px;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem;
-  background: radial-gradient(120% 120% at 50% 0%, rgba(244,183,64,0.16), #11151b 70%);
-  border: 1.5px solid var(--r-ssr); padding: 0.8rem; text-align: center; opacity: 0;
+  position: relative; overflow: hidden; width: clamp(150px, 26vw, 200px); border-radius: 18px;
+  display: flex; flex-direction: column; align-items: center; gap: 0.75rem;
+  padding: clamp(1.4rem, 4vw, 2rem) 1rem 1.4rem;
+  background:
+    radial-gradient(120% 75% at 50% -10%, rgba(244,183,64,0.20), transparent 70%),
+    linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.015));
+  border: 1px solid rgba(244,183,64,0.32);
+  box-shadow: 0 26px 60px -26px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.08);
+  opacity: 0;
 }
-.wcard::after {
-  content: ''; position: absolute; inset: -40%; z-index: 0;
-  background: conic-gradient(from 0deg, transparent, var(--r-ssr), transparent 30%);
-  animation: spin 4s linear infinite; opacity: 0.22;
+.wcard::before { /* light sweep */
+  content: ''; position: absolute; top: 0; left: -60%; width: 45%; height: 100%; z-index: 0;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,0.13), transparent);
+  transform: skewX(-18deg); animation: wshimmer 3.6s ease-in-out infinite;
 }
+@keyframes wshimmer { 0%, 55% { left: -60%; } 100% { left: 150%; } }
 .wcard > * { position: relative; z-index: 1; }
-.wcard__crown { font-size: clamp(1.8rem, 5vw, 2.6rem); }
-.wcard__name { font-family: var(--font-display); font-weight: 700; font-size: clamp(0.95rem, 2.6vw, 1.2rem); color: #fff; word-break: break-word; line-height: 1.2; }
-.wcard__tag { font-family: var(--font-mono); font-weight: 700; font-size: 0.65rem; padding: 2px 9px; border-radius: 999px; background: var(--r-ssr); color: #1a1407; text-transform: uppercase; letter-spacing: 0.08em; }
+.wcard__rank { font-family: var(--font-mono); font-weight: 700; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--r-ssr); }
+.wcard__medal {
+  width: clamp(50px, 13vw, 64px); aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center;
+  font-size: clamp(1.4rem, 3.6vw, 1.9rem); color: #5a3d0a;
+  background: radial-gradient(circle at 35% 28%, #ffe9a8, #f4b740 52%, #b9831f);
+  box-shadow: 0 10px 26px -6px rgba(244,183,64,0.6), inset 0 0 0 2px rgba(255,255,255,0.4);
+}
+.wcard__name {
+  font-family: var(--font-display); font-weight: 800; font-size: clamp(1.05rem, 3vw, 1.4rem);
+  color: #fff; line-height: 1.15; word-break: break-word; text-align: center;
+}
+.wcard__tag {
+  font-family: var(--font-mono); font-weight: 700; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.14em;
+  padding: 0.3rem 0.75rem; border-radius: 999px; color: var(--r-ssr);
+  background: rgba(244,183,64,0.14); border: 1px solid rgba(244,183,64,0.34);
+}
 .reveal__close {
   padding: 0.8rem 2rem; border-radius: 999px; background: #fff; color: #000;
   font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.12em; font-size: var(--fs-mono); font-weight: 700;

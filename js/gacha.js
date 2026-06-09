@@ -175,9 +175,10 @@
   }
 
   function showReveal(winners) {
-    el.revealInner.innerHTML = winners.map((w) => `
+    el.revealInner.innerHTML = winners.map((w, i) => `
       <div class="wcard">
-        <span class="wcard__crown">🏆</span>
+        <span class="wcard__rank">#${i + 1}</span>
+        <span class="wcard__medal">✦</span>
         <span class="wcard__name">${escapeHTML(w)}</span>
         <span class="wcard__tag">${t('Thẻ tháng', 'Monthly card')}</span>
       </div>`).join('');
