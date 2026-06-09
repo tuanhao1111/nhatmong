@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gacha — Nhất Mộng</title>
-  <meta name="description" content="Khu quay Gacha — thử vận may săn vật phẩm hiếm." />
+  <title>Quay Thưởng Bang Chiến — Nhất Mộng</title>
+  <meta name="description" content="Vòng quay may mắn — bốc ngẫu nhiên thành viên trúng thẻ tháng Bang Chiến." />
   <script>document.documentElement.classList.remove('no-js');</script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -40,7 +40,7 @@
     <nav class="menu-nav">
       <a href="index.html" class="menu-link" data-cursor><span class="menu-no">01</span><span data-vi>Trang chủ</span><span data-en>Home</span></a>
       <a href="phim.html" class="menu-link" data-cursor><span class="menu-no">02</span><span data-vi>Xem phim</span><span data-en>Movies</span></a>
-      <a href="gacha.html" class="menu-link" data-cursor><span class="menu-no">03</span><span data-vi>Quay Gacha</span><span data-en>Gacha</span></a>
+      <a href="gacha.html" class="menu-link" data-cursor><span class="menu-no">03</span><span data-vi>Quay thưởng</span><span data-en>Raffle</span></a>
       <a href="index.html#contact" class="menu-link" data-cursor><span class="menu-no">04</span><span data-vi>Liên hệ</span><span data-en>Contact</span></a>
     </nav>
     <div class="menu-foot">
@@ -51,53 +51,109 @@
 
   <main class="gacha-page">
     <header class="page-head">
-      <div class="eyebrow"><span data-vi>Quay Gacha</span><span data-en>Gacha</span> · 03</div>
-      <h1 class="page-title">GACHA</h1>
+      <div class="eyebrow"><span data-vi>Quay thưởng Bang Chiến</span><span data-en>Guild Raffle</span> · 03</div>
+      <h1 class="page-title">QUAY THƯỞNG</h1>
       <p class="page-sub-text">
-        <span data-vi>Thử vận may — săn vật phẩm hiếm R · SR · SSR.</span>
-        <span data-en>Try your luck — hunt for rare R · SR · SSR items.</span>
+        <span data-vi>Vòng quay may mắn — bốc ngẫu nhiên anh em trúng thẻ tháng.</span>
+        <span data-en>Lucky draw — randomly pick members to win monthly cards.</span>
       </p>
     </header>
 
+    <!-- ── Stage: the spinner ─────────────────────────────────────────── -->
     <section class="gacha-stage">
-      <!-- Orb / machine -->
-      <div class="gacha-orb" id="gacha-orb">
-        <div class="gacha-orb__core">✦</div>
-        <div class="gacha-orb__ring"></div>
+      <!-- Slot display -->
+      <div class="raffle-slot" id="raffle-slot">
+        <div class="raffle-slot__label"><span data-vi>Người may mắn</span><span data-en>Lucky one</span></div>
+        <div class="raffle-slot__name" id="slot-name">—</div>
+        <div class="raffle-slot__sub" id="slot-sub"><span data-vi>Nhấn “Quay” để bắt đầu</span><span data-en>Press “Spin” to start</span></div>
       </div>
 
       <!-- Stats -->
       <div class="gacha-stats">
-        <div class="gstat"><span class="gstat__num" id="stat-total">0</span><span class="gstat__lbl"><span data-vi>Lượt quay</span><span data-en>Pulls</span></span></div>
-        <div class="gstat"><span class="gstat__num" id="stat-ssr">0</span><span class="gstat__lbl">SSR</span></div>
-        <div class="gstat"><span class="gstat__num" id="stat-pity">0</span><span class="gstat__lbl"><span data-vi>Cận SSR</span><span data-en>Pity</span></span></div>
+        <div class="gstat"><span class="gstat__num" id="stat-members">0</span><span class="gstat__lbl"><span data-vi>Thành viên</span><span data-en>Members</span></span></div>
+        <div class="gstat"><span class="gstat__num" id="stat-prizes">2</span><span class="gstat__lbl"><span data-vi>Số thẻ</span><span data-en>Cards</span></span></div>
+        <div class="gstat"><span class="gstat__num" id="stat-draws">0</span><span class="gstat__lbl"><span data-vi>Lần quay</span><span data-en>Draws</span></span></div>
+      </div>
+
+      <!-- Prize count selector -->
+      <div class="raffle-prizes" id="raffle-prizes" role="group" aria-label="Số thẻ">
+        <span class="raffle-prizes__lbl"><span data-vi>Số người trúng</span><span data-en>Winners</span></span>
+        <button class="pchip" data-prize="2">2</button>
+        <button class="pchip active" data-prize="3">3</button>
+        <button class="pchip" data-prize="4">4</button>
       </div>
 
       <!-- Controls -->
       <div class="gacha-controls">
-        <button class="gbtn gbtn--1" id="pull-1" data-cursor>
-          <span data-vi>Quay ×1</span><span data-en>Pull ×1</span>
+        <button class="gbtn gbtn--10" id="spin" data-cursor>
+          <span data-vi>Quay thưởng</span><span data-en>Spin</span>
         </button>
-        <button class="gbtn gbtn--10" id="pull-10" data-cursor>
-          <span data-vi>Quay ×10</span><span data-en>Pull ×10</span>
-        </button>
-        <button class="gbtn gbtn--ghost" id="reset" data-cursor>
-          <span data-vi>Đặt lại</span><span data-en>Reset</span>
+        <button class="gbtn gbtn--ghost" id="clear-winners" data-cursor>
+          <span data-vi>Xoá kết quả</span><span data-en>Clear results</span>
         </button>
       </div>
     </section>
 
-    <!-- Collection / history -->
-    <section class="gacha-collection">
-      <div class="eyebrow"><span data-vi>Bộ sưu tập</span><span data-en>Collection</span></div>
-      <div class="gacha-grid" id="gacha-grid">
-        <p class="gacha-empty"><span data-vi>Chưa có gì — quay thử ngay!</span><span data-en>Nothing yet — try a pull!</span></p>
+    <!-- ── Members manager ─────────────────────────────────────────────── -->
+    <section class="raffle-block">
+      <div class="eyebrow"><span data-vi>Danh sách thành viên</span><span data-en>Member list</span></div>
+      <p class="raffle-hint">
+        <span data-vi>Mỗi tên một dòng. Danh sách được lưu tự động trên máy bạn.</span>
+        <span data-en>One name per line. The list is saved locally on your device.</span>
+      </p>
+      <textarea id="member-input" class="raffle-textarea" spellcheck="false"
+        placeholder="Lạc gấu gấu&#10;Một Bông Hoa Nhỏ&#10;..."></textarea>
+      <div class="raffle-actions">
+        <button class="gbtn gbtn--1" id="save-members" data-cursor>
+          <span data-vi>Lưu danh sách</span><span data-en>Save list</span>
+        </button>
+        <span class="raffle-count" id="member-count"></span>
       </div>
+      <div class="raffle-chips" id="member-chips"></div>
+    </section>
+
+    <!-- ── History ─────────────────────────────────────────────────────── -->
+    <section class="raffle-block">
+      <div class="eyebrow"><span data-vi>Lịch sử quay</span><span data-en>History</span></div>
+      <div class="raffle-history" id="raffle-history">
+        <p class="gacha-empty"><span data-vi>Chưa có lần quay nào.</span><span data-en>No draws yet.</span></p>
+      </div>
+      <button class="gbtn gbtn--ghost raffle-history__reset" id="reset-history" data-cursor>
+        <span data-vi>Xoá lịch sử</span><span data-en>Clear history</span>
+      </button>
+    </section>
+
+    <!-- ── Rules / announcement ───────────────────────────────────────── -->
+    <section class="raffle-block">
+      <details class="raffle-rules" id="raffle-rules" open>
+        <summary data-cursor>
+          <span data-vi>📜 Nội quy &amp; thể lệ quay thưởng</span>
+          <span data-en>📜 Rules &amp; announcement</span>
+        </summary>
+        <div class="raffle-rules__body">
+          <h3>🎉 THÔNG BÁO SIÊU HẤP DẪN CHO BANG CHIẾN CÁC KỲ TỚI !!!!</h3>
+          <p>🌈 Được sự tài trợ từ <b>@Lạc gấu gấu</b>, bang sẽ có quà cho tất cả anh chị em trong bang, không phân biệt chức vụ. 🌈</p>
+          <p><b>Phần thưởng:</b> GA 2 – 4 thẻ tháng / Chu Kỳ<br>
+             <b>Phạm vi:</b> tất cả thành viên bang.</p>
+          <p>🚨 Luật chơi cực dễ, chỉ cần anh chị em lưu ý:</p>
+          <ol>
+            <li>Phải có mặt đúng giờ của 2 tuần bang chiến trong chu kỳ (gồm đánh chính và dự bị). Online trễ sau <b>19h50</b> (không có báo trước) sẽ mất quyền tham gia.</li>
+            <li>Phần thưởng sẽ làm mới mỗi tháng (2 chu kỳ BC sẽ reset người nhận thưởng).</li>
+            <li>Thời gian quay thưởng là <b>21 giờ Chủ Nhật</b> (tuần 2 cùng kỳ) hoặc sau sự kiện Giải cứu mỹ nhân.</li>
+            <li>Bang Chiến thắng càng nhiều giải càng to.</li>
+            <li>Thưởng dành cho thành viên bang (bao gồm bang chúng và học việc) có tham gia đánh bang chiến / scrim.</li>
+            <li>Leader / Member có quyền góp ý về tác phong / thái độ của mọi người trong bang chiến / scrim (nếu bị đánh giá không tốt thì không có thưởng).</li>
+            <li>Giải thưởng được tài trợ — vui lòng liên hệ <b>@Lạc gấu gấu</b> hoặc <b>@Một Bông Hoa Nhỏ</b> nếu có vấn đề hoặc thắc mắc.</li>
+          </ol>
+          <p class="raffle-rules__foot">Đã đọc kỹ &amp; đồng thuận thì cho 1 react 🌈 nhé. Quy tắc được lưu ở phần nội quy bang để mọi người xem lại.</p>
+        </div>
+      </details>
     </section>
   </main>
 
-  <!-- Reveal modal -->
+  <!-- Winner reveal modal -->
   <div class="reveal" id="reveal" aria-hidden="true">
+    <div class="reveal__head"><span data-vi>🎊 Người trúng thưởng 🎊</span><span data-en>🎊 Winners 🎊</span></div>
     <div class="reveal__inner" id="reveal-inner"></div>
     <button class="reveal__close" id="reveal-close" data-cursor>
       <span data-vi>Đóng</span><span data-en>Close</span>

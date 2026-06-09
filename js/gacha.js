@@ -1,148 +1,149 @@
 /* =============================================================================
-   GACHA · standalone pull mechanic (no backend, localStorage only)
-   Rarities: R 79% · SR 18% · SSR 3%  ·  Pity: guaranteed SSR at 90
-   Edit the POOL below to change the prizes.
+   QUAY THƯỞNG BANG CHIẾN · random member raffle (no backend, localStorage only)
+   - Quản lý danh sách thành viên
+   - Quay ngẫu nhiên N người trúng thẻ tháng
+   - Lưu lịch sử các lần quay
    ========================================================================== */
 (function () {
   'use strict';
 
-  // ── Prize pool — EDIT HERE ────────────────────────────────────────────
-  const POOL = [
-    // R
-    { id: 'r1', icon: '🪙', vi: 'Đồng xu',     en: 'Coin',        rarity: 'R' },
-    { id: 'r2', icon: '🍙', vi: 'Cơm nắm',     en: 'Rice ball',   rarity: 'R' },
-    { id: 'r3', icon: '🧪', vi: 'Lọ thuốc',    en: 'Potion',      rarity: 'R' },
-    { id: 'r4', icon: '🪶', vi: 'Lông vũ',     en: 'Feather',     rarity: 'R' },
-    { id: 'r5', icon: '🍂', vi: 'Lá phong',    en: 'Maple leaf',  rarity: 'R' },
-    // SR
-    { id: 's1', icon: '⚔️', vi: 'Bảo kiếm',    en: 'Sword',       rarity: 'SR' },
-    { id: 's2', icon: '🛡️', vi: 'Khiên thép',  en: 'Shield',      rarity: 'SR' },
-    { id: 's3', icon: '🏹', vi: 'Cung thần',   en: 'Bow',         rarity: 'SR' },
-    { id: 's4', icon: '🔮', vi: 'Pha lê',      en: 'Crystal',     rarity: 'SR' },
-    // SSR
-    { id: 'x1', icon: '🐉', vi: 'Thần Long',   en: 'Dragon',      rarity: 'SSR' },
-    { id: 'x2', icon: '👑', vi: 'Vương Miện',  en: 'Crown',       rarity: 'SSR' },
-    { id: 'x3', icon: '🦄', vi: 'Kỳ Lân',      en: 'Unicorn',     rarity: 'SSR' },
-  ];
-
-  const RATE = { SSR: 3, SR: 18 }; // R = remainder
-  const PITY = 90;
-  const KEY = 'gacha_state_v1';
-  const RANK = { R: 0, SR: 1, SSR: 2 };
-
+  const KEY = 'guild_raffle_v1';
   const hasGSAP = typeof window.gsap !== 'undefined';
 
   // ── State ─────────────────────────────────────────────────────────────
   function load() {
     try {
       const s = JSON.parse(localStorage.getItem(KEY));
-      if (s && s.collection) return s;
+      if (s && Array.isArray(s.members)) {
+        return {
+          members: s.members,
+          prizes: [2, 3, 4].includes(s.prizes) ? s.prizes : 3,
+          history: Array.isArray(s.history) ? s.history : [],
+          draws: typeof s.draws === 'number' ? s.draws : (s.history ? s.history.length : 0),
+        };
+      }
     } catch (e) {}
-    return { total: 0, ssr: 0, pity: 0, collection: {} };
+    return { members: [], prizes: 3, history: [], draws: 0 };
   }
-  function save(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
   let state = load();
-
-  // ── Roll ──────────────────────────────────────────────────────────────
-  function pick(rarity) {
-    const list = POOL.filter((p) => p.rarity === rarity);
-    return list[Math.floor(Math.random() * list.length)];
-  }
-  function rollOne() {
-    state.pity++;
-    let rarity;
-    if (state.pity >= PITY) rarity = 'SSR';
-    else {
-      const r = Math.random() * 100;
-      if (r < RATE.SSR) rarity = 'SSR';
-      else if (r < RATE.SSR + RATE.SR) rarity = 'SR';
-      else rarity = 'R';
-    }
-    if (rarity === 'SSR') { state.pity = 0; state.ssr++; }
-    const item = pick(rarity);
-    state.total++;
-    state.collection[item.id] = (state.collection[item.id] || 0) + 1;
-    return item;
-  }
-  function pullMany(n) {
-    const results = [];
-    for (let i = 0; i < n; i++) results.push(rollOne());
-    // 10-pull SR+ guarantee
-    if (n >= 10 && !results.some((r) => RANK[r.rarity] >= 1)) {
-      const sr = pick('SR');
-      results[results.length - 1] = sr;
-      state.collection[sr.id] = (state.collection[sr.id] || 0) + 1;
-    }
-    save(state);
-    return results;
-  }
 
   // ── DOM ───────────────────────────────────────────────────────────────
   const el = {
-    orb: document.getElementById('gacha-orb'),
-    total: document.getElementById('stat-total'),
-    ssr: document.getElementById('stat-ssr'),
-    pity: document.getElementById('stat-pity'),
-    grid: document.getElementById('gacha-grid'),
+    slotName: document.getElementById('slot-name'),
+    slotSub: document.getElementById('slot-sub'),
+    statMembers: document.getElementById('stat-members'),
+    statPrizes: document.getElementById('stat-prizes'),
+    statDraws: document.getElementById('stat-draws'),
+    prizes: document.getElementById('raffle-prizes'),
+    spin: document.getElementById('spin'),
+    clearWinners: document.getElementById('clear-winners'),
+    input: document.getElementById('member-input'),
+    saveMembers: document.getElementById('save-members'),
+    memberCount: document.getElementById('member-count'),
+    chips: document.getElementById('member-chips'),
+    history: document.getElementById('raffle-history'),
+    resetHistory: document.getElementById('reset-history'),
     reveal: document.getElementById('reveal'),
     revealInner: document.getElementById('reveal-inner'),
     revealClose: document.getElementById('reveal-close'),
-    pull1: document.getElementById('pull-1'),
-    pull10: document.getElementById('pull-10'),
-    reset: document.getElementById('reset'),
   };
 
-  function nameSpans(item) {
-    return `<span data-vi>${item.vi}</span><span data-en>${item.en}</span>`;
+  const isEN = () => document.body.dataset.lang === 'en';
+  const t = (vi, en) => (isEN() ? en : vi);
+
+  function parseMembers(text) {
+    const seen = new Set();
+    return text.split('\n')
+      .map((s) => s.trim())
+      .filter((s) => {
+        if (!s) return false;
+        const k = s.toLowerCase();
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
   }
 
-  function updateStats() {
-    el.total.textContent = state.total;
-    el.ssr.textContent = state.ssr;
-    el.pity.textContent = state.pity;
+  function escapeHTML(s) {
+    return s.replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[c]));
   }
 
-  function renderCollection() {
-    const ids = Object.keys(state.collection);
-    if (!ids.length) {
-      el.grid.innerHTML = '<p class="gacha-empty"><span data-vi>Chưa có gì — quay thử ngay!</span><span data-en>Nothing yet — try a pull!</span></p>';
+  // ── Render ────────────────────────────────────────────────────────────
+  function renderStats() {
+    el.statMembers.textContent = state.members.length;
+    el.statPrizes.textContent = state.prizes;
+    el.statDraws.textContent = state.draws;
+  }
+
+  function renderMembers() {
+    el.input.value = state.members.join('\n');
+    el.memberCount.textContent = t(
+      state.members.length + ' thành viên',
+      state.members.length + ' members'
+    );
+    if (!state.members.length) {
+      el.chips.innerHTML = '';
       return;
     }
-    const items = ids
-      .map((id) => ({ item: POOL.find((p) => p.id === id), count: state.collection[id] }))
-      .filter((x) => x.item)
-      .sort((a, b) => RANK[b.item.rarity] - RANK[a.item.rarity]);
-    el.grid.innerHTML = items.map(({ item, count }) => `
-      <div class="gitem" data-rarity="${item.rarity}">
-        <span class="gitem__count">×${count}</span>
-        <span class="gitem__icon">${item.icon}</span>
-        <span class="gitem__name">${nameSpans(item)}</span>
-        <span class="gitem__tag">${item.rarity}</span>
+    el.chips.innerHTML = state.members.map((m) =>
+      `<span class="mchip">${escapeHTML(m)}</span>`
+    ).join('');
+  }
+
+  function renderPrizes() {
+    el.prizes.querySelectorAll('.pchip').forEach((b) => {
+      b.classList.toggle('active', Number(b.dataset.prize) === state.prizes);
+    });
+  }
+
+  function fmtDate(ts) {
+    const d = new Date(ts);
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function renderHistory() {
+    if (!state.history.length) {
+      el.history.innerHTML = '<p class="gacha-empty"><span data-vi>Chưa có lần quay nào.</span><span data-en>No draws yet.</span></p>';
+      return;
+    }
+    el.history.innerHTML = state.history.map((h) => `
+      <div class="hrow">
+        <span class="hrow__date">${fmtDate(h.ts)}</span>
+        <span class="hrow__winners">${h.winners.map((w) => `<b>${escapeHTML(w)}</b>`).join(', ')}</span>
       </div>`).join('');
   }
 
-  function showReveal(results) {
-    el.revealInner.innerHTML = results.map((item) => `
-      <div class="rcard" data-rarity="${item.rarity}">
-        <span class="rcard__icon">${item.icon}</span>
-        <span class="rcard__name">${nameSpans(item)}</span>
-        <span class="rcard__tag">${item.rarity}</span>
+  // ── Draw logic ────────────────────────────────────────────────────────
+  function pickWinners(n) {
+    const pool = state.members.slice();
+    const winners = [];
+    n = Math.min(n, pool.length);
+    for (let i = 0; i < n; i++) {
+      const idx = Math.floor(Math.random() * pool.length);
+      winners.push(pool.splice(idx, 1)[0]);
+    }
+    return winners;
+  }
+
+  function showReveal(winners) {
+    el.revealInner.innerHTML = winners.map((w) => `
+      <div class="wcard">
+        <span class="wcard__crown">🏆</span>
+        <span class="wcard__name">${escapeHTML(w)}</span>
+        <span class="wcard__tag">${t('Thẻ tháng', 'Monthly card')}</span>
       </div>`).join('');
     el.reveal.classList.add('open');
     el.reveal.setAttribute('aria-hidden', 'false');
-    const cards = el.revealInner.querySelectorAll('.rcard');
+    const cards = el.revealInner.querySelectorAll('.wcard');
     if (hasGSAP) {
-      gsap.to(cards, {
-        scale: 1, rotateY: 0, opacity: 1, duration: 0.5, ease: 'back.out(1.7)',
-        stagger: 0.08,
-        onComplete: () => el.reveal.classList.add('show-close'),
-      });
-      cards.forEach((c) => {
-        if (c.dataset.rarity === 'SSR') {
-          gsap.fromTo(c, { boxShadow: '0 0 0 rgba(244,183,64,0)' },
-            { boxShadow: '0 0 40px rgba(244,183,64,0.8)', duration: 0.6, yoyo: true, repeat: 3, delay: 0.5 });
-        }
-      });
+      gsap.fromTo(cards,
+        { scale: 0.3, rotateY: 90, opacity: 0 },
+        { scale: 1, rotateY: 0, opacity: 1, duration: 0.5, ease: 'back.out(1.7)', stagger: 0.12,
+          onComplete: () => el.reveal.classList.add('show-close') });
     } else {
       cards.forEach((c) => { c.style.transform = 'none'; c.style.opacity = '1'; });
       el.reveal.classList.add('show-close');
@@ -152,41 +153,106 @@
   function closeReveal() {
     el.reveal.classList.remove('open', 'show-close');
     el.reveal.setAttribute('aria-hidden', 'true');
-    updateStats();
-    renderCollection();
   }
 
   let busy = false;
-  function doPull(n) {
+  function spin() {
     if (busy) return;
+    if (state.members.length < 1) {
+      el.slotName.textContent = t('Chưa có thành viên!', 'No members!');
+      el.slotSub.innerHTML = t(
+        '<span>Thêm tên ở ô bên dưới đã nhé.</span>',
+        '<span>Add some names below first.</span>'
+      );
+      return;
+    }
     busy = true;
-    el.pull1.disabled = el.pull10.disabled = true;
-    el.orb.classList.add('charging');
-    const results = pullMany(n);
+    el.spin.disabled = true;
+
+    const winners = pickWinners(state.prizes);
+
+    // Slot shuffle animation
+    const names = state.members;
+    const start = performance.now();
+    const duration = 2600; // ms
+    function frame(now) {
+      const p = Math.min((now - start) / duration, 1);
+      // ease-out: interval grows toward the end
+      el.slotName.textContent = names[Math.floor(Math.random() * names.length)];
+      if (p < 1) {
+        const delay = 40 + p * p * 220; // 40ms -> 260ms
+        setTimeout(() => requestAnimationFrame(frame), delay);
+      } else {
+        finish(winners);
+      }
+    }
+    el.slotSub.innerHTML = '<span>' + t('Đang quay…', 'Spinning…') + '</span>';
+    requestAnimationFrame(frame);
+  }
+
+  function finish(winners) {
+    el.slotName.textContent = winners[0];
+    el.slotSub.innerHTML = '<span>' + (winners.length > 1
+      ? t('+ ' + (winners.length - 1) + ' người khác', '+ ' + (winners.length - 1) + ' more')
+      : t('Chúc mừng!', 'Congrats!')) + '</span>';
+
+    state.draws++;
+    state.history.unshift({ ts: Date.now(), winners: winners });
+    if (state.history.length > 30) state.history.length = 30;
+    save();
+    renderStats();
+    renderHistory();
+
     setTimeout(() => {
-      el.orb.classList.remove('charging');
-      showReveal(results);
+      showReveal(winners);
       busy = false;
-      el.pull1.disabled = el.pull10.disabled = false;
-    }, 850);
+      el.spin.disabled = false;
+    }, 450);
   }
 
   // ── Bind ──────────────────────────────────────────────────────────────
-  el.pull1.addEventListener('click', () => doPull(1));
-  el.pull10.addEventListener('click', () => doPull(10));
+  el.saveMembers.addEventListener('click', () => {
+    state.members = parseMembers(el.input.value);
+    save();
+    renderMembers();
+    renderStats();
+    el.memberCount.classList.add('saved');
+    setTimeout(() => el.memberCount.classList.remove('saved'), 1200);
+  });
+
+  el.prizes.addEventListener('click', (e) => {
+    const btn = e.target.closest('.pchip');
+    if (!btn) return;
+    state.prizes = Number(btn.dataset.prize);
+    save();
+    renderPrizes();
+    renderStats();
+  });
+
+  el.spin.addEventListener('click', spin);
+
+  el.clearWinners.addEventListener('click', () => {
+    el.slotName.textContent = '—';
+    el.slotSub.innerHTML = '<span data-vi>Nhấn “Quay” để bắt đầu</span><span data-en>Press “Spin” to start</span>';
+  });
+
   el.revealClose.addEventListener('click', closeReveal);
   el.reveal.addEventListener('click', (e) => { if (e.target === el.reveal) closeReveal(); });
-  el.reset.addEventListener('click', () => {
-    const msg = document.body.dataset.lang === 'en'
-      ? 'Reset all pulls and collection?' : 'Đặt lại toàn bộ lượt quay và bộ sưu tập?';
+
+  el.resetHistory.addEventListener('click', () => {
+    const msg = t('Xoá toàn bộ lịch sử quay?', 'Clear all draw history?');
     if (confirm(msg)) {
-      state = { total: 0, ssr: 0, pity: 0, collection: {} };
-      save(state);
-      updateStats();
-      renderCollection();
+      state.history = [];
+      state.draws = 0;
+      save();
+      renderStats();
+      renderHistory();
     }
   });
 
-  updateStats();
-  renderCollection();
+  // ── Init ──────────────────────────────────────────────────────────────
+  renderStats();
+  renderMembers();
+  renderPrizes();
+  renderHistory();
 })();
