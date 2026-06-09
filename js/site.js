@@ -98,7 +98,7 @@
           color1: 0x7171ff,          // violet
           color2: 0x00b9ff,          // cyan
           birdSize: 1.0,
-          quantity: 3.0,
+          quantity: 5.0,
           speedLimit: reduceMotion ? 0 : 5.0,
         });
         if (canvas) canvas.style.display = 'none';
