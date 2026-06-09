@@ -297,6 +297,102 @@
     }
   }
 
+  /* ── Skew on scroll velocity ─────────────────────────────────────────── */
+  function initScrollSkew() {
+    if (!hasGSAP || reduceMotion) return;
+    const targets = gsap.utils.toArray('.marquee__track, .page-title');
+    if (!targets.length) return;
+    const setters = targets.map((t) => gsap.quickTo(t, 'skewY', { duration: 0.5, ease: 'power3' }));
+    let resetTimer;
+    const apply = (v) => {
+      const sk = Math.max(-7, Math.min(7, v * 0.45));
+      setters.forEach((s) => s(sk));
+      clearTimeout(resetTimer);
+      resetTimer = setTimeout(() => setters.forEach((s) => s(0)), 120);
+    };
+    if (window.lenis) window.lenis.on('scroll', (e) => apply(e.velocity || 0));
+    else {
+      let last = window.scrollY, lastT = performance.now();
+      window.addEventListener('scroll', () => {
+        const now = performance.now(), y = window.scrollY;
+        apply((y - last) / Math.max(16, now - lastT) * 16);
+        last = y; lastT = now;
+      }, { passive: true });
+    }
+  }
+
+  /* ── Word-by-word reveal for big headings ────────────────────────────── */
+  function splitWords(el) {
+    const wrap = (node) => {
+      if (node.nodeType === 3) {
+        if (!node.textContent.trim()) return;
+        const frag = document.createDocumentFragment();
+        node.textContent.split(/(\s+)/).forEach((part) => {
+          if (part.trim() === '') { frag.appendChild(document.createTextNode(part)); return; }
+          const s = document.createElement('span');
+          s.className = 'word'; s.textContent = part;
+          frag.appendChild(s);
+        });
+        node.replaceWith(frag);
+      } else if (node.nodeType === 1 && node.tagName !== 'BR') {
+        [...node.childNodes].forEach(wrap);
+      }
+    };
+    [...el.childNodes].forEach(wrap);
+  }
+  function initWordReveal() {
+    if (!hasGSAP || reduceMotion) return;
+    gsap.utils.toArray('[data-split]').forEach((el) => {
+      splitWords(el);
+      if (!hasST) return;
+      const words = el.querySelectorAll('.word');
+      gsap.from(words, {
+        yPercent: 60, opacity: 0, duration: 0.7, ease: 'power3.out', stagger: 0.05,
+        scrollTrigger: { trigger: el, start: 'top 90%' },
+      });
+    });
+  }
+
+  /* ── Explore: pin + stagger the cards in (storytelling) ──────────────── */
+  function initExplorePin() {
+    if (!hasGSAP || !hasST || reduceMotion) return;
+    const sec = document.getElementById('explore');
+    if (!sec) return;
+    const cards = sec.querySelectorAll('.xcard');
+    if (!cards.length) return;
+    gsap.set(cards[0], { xPercent: -10, opacity: 0 });
+    if (cards[1]) gsap.set(cards[1], { xPercent: 10, opacity: 0 });
+    const tl = gsap.timeline({
+      scrollTrigger: { trigger: sec, start: 'top top', end: '+=90%', pin: true, scrub: 1, invalidateOnRefresh: true },
+    });
+    tl.to(cards[0], { xPercent: 0, opacity: 1, ease: 'power2.out', duration: 0.5 }, 0.05);
+    if (cards[1]) tl.to(cards[1], { xPercent: 0, opacity: 1, ease: 'power2.out', duration: 0.5 }, 0.5);
+  }
+
+  /* ── Multi-layer parallax (card art drifts) ──────────────────────────── */
+  function initParallax() {
+    if (!hasGSAP || !hasST || reduceMotion) return;
+    gsap.utils.toArray('.xcard__media').forEach((el) => {
+      gsap.fromTo(el, { yPercent: -8 }, {
+        yPercent: 8, ease: 'none',
+        scrollTrigger: { trigger: el.closest('.xcard') || el, start: 'top bottom', end: 'bottom top', scrub: true },
+      });
+    });
+  }
+
+  /* ── Nav shrink + backdrop after the hero ────────────────────────────── */
+  function initNavScroll() {
+    const nav = document.querySelector('.nav');
+    if (!nav) return;
+    const upd = () => {
+      const y = window.scrollY || document.documentElement.scrollTop;
+      nav.classList.toggle('scrolled', y > window.innerHeight * 0.6);
+    };
+    window.addEventListener('scroll', upd, { passive: true });
+    if (window.lenis) window.lenis.on('scroll', upd);
+    upd();
+  }
+
   /* ── Scroll-reveal animations ────────────────────────────────────────── */
   function initReveals() {
     if (!hasGSAP) return;
@@ -518,6 +614,11 @@
     initSpotlight();
     initScrollProgress();
     initUISound();
+    initScrollSkew();
+    initWordReveal();
+    initExplorePin();
+    initParallax();
+    initNavScroll();
     initSplash(heroIntro);
   }
 

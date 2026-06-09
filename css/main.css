@@ -217,7 +217,7 @@ main { position: relative; z-index: var(--z-content); }
   background: rgba(5, 7, 10, 0.92); pointer-events: none;
 }
 .page-head { padding: clamp(7rem, 16vh, 12rem) var(--pad-x) clamp(2rem, 5vh, 4rem); max-width: var(--maxw); margin: 0 auto; }
-.page-title { font-size: clamp(3rem, 14vw, 12rem); font-weight: 800; line-height: 0.9; letter-spacing: -0.01em; }
+.page-title { font-size: clamp(3rem, 14vw, 12rem); font-weight: 800; line-height: 1.14; letter-spacing: -0.01em; padding-top: 0.08em; }
 .page-sub-text { font-size: var(--fs-lead); color: var(--text-soft); margin-top: 1.2rem; max-width: 50ch; }
 .section { padding: clamp(5rem, 14vh, 12rem) var(--pad-x); max-width: var(--maxw); margin: 0 auto; }
 .section--dark { background: rgba(5, 7, 10, 0.94); color: var(--text); max-width: none; position: relative; }
@@ -243,9 +243,11 @@ main { position: relative; z-index: var(--z-content); }
   padding: 0 var(--pad-x); position: relative; max-width: var(--maxw); margin: 0 auto;
 }
 .hero__title {
-  font-size: var(--fs-hero); font-weight: 800; line-height: 0.86; letter-spacing: -0.04em;
+  font-size: var(--fs-hero); font-weight: 800; line-height: 1.18; letter-spacing: -0.03em;
 }
-.hero__title .line { display: block; overflow: hidden; }
+/* padding/margin pair gives Vietnamese stacked diacritics headroom inside the
+   overflow:hidden reveal mask, without shifting the layout. */
+.hero__title .line { display: block; overflow: hidden; padding-top: 0.14em; margin-top: -0.14em; }
 .hero__title .line > span { will-change: transform; }
 body[data-lang="vi"] .hero__title .line > span[data-vi] { display: inline-block; }
 .hero__title .accent { color: var(--accent); font-style: italic; }
@@ -359,7 +361,7 @@ body[data-lang="vi"] .hero__title .line > span[data-vi] { display: inline-block;
 .contact { text-align: center; }
 .contact__big {
   font-family: var(--font-display); font-weight: 800; font-size: var(--fs-hero);
-  line-height: 0.9; letter-spacing: -0.04em; margin: 1rem 0 3rem;
+  line-height: 1.22; letter-spacing: -0.03em; margin: 1rem 0 3rem;
 }
 .contact__big .accent { color: var(--c-sea-bright); }
 .btn-discord {
@@ -445,6 +447,21 @@ body[data-lang="vi"] .hero__title .line > span[data-vi] { display: inline-block;
 .sfx-toggle.on { color: var(--c-sea-bright); border-color: rgba(30, 155, 224, 0.5); }
 .sfx-toggle:hover { transform: translateY(-2px); }
 @media (hover: none), (pointer: coarse) { .sfx-toggle { display: none; } }
+
+/* ── Word-reveal split (set by JS) ─────────────────────────────────────── */
+.word { display: inline-block; will-change: transform, opacity; }
+
+/* ── Nav shrink + backdrop after scrolling past the hero ───────────────── */
+.nav {
+  transition: padding var(--dur) var(--ease), background var(--dur) var(--ease),
+              backdrop-filter var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+.nav.scrolled {
+  mix-blend-mode: normal; color: var(--text);
+  padding-top: 0.7rem; padding-bottom: 0.7rem;
+  background: rgba(5, 7, 10, 0.72); backdrop-filter: blur(12px) saturate(1.2);
+  border-bottom: 1px solid var(--line);
+}
 
 /* =============================================================================
    REVEAL HELPERS (used by GSAP, with no-JS fallback)
