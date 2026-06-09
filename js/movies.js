@@ -258,7 +258,7 @@ window.MoviesHub = (function(){
           <span class="badge">${lang}</span>
         </div>
         <img class="movie-poster" src="${posterUrl}" alt="${m.name}" 
-             onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 300%22><rect fill=%22%231f1a16%22 width=%22200%22 height=%22300%22/><text x=%22100%22 y=%22150%22 fill=%22%23c9a961%22 font-size=%2240%22 text-anchor=%22middle%22>影</text></svg>'">
+             onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 300%22><rect fill=%22%231f1a16%22 width=%22200%22 height=%22300%22/><text x=%22100%22 y=%22150%22 fill=%22%23c9a961%22 font-size=%2240%22 text-anchor=%22middle%22>NM</text></svg>'">
         <div class="movie-overlay"></div>
         <div class="movie-info">
           <div class="movie-title">${m.name}</div>
@@ -332,7 +332,7 @@ window.MoviesHub = (function(){
     document.body.style.overflow = 'hidden';
 
     document.getElementById('modalInfo').innerHTML = `<div class="loading-state">
-      <div class="loading-symbol">☯</div>
+      <div class="loading-symbol">✧</div>
       <div class="loading-text">Đang tải thông tin...</div>
     </div>`;
 
@@ -962,7 +962,6 @@ function renderMoviesPage() {
       <header class="hub-header">
         <h1 class="hub-title">Bún Bò on Air</h1>
         <p class="hub-subtitle">Bang Hội Nhất Mộng</p>
-        <p class="hub-chinese">一 夢 江 湖 · 影 視 殿 堂</p>
       </header>
 
       <div class="control-bar">
@@ -990,7 +989,7 @@ function renderMoviesPage() {
 
       <div id="movieContainer">
         <div class="loading-state">
-          <div class="loading-symbol">☯</div>
+          <div class="loading-symbol">✧</div>
           <div class="loading-text">Đang triệu hồi phim ảnh...</div>
         </div>
       </div>

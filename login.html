@@ -4,8 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Đăng nhập - Nhất Mộng</title>
+  
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400;1,600&family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
   <link rel="stylesheet" href="css/variables.css">
   <style>
     body {
@@ -13,147 +16,142 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: var(--bg-primary);
+      background-color: #050404;
       overflow: hidden;
+      font-family: var(--font-sans);
+      color: var(--text-primary);
     }
 
-    /* Animated background */
-    .bg-particles {
+    /* Vanta.js Background */
+    #vanta-bg {
       position: fixed;
       inset: 0;
-      z-index: 0;
-      pointer-events: none;
-    }
-    .particle {
-      position: absolute;
-      border-radius: 50%;
-      animation: float linear infinite;
-      opacity: 0;
-    }
-    @keyframes float {
-      0%   { transform: translateY(110vh) rotate(0deg); opacity: 0; }
-      5%   { opacity: 0.6; }
-      95%  { opacity: 0.4; }
-      100% { transform: translateY(-10vh) rotate(720deg); opacity: 0; }
+      z-index: -2;
+      width: 100vw;
+      height: 100vh;
     }
 
-    /* Glow lines */
-    .bg-glow {
-      position: fixed;
-      inset: 0;
-      background:
-        radial-gradient(ellipse 60% 40% at 20% 60%, rgba(240,192,64,0.06) 0%, transparent 70%),
-        radial-gradient(ellipse 50% 50% at 80% 30%, rgba(64,192,224,0.05) 0%, transparent 70%);
-      z-index: 0;
-    }
-
-    /* Login card */
+    /* Login card - Wooden Plaque / Scroll */
     .login-card {
       position: relative;
       z-index: 10;
-      width: 420px;
+      width: 440px;
       max-width: 92vw;
-      background: rgba(17,17,32,0.92);
-      border: 1px solid rgba(240,192,64,0.2);
-      border-radius: 16px;
-      padding: 40px 36px 36px;
-      box-shadow: 0 0 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04) inset;
-      backdrop-filter: blur(10px);
-      animation: cardIn 0.6s cubic-bezier(0.34,1.56,0.64,1);
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      padding: var(--sp-8);
+      box-shadow: var(--glass-shadow);
+      animation: cardIn 0.8s var(--ease-out);
+      border-radius: var(--r-md);
     }
+    
+    .login-card::before, .login-card::after {
+      content: '';
+      position: absolute;
+      width: 15px; height: 15px;
+      border: 2px solid var(--accent-primary);
+    }
+    .login-card::before { top: 6px; left: 6px; border-right: none; border-bottom: none; }
+    .login-card::after { bottom: 6px; right: 6px; border-left: none; border-top: none; }
+
     @keyframes cardIn {
-      from { opacity: 0; transform: translateY(30px) scale(0.96); }
+      from { opacity: 0; transform: translateY(40px) scale(0.95); }
       to   { opacity: 1; transform: translateY(0) scale(1); }
     }
 
     /* Logo */
     .logo-wrap {
       text-align: center;
-      margin-bottom: 28px;
+      margin-bottom: var(--sp-6);
+      position: relative;
     }
     .logo-icon {
-      font-size: 48px;
-      display: block;
-      margin-bottom: 10px;
-      filter: drop-shadow(0 0 12px rgba(240,192,64,0.5));
-      animation: glow 2.5s ease-in-out infinite;
-    }
-    @keyframes glow {
-      0%,100% { filter: drop-shadow(0 0 8px rgba(240,192,64,0.4)); }
-      50%      { filter: drop-shadow(0 0 20px rgba(240,192,64,0.8)); }
+      font-size: 40px;
+      display: inline-block;
+      margin-bottom: var(--sp-2);
+      color: var(--accent-primary);
+      text-shadow: 0 0 10px rgba(138, 21, 27, 0.5);
     }
     .logo-title {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 22px;
-      font-weight: 700;
+      font-family: var(--font-display);
+      font-size: var(--fs-3xl);
+      font-weight: var(--fw-bold);
       color: var(--accent-gold);
-      letter-spacing: 2px;
+      letter-spacing: var(--tr-widest);
+      text-shadow: 2px 2px 5px rgba(0,0,0,0.8);
     }
     .logo-subtitle {
-      font-size: 11px;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: var(--fs-md);
       color: var(--text-secondary);
-      letter-spacing: 3px;
-      text-transform: uppercase;
-      margin-top: 4px;
+      letter-spacing: var(--tr-wide);
+      font-style: italic;
+      margin-top: var(--sp-1);
     }
 
     /* Tabs */
     .auth-tabs {
       display: flex;
       gap: 0;
-      background: #0f0f1e;
-      border-radius: 8px;
-      padding: 3px;
-      margin-bottom: 24px;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border-color);
+      margin-bottom: var(--sp-6);
     }
     .auth-tab {
       flex: 1;
-      padding: 9px;
+      padding: var(--sp-3);
       text-align: center;
-      font-size: 13px;
-      font-weight: 600;
-      border-radius: 6px;
+      font-family: var(--font-display);
+      font-size: var(--fs-md);
+      font-weight: var(--fw-bold);
       cursor: pointer;
       color: var(--text-secondary);
-      transition: all 0.25s;
+      transition: all var(--dur-fast) var(--ease-out);
       border: none;
       background: transparent;
+      border-bottom: 2px solid transparent;
+      letter-spacing: var(--tr-wide);
     }
     .auth-tab.active {
-      background: var(--bg-card);
+      background: rgba(212, 175, 55, 0.05);
       color: var(--accent-gold);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      border-bottom-color: var(--accent-primary);
+      text-shadow: 0 0 5px rgba(212, 175, 55, 0.4);
     }
 
     /* Form */
-    .form-group { margin-bottom: 16px; }
+    .form-group { margin-bottom: var(--sp-4); }
     .form-group label {
       display: block;
-      font-size: 11px;
-      color: var(--text-secondary);
-      margin-bottom: 6px;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
+      font-family: var(--font-display);
+      font-size: var(--fs-md);
+      color: var(--accent-gold);
+      margin-bottom: var(--sp-1_5);
+      letter-spacing: var(--tr-wide);
+      font-weight: var(--fw-bold);
     }
-    .form-group input {
+    
+    .form-group input, .form-group select {
       width: 100%;
-      padding: 11px 14px;
-      background: #0f0f1e;
-      border: 1px solid #2a2a45;
+      padding: var(--sp-3) var(--sp-4);
+      background: #0f0d0c;
+      border: 1px solid var(--border-color);
       color: var(--text-primary);
-      border-radius: 8px;
-      font-size: 14px;
+      font-size: var(--fs-md);
       outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s;
+      transition: all var(--dur-fast) var(--ease-out);
+      font-family: var(--font-sans);
     }
-    .form-group input:focus {
+    .form-group input:focus, .form-group select:focus {
       border-color: var(--accent-gold);
-      box-shadow: 0 0 0 3px rgba(240,192,64,0.1);
+      box-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
     }
 
     /* Password toggle */
     .input-wrap { position: relative; }
-    .input-wrap input { padding-right: 42px; }
+    .input-wrap input { padding-right: 46px; }
     .pwd-toggle {
       position: absolute;
       right: 12px;
@@ -163,33 +161,33 @@
       border: none;
       color: var(--text-muted);
       cursor: pointer;
-      font-size: 16px;
+      font-size: 18px;
       padding: 4px;
       line-height: 1;
+      transition: color 0.2s;
     }
-    .pwd-toggle:hover { color: var(--text-primary); }
+    .pwd-toggle:hover { color: var(--accent-gold); }
 
     /* Submit */
     .btn-submit {
       width: 100%;
-      padding: 12px;
-      background: var(--accent-gold);
-      color: #111;
-      font-weight: 700;
-      font-size: 14px;
-      letter-spacing: 1px;
-      border-radius: 8px;
-      border: none;
+      padding: var(--sp-3_5);
+      background: var(--accent-primary);
+      color: #fff;
+      font-weight: var(--fw-bold);
+      font-family: var(--font-display);
+      font-size: var(--fs-lg);
+      letter-spacing: var(--tr-wider);
+      border: 1px solid #ff4d4d;
       cursor: pointer;
-      margin-top: 6px;
-      font-family: 'Be Vietnam Pro', system-ui, sans-serif;
-      transition: all 0.2s;
-      text-transform: uppercase;
+      margin-top: var(--sp-2);
+      transition: all var(--dur-base) var(--ease-out);
+      box-shadow: 0 0 10px rgba(138, 21, 27, 0.4);
     }
     .btn-submit:hover {
-      background: #ffd060;
-      transform: translateY(-1px);
-      box-shadow: 0 6px 20px rgba(240,192,64,0.35);
+      background: var(--accent-primary-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(138, 21, 27, 0.6);
     }
     .btn-submit:active { transform: translateY(0); }
 
@@ -197,10 +195,14 @@
     .divider {
       display: flex;
       align-items: center;
-      gap: 12px;
-      margin: 18px 0;
-      color: var(--text-muted);
-      font-size: 11px;
+      gap: var(--sp-3);
+      margin: var(--sp-5) 0;
+      color: var(--text-secondary);
+      font-family: var(--font-display);
+      font-size: var(--fs-sm);
+      font-weight: var(--fw-bold);
+      text-transform: uppercase;
+      letter-spacing: var(--tr-wider);
     }
     .divider::before, .divider::after {
       content: '';
@@ -212,42 +214,50 @@
     /* Guest btn */
     .btn-guest {
       width: 100%;
-      padding: 10px;
-      background: transparent;
-      border: 1px solid var(--border-accent);
-      color: var(--text-secondary);
-      font-size: 13px;
-      border-radius: 8px;
+      padding: var(--sp-3);
+      background: rgba(0,0,0,0.5);
+      border: 1px solid var(--accent-gold);
+      color: var(--accent-gold);
+      font-family: var(--font-display);
+      font-size: var(--fs-md);
+      font-weight: var(--fw-bold);
+      letter-spacing: var(--tr-wide);
       cursor: pointer;
-      font-family: 'Be Vietnam Pro', system-ui, sans-serif;
-      transition: all 0.2s;
+      transition: all var(--dur-base);
     }
     .btn-guest:hover {
-      border-color: var(--accent-cyan);
-      color: var(--accent-cyan);
+      background: rgba(212, 175, 55, 0.1);
+      box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
     }
 
     /* Error msg */
     .error-msg {
-      background: rgba(224,64,64,0.12);
-      border: 1px solid rgba(224,64,64,0.3);
-      color: #ff7070;
-      padding: 10px 14px;
-      border-radius: 6px;
-      font-size: 13px;
-      margin-bottom: 14px;
+      background: rgba(138, 21, 27, 0.1);
+      border: 1px solid rgba(138, 21, 27, 0.5);
+      color: #ff8a8f;
+      padding: var(--sp-3);
+      font-size: var(--fs-sm);
+      margin-bottom: var(--sp-4);
       display: none;
+      text-align: center;
+      font-weight: var(--fw-medium);
     }
-    .error-msg.show { display: block; }
+    .error-msg.show { display: block; animation: shake 0.4s ease-in-out; }
+    
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
 
     /* Back to home link */
     .back-home {
       text-align: center;
-      margin-top: 20px;
-      font-size: 12px;
-      color: var(--text-muted);
+      margin-top: var(--sp-6);
+      font-size: var(--fs-sm);
+      font-family: 'Cormorant Garamond', serif;
     }
-    .back-home a { color: var(--accent-cyan); }
+    .back-home a { color: var(--text-secondary); transition: color 0.2s; font-style: italic; }
     .back-home a:hover { color: var(--accent-gold); }
 
     /* Forgot */
@@ -255,13 +265,14 @@
       display: flex;
       justify-content: flex-end;
       margin-top: -8px;
-      margin-bottom: 12px;
+      margin-bottom: var(--sp-3);
     }
     .forgot-link {
-      font-size: 12px;
+      font-size: var(--fs-xs);
       color: var(--text-secondary);
       cursor: pointer;
       text-decoration: underline;
+      transition: color 0.2s;
     }
     .forgot-link:hover { color: var(--accent-gold); }
 
@@ -269,33 +280,83 @@
     .checkbox-row {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin-bottom: 16px;
+      gap: var(--sp-2);
+      margin-bottom: var(--sp-4);
     }
     .checkbox-row input[type=checkbox] {
-      width: 15px;
-      height: 15px;
-      accent-color: var(--accent-gold);
+      width: 16px;
+      height: 16px;
+      accent-color: var(--accent-primary);
+      cursor: pointer;
     }
-    .checkbox-row label { font-size: 13px; color: var(--text-secondary); cursor: pointer; }
+    .checkbox-row label { 
+      font-size: var(--fs-sm); 
+      color: var(--text-secondary); 
+      cursor: pointer; 
+    }
+
+    .audio-widget {
+      position: fixed;
+      bottom: var(--sp-6);
+      right: var(--sp-6);
+      z-index: 1000;
+      background: var(--glass-bg);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--accent-gold);
+      border-radius: var(--r-full);
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+      padding: var(--sp-2) var(--sp-4);
+      box-shadow: var(--glass-shadow);
+      cursor: pointer;
+      transition: all var(--dur-base);
+    }
+    .audio-widget:hover {
+      background: rgba(212, 175, 55, 0.1);
+      box-shadow: var(--sh-glow-gold);
+    }
+    .audio-icon {
+      font-size: 20px;
+      color: var(--accent-gold);
+      animation: spin 4s linear infinite;
+      animation-play-state: paused;
+    }
+    .audio-icon.playing { animation-play-state: running; }
+    .audio-text {
+      font-family: var(--font-display);
+      font-size: var(--fs-sm);
+      color: var(--text-secondary);
+      font-weight: var(--fw-bold);
+      letter-spacing: var(--tr-wider);
+    }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
 
-<div class="bg-glow"></div>
-<div class="bg-particles" id="particles"></div>
+<audio id="bg-music" src="phung thanh do.mp3" loop preload="auto"></audio>
+
+<!-- Background Vanta -->
+<div id="vanta-bg"></div>
+
+<!-- Audio Widget -->
+<div class="audio-widget" onclick="toggleAudio()">
+  <div class="audio-icon" id="audio-icon">♫</div>
+  <div class="audio-text" id="audio-text">Phát Nhạc</div>
+</div>
 
 <div class="login-card">
   <div class="logo-wrap">
-    <span class="logo-icon">⚔️</span>
+    <span class="logo-icon">NM</span>
     <div class="logo-title">NHẤT MỘNG</div>
-    <div class="logo-subtitle">Guild Manager</div>
+    <div class="logo-subtitle">Cổng Định Danh Giang Hồ</div>
   </div>
 
   <!-- Tabs -->
   <div class="auth-tabs">
     <button class="auth-tab active" id="tab-login" onclick="switchTab('login')">Đăng nhập</button>
-    <button class="auth-tab" id="tab-register" onclick="switchTab('register')">Đăng ký</button>
+    <button class="auth-tab" id="tab-register" onclick="switchTab('register')">Ghi danh mới</button>
   </div>
 
   <!-- Error message -->
@@ -304,40 +365,40 @@
   <!-- Login form -->
   <div id="form-login">
     <div class="form-group">
-      <label>Tên tài khoản</label>
-      <input type="text" id="login-email" placeholder="Tên tài khoản" autocomplete="username">
+      <label>Danh tính</label>
+      <input type="text" id="login-email" placeholder="Nhập tên tài khoản" autocomplete="username">
     </div>
     <div class="form-group">
-      <label>Mật khẩu</label>
+      <label>Mật hiệu</label>
       <div class="input-wrap">
-        <input type="password" id="login-pass" placeholder="Mật khẩu" autocomplete="current-password"
+        <input type="password" id="login-pass" placeholder="Nhập mật khẩu" autocomplete="current-password"
           onkeydown="if(event.key==='Enter')submitLogin()">
         <button class="pwd-toggle" onclick="togglePwd('login-pass', this)" tabindex="-1">👁</button>
       </div>
     </div>
     <div class="forgot-row">
-      <span class="forgot-link" onclick="showForgot()">Quên mật khẩu?</span>
+      <span class="forgot-link" onclick="showForgot()">Quên mật hiệu?</span>
     </div>
     <div class="checkbox-row">
       <input type="checkbox" id="remember-me">
-      <label for="remember-me">Ghi nhớ đăng nhập</label>
+      <label for="remember-me">Lưu danh tính</label>
     </div>
-    <button class="btn-submit" onclick="submitLogin()">Đăng nhập</button>
+    <button class="btn-submit" onclick="submitLogin()">Tiến Nhập</button>
     <div class="divider">hoặc</div>
-    <button class="btn-guest" onclick="loginAsGuest()">👤 Vào xem (Khách)</button>
+    <button class="btn-guest" onclick="loginAsGuest()">Lãng Khách Vô Danh</button>
   </div>
 
   <!-- Register form -->
   <div id="form-register" style="display:none">
     <div class="form-group">
-      <label>Tên đăng nhập</label>
-      <input type="text" id="reg-email" placeholder="Tên tài khoản (không cần email)" autocomplete="username">
+      <label>Danh tính (Tên đăng nhập)</label>
+      <input type="text" id="reg-email" placeholder="Viết liền không dấu" autocomplete="username">
     </div>
     <div class="form-group">
-      <label>Tên hiển thị</label>
-      <input type="text" id="reg-name" placeholder="Biệt danh trong bang">
+      <label>Biệt hiệu (Trong bang)</label>
+      <input type="text" id="reg-name" placeholder="Tên thường gọi">
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="form-group">
         <label>Tên Ingame</label>
         <input type="text" id="reg-ingame-name" placeholder="Tên nhân vật">
@@ -347,15 +408,15 @@
         <input type="text" id="reg-ingame-id" placeholder="ID nhân vật">
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="form-group">
         <label>ID Discord</label>
         <input type="text" id="reg-discord-id" placeholder="username#0000">
       </div>
       <div class="form-group">
-        <label>Hệ phái</label>
-        <select id="reg-class" style="width:100%;padding:10px 12px;background:#0f0f1e;border:1px solid #2a2a40;border-radius:8px;color:#e8e8f0;font-size:14px;cursor:pointer;outline:none">
-          <option value="">-- Chọn hệ phái --</option>
+        <label>Môn phái</label>
+        <select id="reg-class">
+          <option value="">-- Chọn --</option>
           <option value="toai_mong">⚔ Toái Mộng</option>
           <option value="thiet_y">🛡 Thiết Y</option>
           <option value="huyet_ha">🩸 Huyết Hà</option>
@@ -367,33 +428,87 @@
       </div>
     </div>
     <div class="form-group">
-      <label>Mật khẩu</label>
+      <label>Mật hiệu</label>
       <div class="input-wrap">
         <input type="password" id="reg-pass" placeholder="Ít nhất 6 ký tự">
         <button class="pwd-toggle" onclick="togglePwd('reg-pass', this)" tabindex="-1">👁</button>
       </div>
     </div>
     <div class="form-group">
-      <label>Xác nhận mật khẩu</label>
+      <label>Xác nhận mật hiệu</label>
       <div class="input-wrap">
         <input type="password" id="reg-pass2" placeholder="Nhập lại mật khẩu"
           onkeydown="if(event.key==='Enter')submitRegister()">
         <button class="pwd-toggle" onclick="togglePwd('reg-pass2', this)" tabindex="-1">👁</button>
       </div>
     </div>
-    <button class="btn-submit" onclick="submitRegister()">Tạo tài khoản</button>
+    <button class="btn-submit" onclick="submitRegister()">Ghi Danh Môn Phái</button>
   </div>
 
-  <div class="back-home"><a href="index.html">← Về trang chủ</a></div>
+  <div class="back-home"><a href="index.html">← Trở về tiền sảnh</a></div>
 </div>
-
 
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
+<!-- Vanta.js Scripts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.clouds2.min.js"></script>
+
 <script>
+  // Initialize Vanta.js Background
+  document.addEventListener("DOMContentLoaded", function() {
+    VANTA.CLOUDS2({
+      el: "#vanta-bg",
+      mouseControls: true,
+      touchControls: true,
+      gyroControls: false,
+      minHeight: 200.00,
+      minWidth: 200.00,
+      scale: 1.00,
+      speed: 2.70,
+      texturePath: "https://cdn.jsdelivr.net/npm/vanta@latest/gallery/noise.png"
+    });
+  });
+  // ── Audio Control ────────────────────────────────────────────────────────
+  const bgMusic = document.getElementById('bg-music');
+  const audioIcon = document.getElementById('audio-icon');
+  const audioText = document.getElementById('audio-text');
+  let isPlaying = false;
+
+  const wasPlaying = localStorage.getItem('music_playing') === 'true';
+
+  function toggleAudio() {
+    if (isPlaying) {
+      bgMusic.pause();
+      isPlaying = false;
+      audioIcon.classList.remove('playing');
+      audioText.textContent = "Phát Nhạc";
+      localStorage.setItem('music_playing', 'false');
+    } else {
+      bgMusic.play().then(() => {
+        isPlaying = true;
+        audioIcon.classList.add('playing');
+        audioText.textContent = "Đang Phát";
+        localStorage.setItem('music_playing', 'true');
+      }).catch(err => console.log("Autoplay blocked:", err));
+    }
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    if (wasPlaying) {
+      bgMusic.play().then(() => {
+        isPlaying = true;
+        audioIcon.classList.add('playing');
+        audioText.textContent = "Đang Phát";
+      }).catch(() => {
+        console.log("Autoplay blocked on reload");
+      });
+    }
+  });
+
   // ── Firebase init cho login.html ───────────────────────────────────────────
   var FB_CFG = {
     apiKey:            "AIzaSyBszK09g8sHvufGNrFwDDgcw6rolV37KSA",
@@ -417,7 +532,6 @@
       _fbUsersRef   = _fbDb.collection('users');
       _fbMembersRef = _fbDb.collection('guilds').doc('guild_main').collection('members');
       _fbReady      = true;
-      console.log('[FB-Login] Ready');
     } catch(e) { console.error('[FB-Login] Init lỗi:', e.message); }
   }
   setTimeout(fbLoginInit, 200);
@@ -474,15 +588,15 @@
     const pass     = document.getElementById('login-pass').value;
     if (!username || !pass) { showError('Vui lòng nhập đầy đủ thông tin!'); return; }
 
-    if (!_fbReady) { showError('Firebase chưa kết nối, vui lòng đợi...'); return; }
+    if (!_fbReady) { showError('Hệ thống chưa kết nối, vui lòng đợi...'); return; }
 
     const submitBtn = document.querySelector('#form-login .btn-submit');
-    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Đang đăng nhập...'; }
-    function reset() { if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Đăng nhập'; } }
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Đang tiến nhập...'; }
+    function reset() { if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Tiến Nhập'; } }
 
     let email;
     try { email = usernameToEmail(username); }
-    catch(e) { reset(); showError('Tên đăng nhập không hợp lệ!'); return; }
+    catch(e) { reset(); showError('Danh tính không hợp lệ!'); return; }
 
     _fbAuth.signInWithEmailAndPassword(email, pass)
       .then(cred => _fbUsersRef.doc(cred.user.uid).get())
@@ -490,25 +604,24 @@
         if (!snap.exists) throw new Error('user-doc-missing');
         const user = snap.data();
         saveSession(user);
+        localStorage.setItem('music_playing', 'true');
         window.location.href = 'app.html';
       })
       .catch(err => {
         reset();
-        console.error('[Login] error:', err);
-        const msg = mapAuthError(err);
-        showError(msg);
+        showError(mapAuthError(err));
       });
   }
 
   function mapAuthError(err) {
     const c = err && err.code;
     if (c === 'auth/wrong-password' || c === 'auth/user-not-found' || c === 'auth/invalid-credential' || c === 'auth/invalid-login-credentials')
-      return 'Tên đăng nhập hoặc mật khẩu không đúng!';
+      return 'Danh tính hoặc mật hiệu không đúng!';
     if (c === 'auth/too-many-requests') return 'Quá nhiều lần thử sai. Vui lòng đợi vài phút.';
     if (c === 'auth/network-request-failed') return 'Không kết nối được mạng!';
-    if (c === 'auth/email-already-in-use') return 'Tên đăng nhập này đã có người sử dụng!';
-    if (c === 'auth/weak-password') return 'Mật khẩu quá yếu (ít nhất 6 ký tự)!';
-    if (err.message === 'user-doc-missing') return 'Tài khoản chưa được setup hoàn chỉnh, liên hệ Bang Chủ!';
+    if (c === 'auth/email-already-in-use') return 'Danh tính này đã có người sử dụng!';
+    if (c === 'auth/weak-password') return 'Mật hiệu quá yếu (ít nhất 6 ký tự)!';
+    if (err.message === 'user-doc-missing') return 'Tài khoản chưa hoàn chỉnh, liên hệ Bang Chủ!';
     return 'Lỗi: ' + (err.message || c);
   }
 
@@ -524,27 +637,27 @@
     const pass       = (document.getElementById('reg-pass')         || {value:''}).value;
     const pass2      = (document.getElementById('reg-pass2')        || {value:''}).value;
 
-    if (!username)       { showError('Vui lòng nhập tên đăng nhập!'); return; }
+    if (!username)       { showError('Vui lòng nhập danh tính!'); return; }
     if (!/^[a-zA-Z0-9._-]{3,}$/.test(username)) {
-      showError('Tên đăng nhập chỉ chứa chữ, số, dấu chấm/gạch (>= 3 ký tự)!'); return;
+      showError('Danh tính chỉ chứa chữ, số, dấu (>= 3 ký tự)!'); return;
     }
-    if (!name)           { showError('Vui lòng nhập tên hiển thị!'); return; }
+    if (!name)           { showError('Vui lòng nhập biệt hiệu!'); return; }
     if (!ingameName)     { showError('Vui lòng nhập tên Ingame!'); return; }
     if (!ingameId)       { showError('Vui lòng nhập ID Ingame!'); return; }
     if (!discordId)      { showError('Vui lòng nhập ID Discord!'); return; }
-    if (!classId)        { showError('Vui lòng chọn hệ phái!'); return; }
-    if (pass.length < 6) { showError('Mật khẩu ít nhất 6 ký tự!'); return; }
-    if (pass !== pass2)  { showError('Mật khẩu xác nhận không khớp!'); return; }
+    if (!classId)        { showError('Vui lòng chọn môn phái!'); return; }
+    if (pass.length < 6) { showError('Mật hiệu ít nhất 6 ký tự!'); return; }
+    if (pass !== pass2)  { showError('Mật hiệu xác nhận không khớp!'); return; }
 
-    if (!_fbReady) { showError('Firebase chưa kết nối, vui lòng đợi...'); return; }
+    if (!_fbReady) { showError('Hệ thống chưa kết nối, vui lòng đợi...'); return; }
 
     const submitBtn = document.querySelector('#form-register .btn-submit');
-    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Đang tạo...'; }
-    function reset() { if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Tạo tài khoản'; } }
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Đang ghi danh...'; }
+    function reset() { if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Ghi Danh Môn Phái'; } }
 
     let email;
     try { email = usernameToEmail(username); }
-    catch(e) { reset(); showError('Tên đăng nhập không hợp lệ!'); return; }
+    catch(e) { reset(); showError('Danh tính không hợp lệ!'); return; }
 
     _fbAuth.createUserWithEmailAndPassword(email, pass)
       .then(cred => {
@@ -574,23 +687,17 @@
       })
       .then(userDoc => {
         saveSession(userDoc);
+        localStorage.setItem('music_playing', 'true');
         window.location.href = 'app.html';
       })
       .catch(err => {
         reset();
-        console.error('[Register] error:', err);
         showError(mapAuthError(err));
       });
   }
 
   function loginAsGuest() {
-    // Guest cũng PHẢI sign in vào Firebase (anonymous) để Firestore rules
-    // (request.auth != null) cho phép đọc data Bang chiến / Gacha / Minigames.
-    // Trước đây chỉ ghi sessionStorage → guest không có Firebase Auth token →
-    // iframe Gacha bị skip subscribe vì authReady() resolve signedIn:false.
     if (!_fbReady) {
-      // Fallback: nếu Firebase chưa sẵn sàng, vẫn cho vào nhưng cảnh báo.
-      console.warn('[Login] Firebase chưa ready, guest sẽ không xem được data realtime.');
       sessionStorage.setItem(SESSION_KEY, JSON.stringify({
         id: 'guest', name: 'Khách', username: '', role: 'guest'
       }));
@@ -603,7 +710,6 @@
 
     _fbAuth.signInAnonymously()
       .then(function(cred) {
-        // Lưu uid thực của anonymous account vào session để iframe biết.
         sessionStorage.setItem(SESSION_KEY, JSON.stringify({
           id:        cred.user.uid,
           name:      'Khách',
@@ -611,45 +717,18 @@
           role:      'guest',
           anonymous: true
         }));
+        localStorage.setItem('music_playing', 'true');
         window.location.href = 'app.html';
       })
       .catch(function(err) {
-        console.error('[Login] guest signInAnonymously failed:', err);
         if (btn) { btn.disabled = false; btn.style.opacity = ''; }
-        // Hint cho admin: cần bật Anonymous trong Firebase Console.
-        if (err && err.code === 'auth/admin-restricted-operation') {
-          showError('Đăng nhập khách chưa được bật. Vui lòng liên hệ Bang Chủ.');
-        } else {
-          showError('Không thể đăng nhập khách: ' + (err && err.message || 'lỗi không xác định'));
-        }
+        showError('Không thể vào diện khách: ' + (err && err.message || 'lỗi'));
       });
   }
 
   function showForgot() {
-    alert('Vui lòng liên hệ Bang Chủ để reset mật khẩu.');
+    alert('Vui lòng liên hệ Bang Chủ để khôi phục danh tính.');
   }
-
-  // ── Particles ──────────────────────────────────────────────────────────────
-  function spawnParticles() {
-    const container = document.getElementById('particles');
-    const colors = ['#f0c040', '#40c0e0', '#9060e0', '#30d080'];
-    for (let i = 0; i < 18; i++) {
-      const p = document.createElement('div');
-      p.className = 'particle';
-      const size = Math.random() * 4 + 2;
-      const color = colors[Math.floor(Math.random() * colors.length)];
-      p.style.cssText = `
-        width:${size}px; height:${size}px;
-        left:${Math.random()*100}%;
-        background:${color};
-        animation-duration:${Math.random()*15+10}s;
-        animation-delay:${Math.random()*10}s;
-        opacity:0;
-      `;
-      container.appendChild(p);
-    }
-  }
-  spawnParticles();
 
   if (window.location.hash === '#register') switchTab('register');
 </script>

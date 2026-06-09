@@ -4,555 +4,423 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Nhất Mộng - Quản Lý Bang Hội</title>
+  
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400;1,600&family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
   <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/utilities.css">
+  
   <style>
+    /* ─────────────────────────────────────────────────────────────────────────────
+       LANDING PAGE - WUXIA AESTHETIC WITH GLASSMORPHISM
+       ───────────────────────────────────────────────────────────────────────────── */
     body {
-      min-height: 100vh;
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      margin: 0;
       overflow-x: hidden;
-      background: var(--bg-primary);
     }
 
-    /* ===== HERO ===== */
-    .hero {
-      position: relative;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    /* Animated background */
-    .hero-bg {
-      position: absolute;
+    /* Vanta.js Background */
+    #vanta-bg {
+      position: fixed;
       inset: 0;
-      background:
-        radial-gradient(ellipse 80% 60% at 50% 0%, rgba(240,192,64,0.08) 0%, transparent 60%),
-        radial-gradient(ellipse 60% 80% at 100% 50%, rgba(64,192,224,0.06) 0%, transparent 60%),
-        radial-gradient(ellipse 50% 50% at 0% 80%, rgba(144,96,224,0.05) 0%, transparent 60%);
+      z-index: -2;
+      width: 100vw;
+      height: 100vh;
     }
 
-    /* Grid overlay */
-    .hero-grid {
-      position: absolute;
-      inset: 0;
-      background-image:
-        linear-gradient(rgba(240,192,64,0.04) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(240,192,64,0.04) 1px, transparent 1px);
-      background-size: 60px 60px;
-      mask-image: radial-gradient(ellipse 90% 70% at 50% 30%, black, transparent);
-    }
-
-    /* Floating orbs */
-    .orb {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(60px);
-      animation: orbFloat ease-in-out infinite;
-      pointer-events: none;
-    }
-    @keyframes orbFloat {
-      0%,100% { transform: translate(0,0) scale(1); }
-      33%      { transform: translate(20px,-30px) scale(1.05); }
-      66%      { transform: translate(-15px,15px) scale(0.97); }
-    }
-
-    /* ===== NAVBAR ===== */
+    /* Navbar */
     .navbar {
-      position: relative;
-      z-index: 20;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      padding: var(--sp-4) var(--sp-8);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 100;
+      background: var(--glass-bg);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--glass-border);
+      box-shadow: var(--glass-shadow);
+    }
+    .nav-brand {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      padding: 20px 48px;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-      backdrop-filter: blur(8px);
+      gap: var(--sp-3);
     }
     .nav-logo {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .nav-logo-icon {
-      width: 38px;
-      height: 38px;
-      background: linear-gradient(135deg, var(--accent-gold), #a06010);
-      border-radius: 9px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-      box-shadow: 0 4px 12px rgba(240,192,64,0.3);
-    }
-    .nav-logo-text {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 16px;
-      font-weight: 700;
-      color: var(--accent-gold);
-      letter-spacing: 1px;
-    }
-    .nav-logo-sub {
-      font-size: 10px;
-      color: var(--text-muted);
-      letter-spacing: 2px;
-      text-transform: uppercase;
-    }
-    .nav-badge {
-      background: rgba(240,192,64,0.12);
-      border: 1px solid rgba(240,192,64,0.25);
-      color: var(--accent-gold);
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-    }
-    .nav-actions { display: flex; gap: 10px; align-items: center; }
-    .btn-nav-login {
-      padding: 9px 22px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      font-family: 'Be Vietnam Pro', system-ui, sans-serif;
-      transition: all 0.2s;
-      background: transparent;
-      border: 1px solid rgba(255,255,255,0.15);
-      color: var(--text-primary);
-    }
-    .btn-nav-login:hover { border-color: var(--accent-gold); color: var(--accent-gold); }
-    .btn-nav-register {
-      padding: 9px 22px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 700;
-      cursor: pointer;
-      font-family: 'Be Vietnam Pro', system-ui, sans-serif;
-      transition: all 0.2s;
-      background: var(--accent-gold);
-      border: none;
-      color: #111;
-      letter-spacing: 0.5px;
-    }
-    .btn-nav-register:hover {
-      background: #ffd060;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 16px rgba(240,192,64,0.35);
-    }
-
-    /* ===== HERO CONTENT ===== */
-    .hero-content {
-      position: relative;
-      z-index: 10;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 60px 24px;
-    }
-
-    .hero-tag {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(240,192,64,0.08);
-      border: 1px solid rgba(240,192,64,0.2);
-      padding: 6px 16px;
-      border-radius: 20px;
-      font-size: 12px;
-      color: var(--accent-gold);
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      margin-bottom: 28px;
-      animation: fadeUp 0.6s ease both;
-    }
-
-    .hero-title {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: clamp(36px, 7vw, 72px);
-      font-weight: 900;
-      color: var(--accent-gold);
-      line-height: 1.1;
-      margin-bottom: 16px;
-      animation: fadeUp 0.6s 0.1s ease both;
-      text-shadow: 0 0 40px rgba(240,192,64,0.3);
-      letter-spacing: 2px;
-    }
-
-    .hero-desc {
-      font-size: clamp(14px, 2vw, 17px);
-      color: var(--text-secondary);
-      max-width: 560px;
-      line-height: 1.75;
-      margin-bottom: 40px;
-      animation: fadeUp 0.6s 0.2s ease both;
-    }
-
-    .hero-cta {
-      display: flex;
-      gap: 14px;
-      flex-wrap: wrap;
-      justify-content: center;
-      animation: fadeUp 0.6s 0.3s ease both;
-    }
-
-    .btn-cta-primary {
-      padding: 14px 36px;
-      background: var(--accent-gold);
-      color: #111;
+      font-family: var(--font-display);
+      font-size: 28px;
       font-weight: 800;
-      font-size: 15px;
-      border-radius: 10px;
-      border: none;
-      cursor: pointer;
-      font-family: 'Playfair Display', Georgia, serif;
-      letter-spacing: 1px;
-      transition: all 0.25s;
-      box-shadow: 0 4px 20px rgba(240,192,64,0.3);
+      color: var(--accent-primary);
+      text-shadow: var(--sh-glow-primary);
     }
-    .btn-cta-primary:hover {
-      background: #ffd060;
-      transform: translateY(-2px);
-      box-shadow: 0 8px 30px rgba(240,192,64,0.45);
+    .nav-title {
+      font-family: var(--font-display);
+      font-size: var(--fs-2xl);
+      font-weight: var(--fw-bold);
+      color: var(--accent-gold);
+      letter-spacing: var(--tr-widest);
     }
-    .btn-cta-secondary {
-      padding: 14px 36px;
+    
+    .nav-btn {
+      padding: var(--sp-2) var(--sp-6);
       background: transparent;
-      color: var(--text-primary);
-      font-weight: 600;
-      font-size: 15px;
-      border-radius: 10px;
-      border: 1px solid rgba(255,255,255,0.15);
+      border: 1px solid var(--accent-gold);
+      color: var(--accent-gold);
+      font-family: var(--font-display);
+      font-weight: var(--fw-bold);
+      font-size: var(--fs-md);
+      text-transform: uppercase;
+      letter-spacing: var(--tr-wider);
       cursor: pointer;
-      font-family: 'Be Vietnam Pro', system-ui, sans-serif;
-      transition: all 0.25s;
+      transition: all var(--dur-base) var(--ease-out);
+      position: relative;
+      overflow: hidden;
+      border-radius: var(--r-sm);
     }
-    .btn-cta-secondary:hover {
-      border-color: var(--accent-cyan);
-      color: var(--accent-cyan);
+    .nav-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--accent-gold);
+      transform: scaleX(0);
+      transform-origin: right;
+      transition: transform var(--dur-base) var(--ease-out);
+      z-index: -1;
+    }
+    .nav-btn:hover { color: #000; box-shadow: var(--sh-glow-gold); }
+    .nav-btn:hover::before { transform: scaleX(1); transform-origin: left; }
+
+    /* Hero Section */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: var(--sp-8);
+      position: relative;
+    }
+    
+    .hero-content {
+      max-width: 800px;
+      z-index: 10;
+      animation: fadeIn 1.5s ease-out;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Hero Title */
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: 5rem;
+      font-weight: 700;
+      line-height: 1.1;
+      margin-bottom: var(--sp-4);
+      background: linear-gradient(to bottom, #f3e5ab, #d4af37);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 2px 2px 10px rgba(0,0,0,0.8);
+      letter-spacing: var(--tr-widest);
+    }
+    
+    .hero-subtitle {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: var(--fs-2xl);
+      color: var(--text-secondary);
+      margin-bottom: var(--sp-8);
+      font-style: italic;
+      letter-spacing: var(--tr-wide);
+    }
+
+    /* Buttons */
+    .btn-group {
+      display: flex;
+      gap: var(--sp-4);
+      justify-content: center;
+      margin-top: var(--sp-8);
+    }
+    
+    .btn-primary {
+      padding: var(--sp-4) var(--sp-8);
+      background: var(--accent-primary);
+      color: #fff;
+      font-family: var(--font-display);
+      font-size: var(--fs-lg);
+      font-weight: var(--fw-bold);
+      letter-spacing: var(--tr-wider);
+      border: 1px solid #ff4d4d;
+      border-radius: var(--r-sm);
+      cursor: pointer;
+      transition: all var(--dur-base) var(--ease-out);
+      box-shadow: 0 0 15px rgba(138, 21, 27, 0.4);
+      position: relative;
+    }
+    .btn-primary:hover {
+      background: var(--accent-primary-hover);
       transform: translateY(-2px);
+      box-shadow: var(--sh-glow-primary);
     }
 
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(24px); }
-      to   { opacity: 1; transform: translateY(0); }
+    .btn-secondary {
+      padding: var(--sp-4) var(--sp-8);
+      background: var(--glass-bg);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      color: var(--accent-gold);
+      font-family: var(--font-display);
+      font-size: var(--fs-lg);
+      font-weight: var(--fw-bold);
+      letter-spacing: var(--tr-wider);
+      border: 1px solid var(--accent-gold);
+      border-radius: var(--r-sm);
+      cursor: pointer;
+      transition: all var(--dur-base) var(--ease-out);
+    }
+    .btn-secondary:hover {
+      background: rgba(212, 175, 55, 0.15);
+      box-shadow: var(--sh-glow-gold);
     }
 
-    /* ===== FEATURES SECTION ===== */
-    .features {
+    /* Feature Cards (Glassmorphism) */
+    .features-section {
+      padding: var(--sp-12) var(--sp-8);
       position: relative;
       z-index: 10;
-      padding: 80px 48px;
-      max-width: 1200px;
-      margin: 0 auto;
-      width: 100%;
     }
-
-    .section-label {
-      text-align: center;
-      font-size: 11px;
-      letter-spacing: 3px;
-      text-transform: uppercase;
-      color: var(--accent-cyan);
-      margin-bottom: 12px;
-    }
-
-    .section-title {
-      text-align: center;
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: clamp(22px, 4vw, 34px);
-      color: var(--text-primary);
-      margin-bottom: 8px;
-    }
-
-    .section-sub {
-      text-align: center;
-      color: var(--text-secondary);
-      font-size: 14px;
-      margin-bottom: 52px;
-    }
-
     .features-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: var(--sp-6);
+      max-width: 1200px;
+      margin: 0 auto;
     }
-
     .feature-card {
-      background: rgba(17,17,32,0.6);
-      border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 14px;
-      padding: 28px 24px;
-      transition: all 0.3s;
-      cursor: default;
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--r-md);
+      padding: var(--sp-8);
+      text-align: center;
+      transition: all var(--dur-base) var(--ease-out);
+      position: relative;
+      box-shadow: var(--glass-shadow);
     }
+    
     .feature-card:hover {
-      border-color: rgba(240,192,64,0.25);
-      background: rgba(17,17,32,0.85);
-      transform: translateY(-4px);
-      box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+      border-color: var(--accent-gold);
+      transform: translateY(-8px);
+      box-shadow: 0 15px 35px rgba(0,0,0,0.8), 0 0 15px rgba(212, 175, 55, 0.2);
     }
 
     .feature-icon {
-      font-size: 32px;
-      margin-bottom: 14px;
-      display: block;
+      font-size: 48px;
+      margin-bottom: var(--sp-4);
+      color: var(--accent-primary);
+      text-shadow: var(--sh-glow-primary);
     }
-
     .feature-title {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 15px;
+      font-family: var(--font-display);
+      font-size: var(--fs-xl);
+      font-weight: var(--fw-bold);
       color: var(--accent-gold);
-      margin-bottom: 8px;
-      letter-spacing: 0.5px;
+      margin-bottom: var(--sp-3);
+      letter-spacing: var(--tr-wide);
     }
-
     .feature-desc {
-      font-size: 13px;
       color: var(--text-secondary);
-      line-height: 1.7;
+      line-height: var(--lh-relaxed);
+      font-size: var(--fs-md);
     }
 
-    /* ===== HOW IT WORKS ===== */
-    .how-it-works {
-      background: rgba(17,17,32,0.4);
-      border-top: 1px solid rgba(255,255,255,0.05);
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-      padding: 80px 48px;
-    }
-
-    .steps-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 32px;
-      max-width: 900px;
-      margin: 0 auto;
-    }
-
-    .step {
-      text-align: center;
-    }
-
-    .step-num {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, var(--accent-gold), #a06010);
+    /* Audio Player Widget */
+    .audio-widget {
+      position: fixed;
+      bottom: var(--sp-6);
+      right: var(--sp-6);
+      z-index: 1000;
+      background: var(--glass-bg);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--accent-gold);
+      border-radius: var(--r-full);
       display: flex;
       align-items: center;
-      justify-content: center;
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 18px;
-      font-weight: 700;
-      color: #111;
-      margin: 0 auto 16px;
-      box-shadow: 0 4px 16px rgba(240,192,64,0.3);
+      gap: var(--sp-2);
+      padding: var(--sp-2) var(--sp-4);
+      box-shadow: var(--glass-shadow);
+      cursor: pointer;
+      transition: all var(--dur-base);
     }
-
-    .step-title {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 14px;
+    .audio-widget:hover {
+      background: rgba(212, 175, 55, 0.1);
+      box-shadow: var(--sh-glow-gold);
+    }
+    .audio-icon {
+      font-size: 20px;
       color: var(--accent-gold);
-      letter-spacing: 1px;
-      margin-bottom: 8px;
-      text-transform: uppercase;
+      animation: pulseMusic 2s infinite;
+      animation-play-state: paused;
     }
-
-    .step-desc {
-      font-size: 13px;
+    .audio-icon.playing {
+      animation-play-state: running;
+    }
+    .audio-text {
+      font-family: var(--font-display);
+      font-size: var(--fs-sm);
       color: var(--text-secondary);
-      line-height: 1.65;
+      font-weight: var(--fw-bold);
+      letter-spacing: var(--tr-wider);
+    }
+    @keyframes pulseMusic {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.2); text-shadow: var(--sh-glow-gold); }
+      100% { transform: scale(1); }
     }
 
-    /* ===== FOOTER ===== */
-    .footer {
-      padding: 32px 48px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 12px;
-      border-top: 1px solid rgba(255,255,255,0.05);
-    }
-
-    .footer-left {
-      font-size: 13px;
-      color: var(--text-muted);
-    }
-
-    .footer-left strong {
-      color: var(--accent-gold);
-    }
-
-    .footer-contact {
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-
-    /* Test account hint */
-    .test-hint {
-      background: rgba(64,192,224,0.08);
-      border: 1px solid rgba(64,192,224,0.2);
-      border-radius: 10px;
-      padding: 14px 20px;
-      margin-top: 32px;
-      text-align: center;
-      font-size: 12px;
-      color: var(--text-secondary);
-      animation: fadeUp 0.6s 0.4s ease both;
-    }
-    .test-hint strong { color: var(--accent-cyan); }
-
-    @media (max-width: 640px) {
-      .navbar { padding: 16px 20px; }
-      .nav-badge { display: none; }
-      .features, .how-it-works { padding: 60px 20px; }
-      .footer { padding: 24px 20px; flex-direction: column; align-items: center; text-align: center; }
-    }
   </style>
 </head>
 <body>
 
-<div class="hero">
-  <div class="hero-bg"></div>
-  <div class="hero-grid"></div>
+  <!-- Audio Element -->
+  <audio id="bg-music" src="phung thanh do.mp3" loop preload="auto"></audio>
 
-  <!-- Floating orbs -->
-  <div class="orb" style="width:400px;height:400px;top:-100px;right:-100px;background:rgba(240,192,64,0.04);animation-duration:12s"></div>
-  <div class="orb" style="width:300px;height:300px;bottom:0;left:-80px;background:rgba(64,192,224,0.04);animation-duration:15s;animation-delay:-5s"></div>
-  <div class="orb" style="width:200px;height:200px;top:40%;right:15%;background:rgba(144,96,224,0.05);animation-duration:10s;animation-delay:-3s"></div>
+  <!-- Background Vanta -->
+  <div id="vanta-bg"></div>
 
   <!-- Navbar -->
   <nav class="navbar">
-    <div class="nav-logo">
-      <div class="nav-logo-icon">⚔</div>
-      <div>
-        <div class="nav-logo-text">NHẤT MỘNG</div>
-        <div class="nav-logo-sub">3 MÔNG</div>
-      </div>
+    <div class="nav-brand">
+      <div class="nav-logo">NM</div>
+      <div class="nav-title">NHẤT MỘNG</div>
     </div>
-    <span class="nav-badge">⚡ BÚN BÒ ON AIR</span>
-    <div class="nav-actions">
-      <button class="btn-nav-login" onclick="window.location.href='login.html'">Đăng nhập</button>
-      <button class="btn-nav-register" onclick="goRegister()">Đăng Ký Vào Bang</button>
+    <div class="nav-links">
+      <button class="nav-btn" onclick="startAudioAndGo('login.html')">Gia Nhập</button>
     </div>
   </nav>
 
-  <!-- Hero -->
-  <div class="hero-content">
-    <div class="hero-tag">⚔ Công Cụ Quản Lý - Giải Trí Cho Bang Hội</div>
-    <h1 class="hero-title">NHẤT MỘNG</h1>
-    <p class="hero-desc">
-      Quản lý thành viên, sắp xếp đội hình bang chiến, phân nhóm chiến thuật và theo dõi lịch sử đợt — tất cả trong một công cụ dành riêng cho bang hội của bạn.
-    </p>
-    <div class="hero-cta">
-      <button class="btn-cta-primary" onclick="goRegister()">🗡 Đăng Ký Ngay</button>
-      <button class="btn-cta-secondary" onclick="loginAsGuest()">👤 Xem thử (Khách)</button>
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-content">
+      <h1 class="hero-title">Nhất Mộng Giang Hồ</h1>
+      <p class="hero-subtitle">"Thiên hạ phong vân xuất ngã bối,<br>Nhất nhập giang hồ tuế nguyệt thôi."</p>
+      
+      <div class="btn-group">
+        <button class="btn-primary" onclick="startAudioAndGo('login.html')">Tiến Nhập Giang Hồ</button>
+        <button class="btn-secondary" onclick="document.getElementById('features').scrollIntoView({behavior: 'smooth'})">Cẩm Nang Bang Hội</button>
+      </div>
     </div>
+  </section>
 
-    
+  <!-- Features -->
+  <section class="features-section" id="features">
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">📜</div>
+        <h3 class="feature-title">Sổ Cái Điểm Danh</h3>
+        <p class="feature-desc">Ghi nhận công trạng, quản lý tham gia hoạt động, theo dõi chuyên cần của từng bằng hữu trong bang.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⚔️</div>
+        <h3 class="feature-title">Chiến Thuật Công Thành</h3>
+        <p class="feature-desc">Hệ thống phân chia tổ đội, sắp xếp vị trí chiến đấu và chiến thuật linh hoạt trên sa bàn.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">💰</div>
+        <h3 class="feature-title">Quản Lý Ngân Quỹ</h3>
+        <p class="feature-desc">Minh bạch thu chi ngân phiếu bang hội, hệ thống chia thưởng công bằng cho mọi thành viên.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Audio Widget -->
+  <div class="audio-widget" onclick="toggleAudio()">
+    <div class="audio-icon" id="audio-icon">♫</div>
+    <div class="audio-text" id="audio-text">Phát Nhạc</div>
   </div>
-</div>
 
-<!-- Features -->
-<section class="features">
-  <div class="section-label">Tính năng</div>
-  <h2 class="section-title">Mọi thứ bạn cần để quản lý bang</h2>
-  <p class="section-sub">Được thiết kế đặc biệt cho bang Nhất Mộng</p>
+  <!-- Vanta.js Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.clouds2.min.js"></script>
+  
+  <script>
+    // Initialize Vanta.js Background
+    document.addEventListener("DOMContentLoaded", function() {
+      VANTA.CLOUDS2({
+        el: "#vanta-bg",
+        mouseControls: true,
+        touchControls: true,
+        gyroControls: false,
+        minHeight: 200.00,
+        minWidth: 200.00,
+        scale: 1.00,
+        speed: 2.70,
+        // Dùng ảnh noise mặc định của Vanta nếu thư mục local không có
+        texturePath: "https://cdn.jsdelivr.net/npm/vanta@latest/gallery/noise.png"
+      });
+    });
 
-  <div class="features-grid">
-    <div class="feature-card">
-      <span class="feature-icon">👥</span>
-      <div class="feature-title">Quản Lý Thành Viên</div>
-      <div class="feature-desc">Theo dõi toàn bộ thành viên: class, chiến lực, vai trò, nhóm. Bộ lọc tìm kiếm nhanh và chỉnh sửa dễ dàng.</div>
-    </div>
-    <div class="feature-card">
-      <span class="feature-icon">⚔</span>
-      <div class="feature-title">Sắp Xếp Đội Hình</div>
-      <div class="feature-desc">Phân chia N team × M slot linh hoạt. Kéo thành viên vào slot, phân nhóm team theo màu sắc chiến thuật.</div>
-    </div>
-    <div class="feature-card">
-      <span class="feature-icon">📜</span>
-      <div class="feature-title">Lịch Sử Đợt</div>
-      <div class="feature-desc">Lưu lại toàn bộ lịch sử các đợt bang chiến. Xem lại đội hình và chiến thuật của từng đợt.</div>
-    </div>
-    <div class="feature-card">
-      <span class="feature-icon">🛡</span>
-      <div class="feature-title">Slot Dự Bị</div>
-      <div class="feature-desc">Quản lý hàng dự bị riêng biệt. Nhanh chóng điều chỉnh khi có thành viên vắng mặt đột xuất.</div>
-    </div>
-    <div class="feature-card">
-      <span class="feature-icon">📋</span>
-      <div class="feature-title">Ghi Chú Chiến Thuật</div>
-      <div class="feature-desc">Không gian ghi chép chiến lược riêng cho từng đợt bang chiến. Giữ mọi thứ có tổ chức.</div>
-    </div>
-    <div class="feature-card">
-      <span class="feature-icon">💾</span>
-      <div class="feature-title">Backup Dữ Liệu</div>
-      <div class="feature-desc">Xuất/nhập dữ liệu dạng JSON bất cứ lúc nào hoặc auto update database. Không lo mất dữ liệu, dễ chuyển thiết bị.</div>
-    </div>
-  </div>
-</section>
+    // Audio Control
+    const bgMusic = document.getElementById('bg-music');
+    const audioIcon = document.getElementById('audio-icon');
+    const audioText = document.getElementById('audio-text');
+    let isPlaying = false;
 
-<!-- How it works -->
-<section class="how-it-works">
-  <div class="section-label">Cách vận hành</div>
-  <h2 class="section-title" style="margin-bottom:8px">3 bước để bắt đầu</h2>
-  <p class="section-sub">Đơn giản, không cần cài đặt</p>
+    // Check if audio was playing in previous session (localStorage)
+    const wasPlaying = localStorage.getItem('music_playing') === 'true';
 
-  <div class="steps-grid">
-    <div class="step">
-      <div class="step-num">1</div>
-      <div class="step-title">Đăng Ký</div>
-      <div class="step-desc">Tạo tài khoản và thiết lập cấu hình cho bang hội: tên bang, class, số team, slot.</div>
-    </div>
-    <div class="step">
-      <div class="step-num">2</div>
-      <div class="step-title">Thêm Thành Viên</div>
-      <div class="step-desc">Nhập danh sách thành viên với thông tin class, chiến lực và nhóm chiến thuật.</div>
-    </div>
-    <div class="step">
-      <div class="step-num">3</div>
-      <div class="step-title">Vận Hành Bang</div>
-      <div class="step-desc">Tạo đợt bang chiến, sắp xếp đội hình, ghi chú chiến thuật và lưu lịch sử.</div>
-    </div>
-  </div>
-</section>
+    function toggleAudio() {
+      if (isPlaying) {
+        bgMusic.pause();
+        isPlaying = false;
+        audioIcon.classList.remove('playing');
+        audioText.textContent = "Phát Nhạc";
+        localStorage.setItem('music_playing', 'false');
+      } else {
+        bgMusic.play().then(() => {
+          isPlaying = true;
+          audioIcon.classList.add('playing');
+          audioText.textContent = "Đang Phát";
+          localStorage.setItem('music_playing', 'true');
+        }).catch(err => {
+          console.log("Autoplay blocked:", err);
+        });
+      }
+    }
 
-<!-- Footer -->
-<footer class="footer">
-  <div class="footer-left">
-    <strong>⚔ Nhất Mộng</strong> Công cụ giải trí - quản lí bang nhất mộng
-  </div>
-  <div class="footer-contact">
-    📧 Góp ý & hỗ trợ: liên hệ Bang Chủ hoặc Bún Bò
-  </div>
-</footer>
+    function startAudioAndGo(url) {
+      if (!isPlaying) {
+        bgMusic.play().catch(e => console.log(e));
+        localStorage.setItem('music_playing', 'true');
+      }
+      // Small delay to let audio start before navigation
+      setTimeout(() => {
+        window.location.href = url;
+      }, 300);
+    }
 
-<script src="js/storage.js"></script>
-<script>
-  function goRegister() {
-    window.location.href = 'login.html#register';
-  }
-
-  function loginAsGuest() {
-    sessionStorage.setItem('nth_session', JSON.stringify({ id: 'guest', name: 'Khách', email: '', role: 'guest' }));
-    window.location.href = 'app.html';
-  }
-
-  // If already logged in, show a "Go to app" button in nav
-  const sess = sessionStorage.getItem('nth_session') || localStorage.getItem('nth_session');
-  if (sess) {
-    const u = JSON.parse(sess);
-    document.querySelector('.nav-actions').innerHTML = `
-      <span style="font-size:13px;color:var(--text-secondary)">Xin chào, <strong style="color:var(--accent-gold)">${u.name}</strong></span>
-      <button class="btn-nav-register" onclick="window.location.href='app.html'">Vào App →</button>
-    `;
-  }
-</script>
+    // Try to autoplay on load if it was playing before
+    window.addEventListener('DOMContentLoaded', () => {
+      if (wasPlaying) {
+        // Many browsers will still block this unless user clicks first
+        bgMusic.play().then(() => {
+          isPlaying = true;
+          audioIcon.classList.add('playing');
+          audioText.textContent = "Đang Phát";
+        }).catch(() => {
+          console.log("Autoplay blocked on reload");
+          localStorage.setItem('music_playing', 'false');
+        });
+      }
+    });
+  </script>
 </body>
 </html>
