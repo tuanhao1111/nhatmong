@@ -338,8 +338,27 @@
     }
     widget.addEventListener('click', toggle);
 
-    if (localStorage.getItem('music_playing') === 'true') {
-      audio.play().then(() => { playing = true; setUI(true); }).catch(() => {});
+    // Auto-play on entry unless the user explicitly muted it on a previous visit.
+    const wantMusic = localStorage.getItem('music_playing') !== 'false';
+    if (wantMusic) {
+      const events = ['pointerdown', 'keydown', 'touchstart', 'scroll'];
+      const kick = () => {
+        if (playing) { cleanup(); return; }
+        audio.play().then(() => {
+          playing = true; setUI(true);
+          localStorage.setItem('music_playing', 'true');
+          cleanup();
+        }).catch(() => {});
+      };
+      function cleanup() { events.forEach((ev) => window.removeEventListener(ev, kick)); }
+      // Try straight away (works for returning visitors / relaxed autoplay policies)…
+      audio.play().then(() => {
+        playing = true; setUI(true);
+        localStorage.setItem('music_playing', 'true');
+      }).catch(() => {
+        // …otherwise start at the first user gesture.
+        events.forEach((ev) => window.addEventListener(ev, kick, { passive: true }));
+      });
     }
   }
 
