@@ -70,11 +70,6 @@
   background: linear-gradient(180deg, rgba(5,7,10,0.15), rgba(5,7,10,0.62));
   color: #fff; font-size: 2.2rem; opacity: 0; transition: opacity var(--dur) var(--ease);
 }
-.film__play em {
-  font-family: var(--font-mono); font-style: normal; font-size: 0.66rem; font-weight: 700;
-  text-transform: uppercase; letter-spacing: 0.2em;
-  padding: 0.3rem 0.9rem; border: 1px solid rgba(255,255,255,0.7); border-radius: 999px;
-}
 .film:hover .film__play { opacity: 1; }
 .film__info { padding: 0.7rem 0.8rem 0.9rem; }
 .film__name { font-family: var(--font-display); font-weight: 700; font-size: 0.95rem; line-height: 1.2; letter-spacing: -0.01em;
