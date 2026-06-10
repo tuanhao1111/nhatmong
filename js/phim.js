@@ -16,13 +16,14 @@
 
   const T = (vi, en) => (document.body.dataset.lang === 'en' ? en : vi);
 
-  const state = { mode: 'latest', keyword: '', category: '', page: 1, loading: false, hasMore: false };
+  const state = { mode: 'latest', keyword: '', category: '', country: '', page: 1, loading: false, hasMore: false };
 
   const el = {
     grid: document.getElementById('phim-grid'),
     status: document.getElementById('phim-status'),
     more: document.getElementById('phim-more'),
     cats: document.getElementById('phim-cats'),
+    countries: document.getElementById('phim-countries'),
     searchForm: document.getElementById('phim-search'),
     searchInput: document.getElementById('search-input'),
     modal: document.getElementById('film-modal'),
@@ -52,6 +53,8 @@
       return `${API}/v1/api/tim-kiem?keyword=${encodeURIComponent(state.keyword)}&page=${state.page}`;
     if (state.mode === 'category')
       return `${API}/v1/api/the-loai/${state.category}?page=${state.page}`;
+    if (state.mode === 'country')
+      return `${API}/v1/api/quoc-gia/${state.country}?page=${state.page}`;
     return `${API}/danh-sach/phim-moi-cap-nhat-v3?page=${state.page}`;
   }
 
@@ -181,7 +184,13 @@
     io.observe(el.more);
   }
 
-  // ── Categories ───────────────────────────────────────────────────────────
+  // ── Filters (thể loại / quốc gia) ─────────────────────────────────────────
+  // Thể loại & quốc gia loại trừ lẫn nhau → xóa active ở cả hai hàng trước khi chọn mới
+  function clearActiveChips() {
+    if (el.cats) el.cats.querySelectorAll('.cat-chip').forEach((c) => c.classList.remove('active'));
+    if (el.countries) el.countries.querySelectorAll('.cat-chip').forEach((c) => c.classList.remove('active'));
+  }
+
   async function loadCats() {
     try {
       const data = await fetchAPI(`${API}/the-loai`);
@@ -193,16 +202,35 @@
         cats.slice(0, 14).map((c) => `<button class="cat-chip" data-slug="${c.slug}">${c.name}</button>`).join('');
       el.cats.querySelectorAll('.cat-chip').forEach((chip) => {
         chip.addEventListener('click', () => {
-          el.cats.querySelectorAll('.cat-chip').forEach((c) => c.classList.remove('active'));
+          clearActiveChips();
           chip.classList.add('active');
           const slug = chip.dataset.slug;
           if (!slug) { state.mode = 'latest'; }
           else { state.mode = 'category'; state.category = slug; }
-          state.keyword = ''; el.searchInput.value = '';
+          state.country = ''; state.keyword = ''; el.searchInput.value = '';
           loadList(true);
         });
       });
     } catch (e) { console.error('cats', e); }
+  }
+
+  async function loadCountries() {
+    if (!el.countries) return;
+    try {
+      const data = await fetchAPI(`${API}/quoc-gia`);
+      const list = Array.isArray(data) ? data : (data.data && data.data.items) || [];
+      el.countries.innerHTML =
+        list.slice(0, 14).map((c) => `<button class="cat-chip" data-slug="${c.slug}">${c.name}</button>`).join('');
+      el.countries.querySelectorAll('.cat-chip').forEach((chip) => {
+        chip.addEventListener('click', () => {
+          clearActiveChips();
+          chip.classList.add('active');
+          state.mode = 'country'; state.country = chip.dataset.slug;
+          state.category = ''; state.keyword = ''; el.searchInput.value = '';
+          loadList(true);
+        });
+      });
+    } catch (e) { console.error('countries', e); }
   }
 
   // ── Player ─────────────────────────────────────────────────────────────
@@ -517,7 +545,8 @@
     const kw = el.searchInput.value.trim();
     if (!kw) { state.mode = 'latest'; }
     else { state.mode = 'search'; state.keyword = kw; }
-    el.cats.querySelectorAll('.cat-chip').forEach((c) => c.classList.remove('active'));
+    state.category = ''; state.country = '';
+    clearActiveChips();
     loadList(true);
   });
 
@@ -529,7 +558,8 @@
       const kw = el.searchInput.value.trim();
       if (!kw) { if (state.mode === 'search') { state.mode = 'latest'; loadList(true); } return; }
       state.mode = 'search'; state.keyword = kw;
-      el.cats.querySelectorAll('.cat-chip').forEach((c) => c.classList.remove('active'));
+      state.category = ''; state.country = '';
+      clearActiveChips();
       loadList(true);
     }, 450);
   });
@@ -569,5 +599,6 @@
   // ── Init ─────────────────────────────────────────────────────────────────
   renderRecent();
   loadCats();
+  loadCountries();
   loadList(true);
 })();

@@ -65,7 +65,14 @@
         <input type="search" id="search-input" placeholder="Tìm phim..." autocomplete="off" />
         <button type="submit" data-cursor aria-label="Search">⌕</button>
       </form>
-      <div class="phim-filters" id="phim-cats"></div>
+      <div class="phim-filter-group">
+        <span class="phim-filter-label"><span data-vi>Thể loại</span><span data-en>Genre</span></span>
+        <div class="phim-filters" id="phim-cats"></div>
+      </div>
+      <div class="phim-filter-group">
+        <span class="phim-filter-label"><span data-vi>Quốc gia</span><span data-en>Country</span></span>
+        <div class="phim-filters" id="phim-countries"></div>
+      </div>
     </div>
 
     <!-- Recently watched -->

@@ -20,6 +20,11 @@
 }
 .phim-search button:hover { background: var(--c-sea-bright); transform: scale(1.05); }
 
+.phim-filter-group { display: flex; flex-direction: column; gap: 0.55rem; }
+.phim-filter-label {
+  font-family: var(--font-mono); font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.18em;
+  color: var(--text-mut);
+}
 .phim-filters { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .cat-chip {
   padding: 0.45rem 1rem; border-radius: 999px; border: 1px solid var(--line);
