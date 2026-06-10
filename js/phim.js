@@ -24,6 +24,10 @@
     more: document.getElementById('phim-more'),
     cats: document.getElementById('phim-cats'),
     countries: document.getElementById('phim-countries'),
+    catsBtn: document.getElementById('dd-cats-btn'),
+    catsVal: document.getElementById('dd-cats-val'),
+    cntBtn: document.getElementById('dd-countries-btn'),
+    cntVal: document.getElementById('dd-countries-val'),
     searchForm: document.getElementById('phim-search'),
     searchInput: document.getElementById('search-input'),
     modal: document.getElementById('film-modal'),
@@ -185,10 +189,25 @@
   }
 
   // ── Filters (thể loại / quốc gia) ─────────────────────────────────────────
-  // Thể loại & quốc gia loại trừ lẫn nhau → xóa active ở cả hai hàng trước khi chọn mới
-  function clearActiveChips() {
-    if (el.cats) el.cats.querySelectorAll('.cat-chip').forEach((c) => c.classList.remove('active'));
-    if (el.countries) el.countries.querySelectorAll('.cat-chip').forEach((c) => c.classList.remove('active'));
+  const CATS_DEFAULT = '<span data-vi>Mới nhất</span><span data-en>Latest</span>';
+  const CNT_DEFAULT = '<span data-vi>Tất cả</span><span data-en>All</span>';
+  function resetCatsVal() { if (el.catsVal) el.catsVal.innerHTML = CATS_DEFAULT; }
+  function resetCntVal() { if (el.cntVal) el.cntVal.innerHTML = CNT_DEFAULT; }
+  function activateChip(container, slug) {
+    if (!container) return;
+    container.querySelectorAll('.cat-chip').forEach((c) => c.classList.toggle('active', c.dataset.slug === slug));
+  }
+  // Reset hiển thị 2 dropdown về mặc định (dùng khi tìm kiếm)
+  function resetFilters() {
+    activateChip(el.cats, ''); activateChip(el.countries, '');
+    resetCatsVal(); resetCntVal();
+  }
+  function closeAllDD() {
+    document.querySelectorAll('.phim-dd.open').forEach((d) => {
+      d.classList.remove('open');
+      const b = d.querySelector('.phim-dd__btn');
+      if (b) b.setAttribute('aria-expanded', 'false');
+    });
   }
 
   async function loadCats() {
@@ -202,12 +221,13 @@
         cats.slice(0, 14).map((c) => `<button class="cat-chip" data-slug="${c.slug}">${c.name}</button>`).join('');
       el.cats.querySelectorAll('.cat-chip').forEach((chip) => {
         chip.addEventListener('click', () => {
-          clearActiveChips();
-          chip.classList.add('active');
           const slug = chip.dataset.slug;
-          if (!slug) { state.mode = 'latest'; }
-          else { state.mode = 'category'; state.category = slug; }
+          if (!slug) { state.mode = 'latest'; resetCatsVal(); }
+          else { state.mode = 'category'; state.category = slug; el.catsVal.textContent = chip.textContent.trim(); }
           state.country = ''; state.keyword = ''; el.searchInput.value = '';
+          activateChip(el.cats, slug);
+          activateChip(el.countries, ''); resetCntVal();   // quốc gia về "Tất cả"
+          closeAllDD();
           loadList(true);
         });
       });
@@ -220,13 +240,17 @@
       const data = await fetchAPI(`${API}/quoc-gia`);
       const list = Array.isArray(data) ? data : (data.data && data.data.items) || [];
       el.countries.innerHTML =
-        list.slice(0, 14).map((c) => `<button class="cat-chip" data-slug="${c.slug}">${c.name}</button>`).join('');
+        `<button class="cat-chip active" data-slug=""><span data-vi>Tất cả</span><span data-en>All</span></button>` +
+        list.slice(0, 16).map((c) => `<button class="cat-chip" data-slug="${c.slug}">${c.name}</button>`).join('');
       el.countries.querySelectorAll('.cat-chip').forEach((chip) => {
         chip.addEventListener('click', () => {
-          clearActiveChips();
-          chip.classList.add('active');
-          state.mode = 'country'; state.country = chip.dataset.slug;
+          const slug = chip.dataset.slug;
+          if (!slug) { state.mode = 'latest'; resetCntVal(); }
+          else { state.mode = 'country'; state.country = slug; el.cntVal.textContent = chip.textContent.trim(); }
           state.category = ''; state.keyword = ''; el.searchInput.value = '';
+          activateChip(el.countries, slug);
+          activateChip(el.cats, ''); resetCatsVal();        // thể loại về "Mới nhất"
+          closeAllDD();
           loadList(true);
         });
       });
@@ -546,7 +570,7 @@
     if (!kw) { state.mode = 'latest'; }
     else { state.mode = 'search'; state.keyword = kw; }
     state.category = ''; state.country = '';
-    clearActiveChips();
+    resetFilters();
     loadList(true);
   });
 
@@ -556,10 +580,10 @@
     clearTimeout(searchTimer);
     searchTimer = setTimeout(() => {
       const kw = el.searchInput.value.trim();
-      if (!kw) { if (state.mode === 'search') { state.mode = 'latest'; loadList(true); } return; }
+      if (!kw) { if (state.mode === 'search') { state.mode = 'latest'; resetFilters(); loadList(true); } return; }
       state.mode = 'search'; state.keyword = kw;
       state.category = ''; state.country = '';
-      clearActiveChips();
+      resetFilters();
       loadList(true);
     }, 450);
   });
@@ -577,6 +601,20 @@
     try { localStorage.removeItem(HKEY); } catch (e) {}
     renderRecent();
   });
+
+  // Dropdown lọc: bấm để xổ, click ra ngoài / Escape để đóng
+  [el.catsBtn, el.cntBtn].forEach((btn) => {
+    if (!btn) return;
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const parent = btn.closest('.phim-dd');
+      const isOpen = parent.classList.contains('open');
+      closeAllDD();
+      if (!isOpen) { parent.classList.add('open'); btn.setAttribute('aria-expanded', 'true'); }
+    });
+  });
+  document.addEventListener('click', (e) => { if (!e.target.closest('.phim-dd')) closeAllDD(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAllDD(); });
 
   el.close.addEventListener('click', closeModal);
   el.backdrop.addEventListener('click', closeModal);

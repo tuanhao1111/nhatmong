@@ -65,13 +65,23 @@
         <input type="search" id="search-input" placeholder="Tìm phim..." autocomplete="off" />
         <button type="submit" data-cursor aria-label="Search">⌕</button>
       </form>
-      <div class="phim-filter-group">
-        <span class="phim-filter-label"><span data-vi>Thể loại</span><span data-en>Genre</span></span>
-        <div class="phim-filters" id="phim-cats"></div>
-      </div>
-      <div class="phim-filter-group">
-        <span class="phim-filter-label"><span data-vi>Quốc gia</span><span data-en>Country</span></span>
-        <div class="phim-filters" id="phim-countries"></div>
+      <div class="phim-dropdowns">
+        <div class="phim-dd">
+          <button class="phim-dd__btn" id="dd-cats-btn" type="button" data-cursor aria-expanded="false">
+            <span class="phim-dd__cap"><span data-vi>Thể loại</span><span data-en>Genre</span></span>
+            <span class="phim-dd__val" id="dd-cats-val"><span data-vi>Mới nhất</span><span data-en>Latest</span></span>
+            <span class="phim-dd__caret" aria-hidden="true">▾</span>
+          </button>
+          <div class="phim-dd__panel"><div class="phim-filters" id="phim-cats"></div></div>
+        </div>
+        <div class="phim-dd">
+          <button class="phim-dd__btn" id="dd-countries-btn" type="button" data-cursor aria-expanded="false">
+            <span class="phim-dd__cap"><span data-vi>Quốc gia</span><span data-en>Country</span></span>
+            <span class="phim-dd__val" id="dd-countries-val"><span data-vi>Tất cả</span><span data-en>All</span></span>
+            <span class="phim-dd__caret" aria-hidden="true">▾</span>
+          </button>
+          <div class="phim-dd__panel"><div class="phim-filters" id="phim-countries"></div></div>
+        </div>
       </div>
     </div>
 

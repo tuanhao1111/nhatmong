@@ -20,11 +20,30 @@
 }
 .phim-search button:hover { background: var(--c-sea-bright); transform: scale(1.05); }
 
-.phim-filter-group { display: flex; flex-direction: column; gap: 0.55rem; }
-.phim-filter-label {
-  font-family: var(--font-mono); font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.18em;
-  color: var(--text-mut);
+/* Dropdown lọc gọn */
+.phim-dropdowns { display: flex; flex-wrap: wrap; gap: 0.7rem; }
+.phim-dd { position: relative; }
+.phim-dd__btn {
+  display: inline-flex; align-items: center; gap: 0.55rem; padding: 0.6rem 1.1rem;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--bg-alt); color: var(--text);
+  font-family: var(--font-mono); font-size: var(--fs-mono);
+  transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
 }
+.phim-dd__btn:hover, .phim-dd.open .phim-dd__btn { border-color: var(--accent); }
+.phim-dd__cap { color: var(--text-mut); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.58rem; }
+.phim-dd__val { font-weight: 700; color: var(--accent); white-space: nowrap; max-width: 12ch; overflow: hidden; text-overflow: ellipsis; }
+.phim-dd__caret { color: var(--text-mut); font-size: 0.7rem; transition: transform var(--dur) var(--ease); }
+.phim-dd.open .phim-dd__caret { transform: rotate(180deg); }
+.phim-dd__panel {
+  position: absolute; top: calc(100% + 0.5rem); left: 0; z-index: 20;
+  width: max-content; min-width: 240px; max-width: min(86vw, 440px); max-height: 320px; overflow-y: auto;
+  padding: 0.9rem; border: 1px solid var(--line); border-radius: 14px; background: var(--bg); box-shadow: var(--sh-xl);
+  opacity: 0; visibility: hidden; transform: translateY(-6px);
+  transition: opacity 0.2s var(--ease), transform 0.2s var(--ease), visibility 0.2s var(--ease);
+}
+.phim-dd.open .phim-dd__panel { opacity: 1; visibility: visible; transform: none; }
+@media (prefers-reduced-motion: reduce) { .phim-dd__panel, .phim-dd__caret { transition: none; } }
+
 .phim-filters { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .cat-chip {
   padding: 0.45rem 1rem; border-radius: 999px; border: 1px solid var(--line);
