@@ -8,6 +8,8 @@
   const API = 'https://phimapi.com';
   const IMG = 'https://phimimg.com/';
   const PKEY = 'nm_phim_progress';            // localStorage: tập đã xem theo slug
+  const HKEY = 'nm_phim_history';             // localStorage: danh sách phim vừa xem
+  const HMAX = 12;                            // số phim tối đa lưu trong "Vừa xem"
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent(
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><rect fill="#10151c" width="200" height="300"/><text x="100" y="155" fill="#5b6573" font-size="34" font-family="sans-serif" text-anchor="middle">NM</text></svg>');
@@ -27,6 +29,9 @@
     backdrop: document.getElementById('film-backdrop'),
     close: document.getElementById('film-close'),
     content: document.getElementById('film-content'),
+    recent: document.getElementById('phim-recent'),
+    recentRow: document.getElementById('phim-recent-row'),
+    recentClear: document.getElementById('phim-recent-clear'),
   };
 
   // ── API helpers ─────────────────────────────────────────────────────────
@@ -87,6 +92,54 @@
   function revealCards() {
     if (!revealIO) return;
     el.grid.querySelectorAll('.film:not(.film--skel):not(.obs)').forEach((c) => { c.classList.add('obs'); revealIO.observe(c); });
+  }
+
+  // ── Recently watched ─────────────────────────────────────────────────────
+  function loadHistory() {
+    try { return JSON.parse(localStorage.getItem(HKEY) || '[]'); } catch (e) { return []; }
+  }
+  function addToHistory(movie, slug) {
+    let h = loadHistory().filter((x) => x.slug !== slug);
+    h.unshift({
+      slug,
+      name: movie.name || '',
+      origin: movie.origin_name || '',
+      year: movie.year || '',
+      badge: movie.episode_current || movie.quality || '',
+      poster: posterOf(movie),
+      ts: Date.now(),
+    });
+    h = h.slice(0, HMAX);
+    try { localStorage.setItem(HKEY, JSON.stringify(h)); } catch (e) {}
+    renderRecent();
+  }
+  function removeFromHistory(slug) {
+    const h = loadHistory().filter((x) => x.slug !== slug);
+    try { localStorage.setItem(HKEY, JSON.stringify(h)); } catch (e) {}
+    renderRecent();
+  }
+  function recentCardHTML(e) {
+    return `
+      <div class="film film--recent" data-slug="${e.slug}">
+        <button class="film__remove" data-slug="${e.slug}" data-cursor aria-label="Remove">✕</button>
+        <div class="film__poster">
+          ${e.badge ? `<span class="film__badge">${e.badge}</span>` : ''}
+          <img src="${e.poster || PLACEHOLDER}" alt="${(e.name || '').replace(/"/g, '')}" loading="lazy"
+               onerror="this.onerror=null;this.src='${PLACEHOLDER}'">
+          <span class="film__play">▶</span>
+        </div>
+        <div class="film__info">
+          <div class="film__name">${e.name || ''}</div>
+          <div class="film__origin">${e.origin || ''}${e.year ? ' · ' + e.year : ''}</div>
+        </div>
+      </div>`;
+  }
+  function renderRecent() {
+    if (!el.recent) return;
+    const h = loadHistory();
+    if (!h.length) { el.recent.hidden = true; el.recentRow.innerHTML = ''; return; }
+    el.recent.hidden = false;
+    el.recentRow.innerHTML = h.map(recentCardHTML).join('');
   }
 
   async function loadList(reset) {
@@ -422,7 +475,10 @@
           <div class="fm-ranges" id="fm-ranges" hidden></div>
           <div class="fm-eps" id="fm-eplist"></div>
         </div>`;
-      if (episodes.length) renderEpisodes(movie, episodes, movie.slug || slug);
+      if (episodes.length) {
+        renderEpisodes(movie, episodes, movie.slug || slug);
+        addToHistory(movie, movie.slug || slug);
+      }
     } catch (e) {
       el.content.innerHTML = `<div class="phim-status">${T('Lỗi tải phim.', 'Failed to load movie.')}</div>`;
       console.error(e);
@@ -478,6 +534,20 @@
     }, 450);
   });
 
+  // Hàng "Vừa xem": bấm card để mở lại, bấm ✕ để xóa khỏi lịch sử
+  if (el.recentRow) {
+    el.recentRow.addEventListener('click', (e) => {
+      const rm = e.target.closest('.film__remove');
+      if (rm) { e.stopPropagation(); removeFromHistory(rm.dataset.slug); return; }
+      const card = e.target.closest('.film--recent');
+      if (card) openMovie(card.dataset.slug);
+    });
+  }
+  if (el.recentClear) el.recentClear.addEventListener('click', () => {
+    try { localStorage.removeItem(HKEY); } catch (e) {}
+    renderRecent();
+  });
+
   el.close.addEventListener('click', closeModal);
   el.backdrop.addEventListener('click', closeModal);
 
@@ -497,6 +567,7 @@
   });
 
   // ── Init ─────────────────────────────────────────────────────────────────
+  renderRecent();
   loadCats();
   loadList(true);
 })();
