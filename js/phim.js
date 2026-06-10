@@ -22,6 +22,7 @@
     grid: document.getElementById('phim-grid'),
     status: document.getElementById('phim-status'),
     more: document.getElementById('phim-more'),
+    moreText: document.querySelector('#phim-more .phim-more__text'),
     cats: document.getElementById('phim-cats'),
     countries: document.getElementById('phim-countries'),
     catsBtn: document.getElementById('dd-cats-btn'),
@@ -149,13 +150,31 @@
     el.recentRow.innerHTML = h.map(recentCardHTML).join('');
   }
 
+  // Cập nhật vùng "tải thêm": spinner khi đang tải · gợi ý bấm khi còn phim · "đã hết"
+  function updateMore() {
+    if (!el.more) return;
+    el.more.classList.remove('is-loading', 'is-more', 'is-end');
+    const hasItems = !!el.grid.querySelector('.film:not(.film--skel)');
+    if (state.loading && state.page > 1) {
+      el.more.hidden = false; el.more.classList.add('is-loading');
+      el.moreText.textContent = T('Đang tải…', 'Loading…');
+    } else if (state.hasMore && hasItems) {
+      el.more.hidden = false; el.more.classList.add('is-more');
+      el.moreText.textContent = T('Xem thêm', 'Load more');
+    } else if (hasItems) {
+      el.more.hidden = false; el.more.classList.add('is-end');
+      el.moreText.textContent = T('Đã hết phim', 'No more movies');
+    } else {
+      el.more.hidden = true; el.moreText.textContent = '';
+    }
+  }
+
   async function loadList(reset) {
     if (state.loading) return;
     state.loading = true;
     el.status.textContent = '';
-    if (reset) { state.page = 1; el.grid.innerHTML = skeletonHTML(12); }
-    else el.grid.insertAdjacentHTML('beforeend', skeletonHTML(6));
-    el.more.hidden = true;
+    if (reset) { state.page = 1; el.grid.innerHTML = skeletonHTML(12); el.more.hidden = true; }
+    else updateMore(); // hiện spinner ngay khi bắt đầu tải thêm
     try {
       const data = await fetchAPI(listURL());
       const items = getItems(data);
@@ -168,7 +187,6 @@
         revealCards();
         el.status.textContent = '';
         state.hasMore = items.length >= 10;
-        el.more.hidden = !state.hasMore;
       }
     } catch (e) {
       clearSkeletons();
@@ -177,10 +195,11 @@
       console.error(e);
     } finally {
       state.loading = false;
+      updateMore();
     }
   }
 
-  // Infinite scroll: tự tải thêm khi nút "Xem thêm" lọt vào tầm nhìn (vẫn bấm được làm fallback)
+  // Infinite scroll: tự tải thêm khi vùng cuối lọt vào tầm nhìn (vẫn bấm được làm fallback)
   if ('IntersectionObserver' in window) {
     const io = new IntersectionObserver((entries) => {
       if (entries[0].isIntersecting && state.hasMore && !state.loading) { state.page++; loadList(false); }
