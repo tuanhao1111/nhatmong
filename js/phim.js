@@ -295,9 +295,11 @@
     fragLoadingMaxRetryTimeout: 64000,
   };
   const STALL_MS = 15000; // khựng quá 15s thì coi như server lỗi → đổi server
+  const START_MS = 20000; // không phát được trong 20s sau khi mở → coi như server lỗi → đổi server
 
   let hls = null;
   let stallTimer = null;
+  let startTimer = null;    // watchdog khởi động: chống quay vòng vô tận khi server đứng hình
   let activeVideo = null;   // <video> hiện tại, cho phím tắt điều khiển
   let goNextEp = null;      // hàm chuyển tập sau, cho phím tắt / tự động
 
@@ -311,6 +313,7 @@
 
   function destroyPlayer() {
     if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; }
+    if (startTimer) { clearTimeout(startTimer); startTimer = null; }
     if (hls) { try { hls.destroy(); } catch (e) {} hls = null; }
     activeVideo = null;
   }
@@ -332,9 +335,19 @@
   // Gắn spinner + theo dõi khựng + tự chuyển tập khi hết
   function bindVideo(video, fail, onEnded) {
     setSpinner(true);
+    // Watchdog khởi động: nếu chưa phát được sau START_MS thì đổi server,
+    // tránh trường hợp server đứng hình → spinner quay vô tận mà không báo lỗi.
+    if (startTimer) clearTimeout(startTimer);
+    startTimer = setTimeout(() => {
+      if (video.readyState < 3) fail('start-timeout');
+    }, START_MS);
+    const started = () => {
+      if (startTimer) { clearTimeout(startTimer); startTimer = null; }
+      setSpinner(false);
+    };
     video.addEventListener('waiting', () => setSpinner(true));
-    video.addEventListener('playing', () => setSpinner(false));
-    video.addEventListener('canplay', () => setSpinner(false));
+    video.addEventListener('playing', started);
+    video.addEventListener('canplay', started);
     video.addEventListener('ended', () => onEnded && onEnded());
     watchStall(video, fail);
     activeVideo = video;
