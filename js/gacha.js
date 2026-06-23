@@ -18,7 +18,7 @@
       if (s && Array.isArray(s.members)) {
         return {
           members: s.members,
-          prizes: [2, 3, 4].includes(s.prizes) ? s.prizes : 3,
+          prizes: Number.isInteger(s.prizes) && s.prizes >= 1 ? s.prizes : 3,
           history: Array.isArray(s.history) ? s.history : [],
           draws: typeof s.draws === 'number' ? s.draws : (s.history ? s.history.length : 0),
         };
@@ -39,6 +39,7 @@
     statPrizes: document.getElementById('stat-prizes'),
     statDraws: document.getElementById('stat-draws'),
     prizes: document.getElementById('raffle-prizes'),
+    prizesCustom: document.getElementById('raffle-prizes-custom'),
     spin: document.getElementById('spin'),
     clearWinners: document.getElementById('clear-winners'),
     input: document.getElementById('member-input'),
@@ -139,9 +140,16 @@
   }
 
   function renderPrizes() {
+    let isPreset = false;
     el.prizes.querySelectorAll('.pchip').forEach((b) => {
-      b.classList.toggle('active', Number(b.dataset.prize) === state.prizes);
+      const on = Number(b.dataset.prize) === state.prizes;
+      b.classList.toggle('active', on);
+      if (on) isPreset = true;
     });
+    // Custom input is "active" only when the current value isn't one of the presets.
+    el.prizesCustom.classList.toggle('active', !isPreset);
+    el.prizesCustom.value = isPreset ? '' : state.prizes;
+    el.prizesCustom.max = Math.max(1, state.members.length) || '';
   }
 
   function fmtDate(ts) {
@@ -280,8 +288,11 @@
   // ── Bind ──────────────────────────────────────────────────────────────
   el.saveMembers.addEventListener('click', () => {
     state.members = parseMembers(el.input.value);
+    // Keep the winner count within the (new) member count.
+    if (state.members.length) state.prizes = Math.min(state.prizes, state.members.length);
     save();
     renderMembers();
+    renderPrizes();
     renderStats();
     el.memberCount.classList.add('saved');
     setTimeout(() => el.memberCount.classList.remove('saved'), 1200);
@@ -294,6 +305,20 @@
     save();
     renderPrizes();
     renderStats();
+  });
+
+  function applyCustomPrizes() {
+    const raw = parseInt(el.prizesCustom.value, 10);
+    if (!Number.isFinite(raw)) { renderPrizes(); return; } // empty/invalid → keep current
+    const max = Math.max(1, state.members.length);
+    state.prizes = Math.min(Math.max(raw, 1), max);
+    save();
+    renderPrizes();
+    renderStats();
+  }
+  el.prizesCustom.addEventListener('change', applyCustomPrizes);
+  el.prizesCustom.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); applyCustomPrizes(); el.prizesCustom.blur(); }
   });
 
   el.spin.addEventListener('click', spin);

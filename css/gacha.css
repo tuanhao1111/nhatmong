@@ -63,6 +63,15 @@
 }
 .pchip:hover { transform: translateY(-2px); }
 .pchip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.pchip-input {
+  width: 64px; height: 44px; border-radius: 12px; border: 1px solid var(--line);
+  background: rgba(255,255,255,0.05); color: var(--text-soft);
+  font-family: var(--font-display); font-weight: 700; font-size: 1.1rem; text-align: center;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+.pchip-input::placeholder { color: var(--text-mut); font-weight: 400; }
+.pchip-input:focus { outline: none; border-color: var(--accent); background: rgba(255,255,255,0.08); }
+.pchip-input.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 
 /* ── Stats ─────────────────────────────────────────────────────────────── */
 .gacha-stats { display: flex; gap: clamp(1.5rem, 5vw, 4rem); }
