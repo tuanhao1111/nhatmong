@@ -16,6 +16,12 @@
 
   const T = (vi, en) => (document.body.dataset.lang === 'en' ? en : vi);
 
+  // Escape dữ liệu từ API trước khi chèn vào innerHTML (chống XSS —
+  // tên phim/server/tập đến từ bên thứ ba, không tin tưởng được).
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
+
   const state = { mode: 'latest', keyword: '', category: '', country: '', page: 1, loading: false, hasMore: false };
 
   const el = {
@@ -41,12 +47,23 @@
   };
 
   // ── API helpers ─────────────────────────────────────────────────────────
-  async function fetchAPI(url) {
-    const res = await fetch(url);
+  async function fetchAPI(url, signal) {
+    const res = await fetch(url, signal ? { signal } : undefined);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     return res.json();
   }
   const getItems = (d) => (d && (d.items || (d.data && d.data.items))) || [];
+  // Tổng số trang từ API. v3 trả totalPages sẵn ở gốc; v1 (tìm kiếm / thể loại /
+  // quốc gia) chỉ trả totalItems + totalItemsPerPage trong data.params → tự chia.
+  function getTotalPages(d) {
+    const p = (d && (d.pagination || (d.data && d.data.params && d.data.params.pagination))) || null;
+    if (!p) return 0;
+    if (typeof p.totalPages === 'number') return p.totalPages;
+    if (typeof p.totalItems === 'number' && p.totalItemsPerPage) {
+      return Math.ceil(p.totalItems / p.totalItemsPerPage);
+    }
+    return 0;
+  }
   function posterOf(m) {
     let p = m.poster_url || m.thumb_url || '';
     if (p && !p.startsWith('http')) p = IMG + p;
@@ -67,16 +84,16 @@
   function cardHTML(m) {
     const badge = m.episode_current || m.quality || '';
     return `
-      <div class="film" data-slug="${m.slug}" data-cursor="">
+      <div class="film" data-slug="${esc(m.slug)}" data-cursor="" tabindex="0" role="button" aria-label="${esc(m.name)}">
         <div class="film__poster">
-          ${badge ? `<span class="film__badge">${badge}</span>` : ''}
-          <img src="${posterOf(m)}" alt="${(m.name || '').replace(/"/g, '')}" loading="lazy"
+          ${badge ? `<span class="film__badge">${esc(badge)}</span>` : ''}
+          <img src="${esc(posterOf(m))}" alt="${esc(m.name)}" loading="lazy"
                onerror="this.onerror=null;this.src='${PLACEHOLDER}'">
           <span class="film__play">▶</span>
         </div>
         <div class="film__info">
-          <div class="film__name">${m.name || ''}</div>
-          <div class="film__origin">${m.origin_name || ''}${m.year ? ' · ' + m.year : ''}</div>
+          <div class="film__name">${esc(m.name)}</div>
+          <div class="film__origin">${esc(m.origin_name)}${m.year ? ' · ' + esc(m.year) : ''}</div>
         </div>
       </div>`;
   }
@@ -128,17 +145,17 @@
   }
   function recentCardHTML(e) {
     return `
-      <div class="film film--recent" data-slug="${e.slug}">
-        <button class="film__remove" data-slug="${e.slug}" data-cursor aria-label="Remove">✕</button>
+      <div class="film film--recent" data-slug="${esc(e.slug)}" tabindex="0" role="button" aria-label="${esc(e.name)}">
+        <button class="film__remove" data-slug="${esc(e.slug)}" data-cursor aria-label="Remove">✕</button>
         <div class="film__poster">
-          ${e.badge ? `<span class="film__badge">${e.badge}</span>` : ''}
-          <img src="${e.poster || PLACEHOLDER}" alt="${(e.name || '').replace(/"/g, '')}" loading="lazy"
+          ${e.badge ? `<span class="film__badge">${esc(e.badge)}</span>` : ''}
+          <img src="${esc(e.poster || PLACEHOLDER)}" alt="${esc(e.name)}" loading="lazy"
                onerror="this.onerror=null;this.src='${PLACEHOLDER}'">
           <span class="film__play">▶</span>
         </div>
         <div class="film__info">
-          <div class="film__name">${e.name || ''}</div>
-          <div class="film__origin">${e.origin || ''}${e.year ? ' · ' + e.year : ''}</div>
+          <div class="film__name">${esc(e.name)}</div>
+          <div class="film__origin">${esc(e.origin)}${e.year ? ' · ' + esc(e.year) : ''}</div>
         </div>
       </div>`;
   }
@@ -169,14 +186,23 @@
     }
   }
 
+  // Request đang bay — bị hủy khi có tìm kiếm / lọc mới (chống race:
+  // response cũ về chậm đè lên kết quả của từ khóa mới).
+  let listAbort = null;
+
   async function loadList(reset) {
-    if (state.loading) return;
+    if (state.loading) {
+      if (!reset) return;                     // "tải thêm" thì chờ lượt trước
+      if (listAbort) listAbort.abort();       // tìm kiếm/lọc mới đè request cũ
+    }
+    const ctl = 'AbortController' in window ? new AbortController() : null;
+    listAbort = ctl;
     state.loading = true;
     el.status.textContent = '';
     if (reset) { state.page = 1; el.grid.innerHTML = skeletonHTML(12); el.more.hidden = true; }
     else updateMore(); // hiện spinner ngay khi bắt đầu tải thêm
     try {
-      const data = await fetchAPI(listURL());
+      const data = await fetchAPI(listURL(), ctl && ctl.signal);
       const items = getItems(data);
       clearSkeletons();
       if (reset && !items.length) {
@@ -186,16 +212,20 @@
         el.grid.insertAdjacentHTML('beforeend', items.map(cardHTML).join(''));
         revealCards();
         el.status.textContent = '';
-        state.hasMore = items.length >= 10;
+        const tp = getTotalPages(data);
+        state.hasMore = tp ? state.page < tp : items.length >= 10;
       }
     } catch (e) {
+      if (ctl && ctl.signal.aborted) return;  // đã có request mới thay thế → không đụng UI
       clearSkeletons();
       state.hasMore = false;
       el.status.textContent = T('Lỗi tải dữ liệu. Thử lại sau.', 'Failed to load. Try again later.');
       console.error(e);
     } finally {
-      state.loading = false;
-      updateMore();
+      if (listAbort === ctl) {                // chỉ request mới nhất được chốt trạng thái
+        state.loading = false;
+        updateMore();
+      }
     }
   }
 
@@ -332,8 +362,9 @@
     video.addEventListener('ended', clear);
   }
 
-  // Gắn spinner + theo dõi khựng + tự chuyển tập khi hết
-  function bindVideo(video, fail, onEnded) {
+  // Gắn spinner + theo dõi khựng + tự chuyển tập khi hết.
+  // resumeT: tua lại vị trí xem dở · onTime: báo vị trí đang xem (để lưu tiến độ)
+  function bindVideo(video, fail, onEnded, resumeT, onTime) {
     setSpinner(true);
     // Watchdog khởi động: nếu chưa phát được sau START_MS thì đổi server,
     // tránh trường hợp server đứng hình → spinner quay vô tận mà không báo lỗi.
@@ -349,12 +380,25 @@
     video.addEventListener('playing', started);
     video.addEventListener('canplay', started);
     video.addEventListener('ended', () => onEnded && onEnded());
+    if (resumeT > 3) {
+      video.addEventListener('loadedmetadata', () => {
+        // lùi 3s cho dễ bắt nhịp; gần cuối tập thì thôi không tua
+        if (!isFinite(video.duration) || resumeT < video.duration - 10) {
+          video.currentTime = Math.max(0, resumeT - 3);
+        }
+      }, { once: true });
+    }
+    let lastSave = 0;
+    video.addEventListener('timeupdate', () => {
+      const now = Date.now();
+      if (onTime && now - lastSave > 5000) { lastSave = now; onTime(video.currentTime); }
+    });
     watchStall(video, fail);
     activeVideo = video;
   }
 
   // onFail(reason): nguồn này không phát được → fallback server. onEnded: hết tập → tập sau
-  function playEpisode(ep, onFail, onEnded) {
+  function playEpisode(ep, onFail, onEnded, resumeT, onTime) {
     const wrap = document.getElementById('fm-player');
     if (!wrap || !ep) return;
     destroyPlayer();
@@ -374,15 +418,17 @@
         }
         fail(data.type); // NETWORK_ERROR hoặc lỗi không khôi phục được → đổi server
       });
-      bindVideo(video, fail, onEnded);
+      bindVideo(video, fail, onEnded, resumeT, onTime);
     } else if (ep.link_m3u8 && document.createElement('video').canPlayType('application/vnd.apple.mpegurl')) {
       wrap.innerHTML = '<video id="fm-video" controls autoplay playsinline></video>';
       const video = document.getElementById('fm-video');
       video.src = ep.link_m3u8;
       video.addEventListener('error', () => fail('native'));
-      bindVideo(video, fail, onEnded);
+      bindVideo(video, fail, onEnded, resumeT, onTime);
     } else if (ep.link_embed) {
-      wrap.innerHTML = `<iframe src="${ep.link_embed}" allowfullscreen allow="autoplay; encrypted-media"></iframe>`;
+      // sandbox chặn popup/redirect bậy từ server embed ngoài
+      wrap.innerHTML = `<iframe src="${esc(ep.link_embed)}" allowfullscreen allow="autoplay; encrypted-media"
+        sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"></iframe>`;
     } else {
       wrap.innerHTML = `<div class="fm-player__empty">${T('Không có nguồn phát', 'No source')}</div>`;
     }
@@ -412,42 +458,51 @@
 
   function renderEpisodes(movie, episodes, slug) {
     let srvIdx = 0, epIdx = 0, rangeStart = 0;
+    let resumeT = 0;           // giây xem dở của tập hiện tại (0 = xem từ đầu)
     const tried = new Set();   // server đã thử trong lượt fallback hiện tại
     const box = document.getElementById('fm-eplist');
     const srvBox = document.getElementById('fm-servers');
     const rangeBox = document.getElementById('fm-ranges');
     if (!box) return;
 
-    // Khôi phục tập đang xem dở (nếu có)
+    // Khôi phục tập + phút đang xem dở (nếu có)
     try {
       const saved = JSON.parse(localStorage.getItem(PKEY) || '{}')[slug];
       if (saved) {
         if (episodes[saved.s]) srvIdx = saved.s;
-        if (((episodes[srvIdx] || {}).server_data || [])[saved.e]) epIdx = saved.e;
+        if (((episodes[srvIdx] || {}).server_data || [])[saved.e]) {
+          epIdx = saved.e;
+          resumeT = saved.t || 0;
+        }
       }
     } catch (e) {}
 
-    function saveProgress() {
+    function saveProgress(t) {
       try {
         const all = JSON.parse(localStorage.getItem(PKEY) || '{}');
-        all[slug] = { s: srvIdx, e: epIdx };
+        all[slug] = { s: srvIdx, e: epIdx, t: Math.floor(t || 0) };
         localStorage.setItem(PKEY, JSON.stringify(all));
       } catch (e) {}
     }
 
     function nextEp() {
       const eps = (episodes[srvIdx] || {}).server_data || [];
-      if (epIdx < eps.length - 1) { epIdx++; play(true); }
+      if (epIdx < eps.length - 1) { epIdx++; resumeT = 0; play(true); }
     }
 
     function draw() {
       const eps = (episodes[srvIdx] || {}).server_data || [];
 
-      // Servers
+      // Servers — đổi server giữ nguyên tập + phút đang xem (nếu server đó có tập này)
       srvBox.innerHTML = episodes.map((s, i) =>
-        `<button class="fm-server ${i === srvIdx ? 'active' : ''}" data-i="${i}">${s.server_name || 'Server ' + (i + 1)}</button>`).join('');
+        `<button class="fm-server ${i === srvIdx ? 'active' : ''}" data-i="${i}">${esc(s.server_name || 'Server ' + (i + 1))}</button>`).join('');
       srvBox.querySelectorAll('.fm-server').forEach((b) =>
-        b.addEventListener('click', () => { srvIdx = +b.dataset.i; epIdx = 0; play(true); }));
+        b.addEventListener('click', () => {
+          srvIdx = +b.dataset.i;
+          if (!((episodes[srvIdx] || {}).server_data || [])[epIdx]) { epIdx = 0; resumeT = 0; }
+          else if (activeVideo && activeVideo.currentTime > 3) resumeT = activeVideo.currentTime;
+          play(true);
+        }));
 
       // Dải tập (chỉ hiện khi nhiều tập)
       if (rangeBox) {
@@ -468,10 +523,10 @@
       const to = eps.length > RANGE ? Math.min(rangeStart + RANGE, eps.length) : eps.length;
       let epHtml = '';
       for (let i = from; i < to; i++)
-        epHtml += `<button class="fm-ep ${i === epIdx ? 'active' : ''}" data-i="${i}">${eps[i].name || (i + 1)}</button>`;
+        epHtml += `<button class="fm-ep ${i === epIdx ? 'active' : ''}" data-i="${i}">${esc(eps[i].name || (i + 1))}</button>`;
       box.innerHTML = epHtml;
       box.querySelectorAll('.fm-ep').forEach((b) =>
-        b.addEventListener('click', () => { epIdx = +b.dataset.i; play(true); }));
+        b.addEventListener('click', () => { epIdx = +b.dataset.i; resumeT = 0; play(true); }));
 
       // Thanh "đang xem" + nút tập sau
       const bar = document.getElementById('fm-bar');
@@ -498,6 +553,8 @@
     }
 
     function fallback() {
+      // Mang theo vị trí đang xem sang server mới, khỏi xem lại từ đầu
+      if (activeVideo && activeVideo.currentTime > 3) resumeT = activeVideo.currentTime;
       const next = nextServer();
       if (next < 0) {
         const wrap = document.getElementById('fm-player');
@@ -517,8 +574,8 @@
       const eps = (episodes[srvIdx] || {}).server_data || [];
       rangeStart = eps.length > RANGE ? Math.floor(epIdx / RANGE) * RANGE : 0;
       draw();
-      saveProgress();
-      playEpisode(eps[epIdx], fallback, nextEp);
+      saveProgress(resumeT);
+      playEpisode(eps[epIdx], fallback, nextEp, resumeT, saveProgress);
     }
 
     goNextEp = nextEp;
@@ -527,30 +584,41 @@
 
   // ── Modal ──────────────────────────────────────────────────────────────
   let modalHistoryActive = false;
+  let modalFromURL = false; // mở từ deep-link → đóng bằng replaceState, không back()
 
-  async function openMovie(slug) {
-    if (!modalHistoryActive) { try { history.pushState({ filmModal: true }, ''); } catch (e) {} modalHistoryActive = true; }
+  async function openMovie(slug, fromURL) {
+    // Deep-link: đưa slug lên URL để copy link gửi thẳng cho người khác
+    const url = location.pathname + '?phim=' + encodeURIComponent(slug);
+    if (!modalHistoryActive) {
+      try {
+        if (fromURL) history.replaceState({ filmModal: true }, '', url);
+        else history.pushState({ filmModal: true }, '', url);
+      } catch (e) {}
+      modalHistoryActive = true;
+      modalFromURL = !!fromURL;
+    }
     el.modal.classList.add('open');
     el.modal.setAttribute('aria-hidden', 'false');
     el.content.innerHTML = `<div class="phim-status">${T('Đang tải phim...', 'Loading...')}</div>`;
     document.body.style.overflow = 'hidden';
     if (window.lenis) window.lenis.stop();
+    el.close.focus();
     try {
-      const data = await fetchAPI(`${API}/phim/${slug}`);
+      const data = await fetchAPI(`${API}/phim/${encodeURIComponent(slug)}`);
       const movie = data.movie || {};
       const episodes = data.episodes || [];
       el.content.innerHTML = `
         <div class="fm-player" id="fm-player"><div class="fm-player__empty">${T('Chọn tập để xem', 'Pick an episode')}</div></div>
         <div class="fm-body">
-          <h2 class="fm-title">${movie.name || ''}</h2>
+          <h2 class="fm-title">${esc(movie.name)}</h2>
           <div class="fm-meta">
-            <span>${movie.origin_name || ''}</span>
-            ${movie.year ? `<span>${movie.year}</span>` : ''}
-            ${movie.time ? `<span>${movie.time}</span>` : ''}
-            ${movie.quality ? `<span>${movie.quality}</span>` : ''}
-            ${movie.episode_current ? `<span>${movie.episode_current}</span>` : ''}
+            <span>${esc(movie.origin_name)}</span>
+            ${movie.year ? `<span>${esc(movie.year)}</span>` : ''}
+            ${movie.time ? `<span>${esc(movie.time)}</span>` : ''}
+            ${movie.quality ? `<span>${esc(movie.quality)}</span>` : ''}
+            ${movie.episode_current ? `<span>${esc(movie.episode_current)}</span>` : ''}
           </div>
-          <p class="fm-desc">${(movie.content || '').replace(/<[^>]*>/g, '')}</p>
+          <p class="fm-desc">${esc((movie.content || '').replace(/<[^>]*>/g, ''))}</p>
           <div class="fm-bar" id="fm-bar" hidden>
             <span class="fm-now" id="fm-now"></span>
             <button class="fm-next" id="fm-next" data-cursor hidden>${T('Tập sau', 'Next')} ›</button>
@@ -580,7 +648,16 @@
   }
 
   function closeModal() {
-    if (modalHistoryActive) { modalHistoryActive = false; history.back(); }
+    if (modalHistoryActive) {
+      modalHistoryActive = false;
+      if (modalFromURL) {
+        // Vào bằng deep-link: back() sẽ rời trang, nên chỉ dọn URL tại chỗ
+        modalFromURL = false;
+        try { history.replaceState(null, '', location.pathname); } catch (e) {}
+      } else {
+        history.back();
+      }
+    }
     doClose();
   }
 
@@ -594,6 +671,14 @@
     const card = e.target.closest('.film');
     if (card && !card.classList.contains('film--skel')) openMovie(card.dataset.slug);
   });
+  // Mở phim bằng bàn phím (Enter / Space trên card đang focus)
+  const cardKeyOpen = (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const card = e.target.closest('.film');
+    if (card && !card.classList.contains('film--skel')) { e.preventDefault(); openMovie(card.dataset.slug); }
+  };
+  el.grid.addEventListener('keydown', cardKeyOpen);
+  if (el.recentRow) el.recentRow.addEventListener('keydown', cardKeyOpen);
   el.more.addEventListener('click', () => { if (state.hasMore && !state.loading) { state.page++; loadList(false); } });
 
   el.searchForm.addEventListener('submit', (e) => {
@@ -671,4 +756,8 @@
   loadCats();
   loadCountries();
   loadList(true);
+
+  // Deep-link: mở thẳng phim nếu URL có ?phim=<slug>
+  const startSlug = new URLSearchParams(location.search).get('phim');
+  if (startSlug) openMovie(startSlug, true);
 })();

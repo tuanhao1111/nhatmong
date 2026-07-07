@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Quay Thưởng Bang Chiến — Nhất Mộng</title>
   <meta name="description" content="Vòng quay may mắn — bốc ngẫu nhiên thành viên trúng thẻ tháng Bang Chiến." />
+  <meta name="theme-color" content="#05070a" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Quay Thưởng Bang Chiến — Nhất Mộng" />
+  <meta property="og:description" content="Vòng loại sinh tồn — bốc ngẫu nhiên thành viên trúng thẻ tháng Bang Chiến." />
   <script>document.documentElement.classList.remove('no-js');</script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -15,7 +20,7 @@
 </head>
 <body data-lang="vi" class="page-sub">
 
-  <audio id="bg-music" src="phung thanh do.mp3" loop preload="auto"></audio>
+  <audio id="bg-music" src="nhac-nen.mp3" loop preload="none"></audio>
   <div id="vanta-bg"></div>
   <canvas id="bg-canvas"></canvas>
   <div class="grain"></div>
@@ -44,7 +49,7 @@
       <a href="index.html#contact" class="menu-link" data-cursor><span class="menu-no">04</span><span data-vi>Liên hệ</span><span data-en>Contact</span></a>
     </nav>
     <div class="menu-foot">
-      <a href="https://discord.gg/jnbNkaNZ" target="_blank" rel="noopener" data-cursor>Discord — emancomchua</a>
+      <a href="https://discord.gg/emancomchua" target="_blank" rel="noopener" data-cursor>Discord — emancomchua</a>
       <span>© 2026 Nhất Mộng</span>
     </div>
   </div>
@@ -155,6 +160,18 @@
     </section>
   </main>
 
+  <!-- Elimination arena overlay -->
+  <div class="arena" id="arena" aria-hidden="true">
+    <div class="arena__head">
+      <span class="arena__eyebrow"><span data-vi>Vòng loại sinh tồn</span><span data-en>Survival elimination</span></span>
+      <span class="arena__count" id="arena-count">—</span>
+    </div>
+    <div class="arena__grid" id="arena-grid"></div>
+    <button class="arena__skip" id="arena-skip" data-cursor>
+      <span data-vi>Bỏ qua »</span><span data-en>Skip »</span>
+    </button>
+  </div>
+
   <!-- Winner reveal modal -->
   <div class="reveal" id="reveal" aria-hidden="true">
     <div class="reveal__head">
@@ -174,8 +191,6 @@
     <span id="audio-label-en" data-en>Play music</span>
   </div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.birds.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>

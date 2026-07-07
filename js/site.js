@@ -199,33 +199,48 @@
     });
   }
 
-  /* ── Animated background: Vanta CLOUDS (fallback: canvas particles) ───── */
+  /* ── Animated background: Vanta BIRDS (fallback: canvas particles) ─────
+     three.js + Vanta nặng ~700KB nên chỉ tải trên desktop; mobile / máy yếu
+     dùng canvas particles nhẹ. Version được ghim cứng để không vỡ bất chợt. */
+  function loadScript(src) {
+    return new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = res;
+      s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
+
+  function startVanta(vantaEl, canvas) {
+    window.VANTA.BIRDS({
+      el: vantaEl,
+      mouseControls: !reduceMotion,
+      touchControls: !reduceMotion,
+      gyroControls: false,
+      minHeight: 200.0,
+      minWidth: 200.0,
+      scale: 1.0,
+      scaleMobile: 1.0,
+      backgroundColor: 0x05070a, // match site bg (near-black)
+      color1: 0x7171ff,          // violet
+      color2: 0x00b9ff,          // cyan
+      birdSize: 1.0,
+      quantity: 5.0,
+      speedLimit: reduceMotion ? 0 : 5.0,
+    });
+    if (canvas) canvas.style.display = 'none';
+  }
+
   function initBackground() {
     const vantaEl = document.getElementById('vanta-bg');
     const canvas = document.getElementById('bg-canvas');
-    if (vantaEl && window.VANTA && window.VANTA.BIRDS) {
-      try {
-        window.VANTA.BIRDS({
-          el: vantaEl,
-          mouseControls: !reduceMotion,
-          touchControls: !reduceMotion,
-          gyroControls: false,
-          minHeight: 200.0,
-          minWidth: 200.0,
-          scale: 1.0,
-          scaleMobile: 1.0,
-          backgroundColor: 0x05070a, // match site bg (near-black)
-          color1: 0x7171ff,          // violet
-          color2: 0x00b9ff,          // cyan
-          birdSize: 1.0,
-          quantity: 5.0,
-          speedLimit: reduceMotion ? 0 : 5.0,
-        });
-        if (canvas) canvas.style.display = 'none';
-        return;
-      } catch (e) { console.warn('Vanta failed, using particle fallback', e); }
-    }
-    initParticles();
+    const wantVanta = vantaEl && hasFinePointer && window.innerWidth >= 900 && !reduceMotion;
+    if (!wantVanta) { initParticles(); return; }
+    loadScript('https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js')
+      .then(() => loadScript('https://cdn.jsdelivr.net/npm/vanta@0.5.24/dist/vanta.birds.min.js'))
+      .then(() => startVanta(vantaEl, canvas))
+      .catch((e) => { console.warn('Vanta failed, using particle fallback', e); initParticles(); });
   }
 
   /* ── Canvas particle background (fallback) ───────────────────────────── */
@@ -518,6 +533,7 @@
     function setOpen(open) {
       document.body.classList.toggle('menu-open', open);
       overlay.setAttribute('aria-hidden', open ? 'false' : 'true');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
       if (lenis) open ? lenis.stop() : lenis.start();
     }
     btn.addEventListener('click', () => setOpen(!document.body.classList.contains('menu-open')));
@@ -531,6 +547,26 @@
     const widget = document.getElementById('audio-widget');
     if (!audio || !widget) return;
     let playing = false;
+
+    // Nhạc nối tiếp giữa các trang: lưu vị trí đang phát vào sessionStorage
+    // và tua lại đúng chỗ đó khi trang mới bắt đầu phát.
+    const POS_KEY = 'music_pos';
+    const savePos = () => {
+      if (audio.currentTime > 0) {
+        try { sessionStorage.setItem(POS_KEY, String(audio.currentTime)); } catch (e) {}
+      }
+    };
+    let lastSave = 0;
+    audio.addEventListener('timeupdate', () => {
+      const now = Date.now();
+      if (now - lastSave > 5000) { lastSave = now; savePos(); }
+    });
+    window.addEventListener('pagehide', savePos);
+    audio.addEventListener('loadedmetadata', () => {
+      let t = 0;
+      try { t = parseFloat(sessionStorage.getItem(POS_KEY)) || 0; } catch (e) {}
+      if (t > 0 && (!isFinite(audio.duration) || t < audio.duration)) audio.currentTime = t;
+    }, { once: true });
 
     function setUI(on) {
       widget.classList.toggle('playing', on);

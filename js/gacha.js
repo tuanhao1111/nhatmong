@@ -51,6 +51,10 @@
     reveal: document.getElementById('reveal'),
     revealInner: document.getElementById('reveal-inner'),
     revealClose: document.getElementById('reveal-close'),
+    arena: document.getElementById('arena'),
+    arenaGrid: document.getElementById('arena-grid'),
+    arenaCount: document.getElementById('arena-count'),
+    arenaSkip: document.getElementById('arena-skip'),
   };
 
   const isEN = () => document.body.dataset.lang === 'en';
@@ -170,6 +174,133 @@
       </div>`).join('');
   }
 
+  function shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  // ── Tiny WebAudio ticks (no assets, created lazily on first spin) ─────
+  let actx = null;
+  function beep(freq, dur, gain) {
+    if (reduceMotion) return;
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      const o = actx.createOscillator();
+      const g = actx.createGain();
+      o.type = 'triangle';
+      o.frequency.value = freq;
+      g.gain.setValueAtTime(gain, actx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + dur);
+      o.connect(g); g.connect(actx.destination);
+      o.start(); o.stop(actx.currentTime + dur);
+    } catch (e) {}
+  }
+  const tickOut = () => beep(150, 0.09, 0.05);    // a name falls
+  const tickDanger = () => beep(420, 0.05, 0.035); // death-light hop
+  function fanfare() { [523, 659, 784].forEach((f, i) => setTimeout(() => beep(f, 0.22, 0.06), i * 130)); }
+
+  // ── Elimination arena ─────────────────────────────────────────────────
+  let skipFlag = false;
+  let waker = null;
+  function wait(ms) {
+    return new Promise((res) => { waker = res; setTimeout(res, ms); });
+  }
+
+  async function runArena(winners) {
+    skipFlag = false;
+    const winSet = new Set(winners);
+    const order = shuffle(state.members.slice());
+    el.arenaGrid.innerHTML = order.map((n) =>
+      '<span class="achip">' + escapeHTML(n) + '</span>'
+    ).join('');
+    const chipOf = new Map();
+    order.forEach((n, i) => chipOf.set(n, el.arenaGrid.children[i]));
+    const losers = shuffle(order.filter((n) => !winSet.has(n)));
+    const alive = new Set(order);
+
+    const setCount = (n) => {
+      el.arenaCount.textContent = t('Còn lại ' + n, n + ' remaining');
+    };
+    setCount(order.length);
+    el.arena.classList.add('open');
+    el.arena.classList.remove('tense', 'done');
+    el.arena.setAttribute('aria-hidden', 'false');
+
+    const eliminate = (name) => {
+      alive.delete(name);
+      const chip = chipOf.get(name);
+      chip.classList.remove('danger');
+      chip.classList.add('shake');
+      setTimeout(() => { chip.classList.remove('shake'); chip.classList.add('out'); }, 300);
+      tickOut();
+    };
+
+    // Group early eliminations into waves; go one-by-one near the end.
+    const steps = [];
+    for (let i = 0; i < losers.length;) {
+      const left = losers.length - i;
+      const batch = left > 24 ? 3 : left > 12 ? 2 : 1;
+      steps.push(losers.slice(i, i + batch));
+      i += batch;
+    }
+
+    let remaining = order.length;
+    await wait(1200); // let everyone find their own name first
+
+    for (let s = 0; s < steps.length && !skipFlag; s++) {
+      const finale = remaining <= winners.length + 4;
+      if (finale) {
+        el.arena.classList.add('tense');
+        // Death-light roulette: hop across survivors, land on the victim.
+        const survivors = Array.from(alive);
+        const victim = steps[s][0];
+        const hops = 4 + Math.floor(Math.random() * 3);
+        for (let h = 0; h < hops && !skipFlag; h++) {
+          const name = h === hops - 1 ? victim
+            : survivors[Math.floor(Math.random() * survivors.length)];
+          const chip = chipOf.get(name);
+          chip.classList.add('danger');
+          tickDanger();
+          await wait(170 + h * 65);
+          chip.classList.remove('danger');
+        }
+      }
+      if (skipFlag) break;
+      steps[s].forEach(eliminate);
+      remaining -= steps[s].length;
+      setCount(remaining);
+      // Slow the pace down as the pool shrinks.
+      const p = steps.length > 1 ? s / (steps.length - 1) : 1;
+      await wait(140 + 1100 * Math.pow(p, 2.4));
+    }
+
+    if (skipFlag) {
+      losers.forEach((n) => {
+        const chip = chipOf.get(n);
+        chip.classList.remove('danger', 'shake');
+        chip.classList.add('out');
+      });
+      setCount(winners.length);
+      skipFlag = false;
+    }
+
+    // Survivors!
+    el.arena.classList.remove('tense');
+    el.arena.classList.add('done');
+    winners.forEach((w) => chipOf.get(w).classList.add('safe'));
+    el.arenaCount.textContent = t('SỐNG SÓT!', 'SURVIVED!');
+    fanfare();
+    await wait(1600);
+
+    el.arena.classList.remove('open');
+    el.arena.setAttribute('aria-hidden', 'true');
+    setName(winners[0]);
+    finish(winners);
+  }
+
   // ── Draw logic ────────────────────────────────────────────────────────
   function pickWinners(n) {
     const pool = state.members.slice();
@@ -227,43 +358,14 @@
 
     const winners = pickWinners(state.prizes);
 
-    // No GSAP / reduced motion → land instantly.
-    if (!hasGSAP || reduceMotion) {
+    // Reduced motion → land instantly, no arena.
+    if (reduceMotion) {
       setName(winners[0]);
       finish(winners);
       return;
     }
 
-    // Build a long reel strip of random names ending on the real winner.
-    const names = state.members;
-    const reelLen = Math.max(24, names.length * 3);
-    const items = [];
-    for (let i = 0; i < reelLen; i++) items.push(names[Math.floor(Math.random() * names.length)]);
-    items.push(winners[0]); // landing row
-    el.strip.innerHTML = items.map((n) => '<div class="raffle-reel__item">' + escapeHTML(n) + '</div>').join('');
-
-    const rowH = el.strip.children[0].offsetHeight;
-    const dist = (items.length - 1) * rowH;
-    gsap.set(el.strip, { y: 0 });
-
-    // Charge glow on the slot while the reel spins.
-    gsap.fromTo(el.slot,
-      { boxShadow: '0 30px 80px -30px rgba(30,155,224,0.5)' },
-      { boxShadow: '0 30px 120px -16px rgba(30,155,224,0.95)', duration: 0.5, repeat: 4, yoyo: true,
-        onComplete: () => gsap.set(el.slot, { clearProps: 'boxShadow' }) });
-
-    // Motion blur that sharpens before the reel settles.
-    gsap.fromTo(el.strip, { filter: 'blur(5px)' }, { filter: 'blur(0px)', duration: 2.0, ease: 'power2.out' });
-
-    // The reel itself: long fast travel, decelerating into the winner.
-    gsap.to(el.strip, {
-      y: -dist, duration: 2.9, ease: 'power4.out',
-      onComplete: () => {
-        // tiny elastic settle (bounce) on the landing row
-        gsap.fromTo(el.strip, { y: -dist + 10 }, { y: -dist, duration: 0.6, ease: 'elastic.out(1, 0.5)' });
-        finish(winners);
-      },
-    });
+    runArena(winners);
   }
 
   function finish(winners) {
@@ -326,6 +428,11 @@
   el.clearWinners.addEventListener('click', () => {
     setName('—');
     el.slotSub.innerHTML = '<span data-vi>Nhấn “Quay” để bắt đầu</span><span data-en>Press “Spin” to start</span>';
+  });
+
+  el.arenaSkip.addEventListener('click', () => {
+    skipFlag = true;
+    if (waker) waker();
   });
 
   el.revealClose.addEventListener('click', closeReveal);

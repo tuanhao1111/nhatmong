@@ -3,8 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Nhất Mộng — Creative Portfolio</title>
-  <meta name="description" content="Personal portfolio — code & interactive design." />
+  <title>Nhất Mộng — Xem phim & Quay thưởng Bang Chiến</title>
+  <meta name="description" content="Trang bang hội Nhất Mộng — kho phim cập nhật liên tục và vòng quay thưởng Bang Chiến." />
+  <meta name="theme-color" content="#05070a" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Nhất Mộng — Xem phim & Quay thưởng Bang Chiến" />
+  <meta property="og:description" content="Trang bang hội Nhất Mộng — kho phim cập nhật liên tục và vòng quay thưởng Bang Chiến." />
 
   <script>document.documentElement.classList.remove('no-js');</script>
 
@@ -17,7 +22,7 @@
 <body data-lang="vi">
 
   <!-- Background music -->
-  <audio id="bg-music" src="phung thanh do.mp3" loop preload="auto"></audio>
+  <audio id="bg-music" src="nhac-nen.mp3" loop preload="none"></audio>
 
   <!-- Animated background -->
   <div id="vanta-bg"></div>
@@ -166,9 +171,7 @@
     <span id="audio-label-en" data-en>Play music</span>
   </div>
 
-  <!-- Libraries -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.birds.min.js"></script>
+  <!-- Libraries (three.js + Vanta được site.js tải riêng, chỉ trên desktop) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
