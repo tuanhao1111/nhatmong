@@ -12,182 +12,199 @@
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;800&family=Noto+Serif:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <style>
     /* ══════════════════════════════════════════════════════════════════
-       MẪU "THỦY MẶC GIANG HỒ" · bản HUD
-       Nền núi mực + trăng + hoa rơi + đom đóm · HUD game (khung góc, đồng
-       hồ, thanh KHÍ, radar mục lục, ticker) · cursor mực · chữ giải mã ·
-       đếm ngược Bang Chiến thật · mô phỏng gacha tự chạy
+       MẪU "THỦY MẶC GIANG HỒ" · bản MƯỢT
+       - Cuộn quán tính (lerp) toàn trang, mọi lớp nền bám theo cùng nhịp
+       - Bo góc mềm, núi đường cong, bóng đổ loang
+       - Mọi easing: expo-out chậm rãi; tilt/nam châm có độ trễ đàn hồi
        ══════════════════════════════════════════════════════════════════ */
     :root {
       --ink-0: #0b0e13; --ink-1: #10151d; --ink-2: #161d27;
       --paper: #e9e2d2; --paper-mut: #9a958a; --paper-dim: #6b675f;
-      --seal: #c8402f; --seal-soft: rgba(200,64,47,0.14);
-      --gold: #d9a441; --gold-soft: rgba(217,164,65,0.14);
-      --line: rgba(233,226,210,0.12);
+      --seal: #c8402f; --seal-soft: rgba(200,64,47,0.13);
+      --gold: #d9a441; --gold-soft: rgba(217,164,65,0.13);
+      --line: rgba(233,226,210,0.11);
       --serif: 'Noto Serif', 'Times New Roman', serif;
       --sans: 'Be Vietnam Pro', sans-serif;
       --mono: 'JetBrains Mono', monospace;
-      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --out: cubic-bezier(0.16, 1, 0.3, 1);       /* expo-out: mềm, lịm dần */
+      --soft: cubic-bezier(0.33, 1, 0.68, 1);
+      --r-lg: 22px; --r-md: 16px; --r-sm: 12px;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
     body { background: var(--ink-0); color: var(--paper); font-family: var(--sans); overflow-x: hidden; }
     body.no-cursor, body.no-cursor a, body.no-cursor button { cursor: none; }
     button { cursor: pointer; border: none; background: none; color: inherit; font: inherit; }
     a { color: inherit; text-decoration: none; }
     ::selection { background: var(--seal); color: var(--paper); }
 
-    /* ── SPLASH: giọt mực loang + giải mã tên ─────────────────────────── */
-    .splash {
-      position: fixed; inset: 0; z-index: 300; background: #07090d;
+    /* trang được cuộn bằng lerp: #page fixed, body giữ chiều cao thật */
+    body.lerp #page { position: fixed; top: 0; left: 0; right: 0; will-change: transform; }
+
+    /* ── GRAIN tĩnh nhẹ + VIGNETTE loang ─────────────────────────────── */
+    .grain { position: fixed; inset: 0; z-index: 250; pointer-events: none; opacity: 0.03;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.8' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"); }
+    .vignette { position: fixed; inset: 0; z-index: 249; pointer-events: none;
+      background: radial-gradient(120% 100% at 50% 50%, transparent 60%, rgba(0,0,0,0.38)); }
+
+    /* ── SPLASH ──────────────────────────────────────────────────────── */
+    .splash { position: fixed; inset: 0; z-index: 300; background: #07090d;
       display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.2rem;
-      transition: transform 0.9s var(--ease);
-    }
-    .splash.done { transform: translateY(-101%); }
-    .splash__ink {
-      position: absolute; width: 12px; height: 12px; border-radius: 50%;
-      background: radial-gradient(circle, rgba(200,64,47,0.5), rgba(200,64,47,0.06) 60%, transparent 70%);
-      animation: ink-bloom 1.6s var(--ease) forwards;
-    }
-    @keyframes ink-bloom { to { transform: scale(90); opacity: 0.5; } }
+      transition: opacity 1.1s var(--out), visibility 1.1s; }
+    .splash.done { opacity: 0; visibility: hidden; }
+    .splash__ink { position: absolute; width: 12px; height: 12px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(200,64,47,0.45), rgba(200,64,47,0.05) 60%, transparent 70%);
+      animation: ink-bloom 2.2s var(--out) forwards; }
+    @keyframes ink-bloom { to { transform: scale(100); opacity: 0.45; } }
     .splash__name { font-family: var(--serif); font-weight: 700; font-size: clamp(2rem, 7vw, 4rem); letter-spacing: 0.14em; z-index: 1; }
-    .splash__bar { width: min(46vw, 300px); height: 1px; background: var(--line); overflow: hidden; z-index: 1; }
-    .splash__bar i { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, var(--seal), var(--gold)); }
+    .splash__boot { z-index: 1; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.14em;
+      color: var(--paper-dim); display: flex; flex-direction: column; gap: 0.3rem; min-height: 3.2em; text-align: left; }
+    .splash__boot div { opacity: 0; animation: fade-in 0.6s var(--soft) forwards; }
+    .splash__boot b { color: #58c07a; font-weight: 400; }
+    @keyframes fade-in { to { opacity: 1; } }
+    .splash__bar { width: min(46vw, 300px); height: 2px; border-radius: 99px; background: var(--line); overflow: hidden; z-index: 1; }
+    .splash__bar i { display: block; height: 100%; width: 0%; border-radius: 99px; background: linear-gradient(90deg, var(--seal), var(--gold)); }
     .splash__pct { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.3em; color: var(--paper-dim); z-index: 1; }
 
-    /* ── CURSOR mực tàu ───────────────────────────────────────────────── */
+    /* ── CHUYỂN MỤC: dải lụa sáng lướt qua (thay lưỡi kiếm cứng) ─────── */
+    .veil { position: fixed; inset: -12%; z-index: 280; pointer-events: none; visibility: hidden; }
+    .veil.go { visibility: visible; }
+    .veil__silk { position: absolute; top: 50%; left: 50%; width: 175vmax; height: 26vmax;
+      background: linear-gradient(90deg, transparent, rgba(217,164,65,0.1) 35%, rgba(233,226,210,0.16) 50%, rgba(200,64,47,0.1) 65%, transparent);
+      filter: blur(26px); border-radius: 50%;
+      transform: translate(-50%,-50%) rotate(-18deg) translateX(-120vmax); }
+    .veil.go .veil__silk { animation: silk 0.9s var(--out) forwards; }
+    @keyframes silk {
+      0% { transform: translate(-50%,-50%) rotate(-18deg) translateX(-120vmax); opacity: 0; }
+      35% { opacity: 1; }
+      100% { transform: translate(-50%,-50%) rotate(-18deg) translateX(120vmax); opacity: 0; }
+    }
+
+    /* ── CURSOR ──────────────────────────────────────────────────────── */
     .cur-dot, .cur-ring { position: fixed; top: 0; left: 0; z-index: 260; pointer-events: none; will-change: transform; }
     .cur-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
-    .cur-ring {
-      width: 34px; height: 34px; border-radius: 50%; border: 1px solid rgba(217,164,65,0.55);
+    .cur-ring { width: 36px; height: 36px; border-radius: 50%; border: 1px solid rgba(217,164,65,0.5);
       display: grid; place-items: center;
-      transition: width 0.25s var(--ease), height 0.25s var(--ease), border-color 0.25s var(--ease), background 0.25s var(--ease);
-    }
-    .cur-ring.hot { width: 56px; height: 56px; border-color: var(--seal); background: rgba(200,64,47,0.08); }
-    .cur-ring span { font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.18em; color: var(--gold); opacity: 0; transition: opacity 0.2s; }
+      transition: width 0.5s var(--out), height 0.5s var(--out), border-color 0.5s var(--out), background 0.5s var(--out); }
+    .cur-ring.hot { width: 58px; height: 58px; border-color: rgba(200,64,47,0.8); background: rgba(200,64,47,0.07); }
+    .cur-ring span { font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.18em; color: var(--gold);
+      opacity: 0; transition: opacity 0.4s var(--soft); }
     .cur-ring.hot span { opacity: 1; }
-    .ink-splash {
-      position: fixed; z-index: 259; pointer-events: none; border-radius: 50%;
-      border: 2px solid rgba(200,64,47,0.6); width: 8px; height: 8px;
-      animation: splash-out 0.6s var(--ease) forwards;
-    }
-    @keyframes splash-out { to { transform: scale(7); opacity: 0; border-width: 1px; } }
+    .ink-splash { position: fixed; z-index: 259; pointer-events: none; border-radius: 50%;
+      border: 1.5px solid rgba(200,64,47,0.5); width: 8px; height: 8px; animation: splash-out 0.9s var(--out) forwards; }
+    @keyframes splash-out { to { transform: scale(8); opacity: 0; } }
 
-    /* ── HUD ──────────────────────────────────────────────────────────── */
+    /* ── HUD ─────────────────────────────────────────────────────────── */
     .hud { position: fixed; inset: 0; z-index: 200; pointer-events: none; font-family: var(--mono); }
-    .hud__corner { position: absolute; width: 26px; height: 26px; border: 1px solid rgba(217,164,65,0.5); opacity: 0; animation: hud-in 0.7s 1.7s ease forwards; }
-    .hud__corner--tl { top: 14px; left: 14px; border-right: none; border-bottom: none; }
-    .hud__corner--tr { top: 14px; right: 14px; border-left: none; border-bottom: none; }
-    .hud__corner--bl { bottom: 46px; left: 14px; border-right: none; border-top: none; }
-    .hud__corner--br { bottom: 46px; right: 14px; border-left: none; border-top: none; }
-    @keyframes hud-in { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: none; } }
-    .hud__stat {
-      position: absolute; font-size: 0.58rem; letter-spacing: 0.22em; text-transform: uppercase;
+    .hud__corner { position: absolute; width: 26px; height: 26px; border: 1px solid rgba(217,164,65,0.4);
+      opacity: 0; animation: hud-in 1.4s 1.8s var(--out) forwards; }
+    .hud__corner--tl { top: 14px; left: 14px; border-right: none; border-bottom: none; border-top-left-radius: 8px; }
+    .hud__corner--tr { top: 14px; right: 14px; border-left: none; border-bottom: none; border-top-right-radius: 8px; }
+    .hud__corner--bl { bottom: 46px; left: 14px; border-right: none; border-top: none; border-bottom-left-radius: 8px; }
+    .hud__corner--br { bottom: 46px; right: 14px; border-left: none; border-top: none; border-bottom-right-radius: 8px; }
+    @keyframes hud-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    .hud__stat { position: absolute; font-size: 0.58rem; letter-spacing: 0.22em; text-transform: uppercase;
       color: var(--paper-dim); display: flex; align-items: center; gap: 0.55rem;
-      opacity: 0; animation: hud-in 0.7s 1.9s ease forwards;
-    }
+      opacity: 0; animation: hud-in 1.4s 2s var(--out) forwards; }
     .hud__stat--tl { top: 22px; left: 56px; }
     .hud__stat--tr { top: 22px; right: 56px; }
     .hud__stat b { color: var(--gold); font-weight: 400; }
-    .hud__dot { width: 6px; height: 6px; border-radius: 50%; background: #58c07a; box-shadow: 0 0 8px #58c07a; animation: blink 1.6s ease-in-out infinite; }
-    @keyframes blink { 50% { opacity: 0.25; } }
+    .hud__dot { width: 6px; height: 6px; border-radius: 50%; background: #58c07a; box-shadow: 0 0 8px #58c07a;
+      animation: breathe 2.6s ease-in-out infinite; }
+    @keyframes breathe { 50% { opacity: 0.35; } }
+    .eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 10px; }
+    .eq i { width: 2px; border-radius: 2px; background: var(--gold); animation: eq 1.4s ease-in-out infinite; }
+    .eq i:nth-child(1) { height: 40%; } .eq i:nth-child(2) { height: 90%; animation-delay: 0.25s; }
+    .eq i:nth-child(3) { height: 60%; animation-delay: 0.5s; } .eq i:nth-child(4) { height: 100%; animation-delay: 0.14s; }
+    @keyframes eq { 50% { transform: scaleY(0.35); } }
 
-    /* thanh KHÍ (tiến độ cuộn) bên trái */
-    .qi {
-      position: absolute; left: 22px; top: 50%; transform: translateY(-50%);
+    .qi { position: absolute; left: 22px; top: 50%; transform: translateY(-50%);
       display: flex; flex-direction: column; align-items: center; gap: 0.7rem;
-      opacity: 0; animation: hud-in 0.7s 2.1s ease forwards;
-    }
+      opacity: 0; animation: hud-in 1.4s 2.2s var(--out) forwards; }
     .qi__label { writing-mode: vertical-rl; font-size: 0.56rem; letter-spacing: 0.34em; color: var(--paper-dim); }
-    .qi__bar { width: 3px; height: 26vh; background: rgba(233,226,210,0.09); border-radius: 99px; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
+    .qi__bar { width: 3px; height: 26vh; background: rgba(233,226,210,0.08); border-radius: 99px;
+      overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
     .qi__bar i { display: block; width: 100%; height: 0%; background: linear-gradient(0deg, var(--seal), var(--gold)); border-radius: 99px; }
     .qi__pct { font-size: 0.56rem; color: var(--gold); letter-spacing: 0.1em; }
 
-    /* radar mục lục bên phải */
-    .spy {
-      position: absolute; right: 26px; top: 50%; transform: translateY(-50%);
+    .spy { position: absolute; right: 26px; top: 50%; transform: translateY(-50%);
       display: flex; flex-direction: column; gap: 1.5rem; pointer-events: auto;
-      opacity: 0; animation: hud-in 0.7s 2.1s ease forwards;
-    }
-    .spy a { position: relative; width: 10px; height: 10px; display: grid; place-items: center; }
-    .spy a i {
-      width: 6px; height: 6px; border-radius: 50%; background: var(--paper-dim);
-      transform: rotate(45deg); transition: all 0.3s var(--ease);
-    }
-    .spy a.on i { background: var(--seal); box-shadow: 0 0 12px rgba(200,64,47,0.8); transform: rotate(45deg) scale(1.5); }
-    .spy a span {
-      position: absolute; right: 18px; top: 50%; transform: translateY(-50%);
+      opacity: 0; animation: hud-in 1.4s 2.2s var(--out) forwards; }
+    .spy a { position: relative; width: 12px; height: 12px; display: grid; place-items: center; }
+    .spy a i { width: 6px; height: 6px; border-radius: 50%; background: var(--paper-dim); transition: all 0.6s var(--out); }
+    .spy a.on i { background: var(--seal); box-shadow: 0 0 14px rgba(200,64,47,0.7); transform: scale(1.6); }
+    .spy a span { position: absolute; right: 20px; top: 50%; transform: translateY(-50%) translateX(6px);
       font-size: 0.56rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold);
-      white-space: nowrap; opacity: 0; transition: opacity 0.25s;
-    }
-    .spy a:hover span, .spy a.on span { opacity: 1; }
+      white-space: nowrap; opacity: 0; transition: opacity 0.45s var(--soft), transform 0.45s var(--out); }
+    .spy a:hover span, .spy a.on span { opacity: 1; transform: translateY(-50%) translateX(0); }
 
-    /* ticker đáy màn hình */
-    .ticker {
-      position: absolute; left: 0; right: 0; bottom: 0; height: 30px;
-      border-top: 1px solid var(--line); background: rgba(11,14,19,0.82); backdrop-filter: blur(6px);
+    .sfx { position: absolute; left: 14px; bottom: 46px; pointer-events: auto;
+      font-size: 0.56rem; letter-spacing: 0.24em; color: var(--paper-dim);
+      border: 1px solid var(--line); border-radius: 99px; padding: 0.45rem 0.95rem;
+      background: rgba(11,14,19,0.6); backdrop-filter: blur(6px);
+      transition: color 0.5s var(--soft), border-color 0.5s var(--soft);
+      opacity: 0; animation: hud-in 1.4s 2.4s var(--out) forwards; }
+    .sfx.on { color: var(--gold); border-color: rgba(217,164,65,0.45); }
+
+    .ticker { position: absolute; left: 0; right: 0; bottom: 0; height: 30px;
+      border-top: 1px solid var(--line); background: rgba(11,14,19,0.78); backdrop-filter: blur(8px);
       overflow: hidden; display: flex; align-items: center;
-      opacity: 0; animation: hud-in 0.7s 2.3s ease forwards;
-    }
-    .ticker__track { display: flex; gap: 3.5rem; white-space: nowrap; animation: tick 28s linear infinite; padding-left: 100vw; }
+      opacity: 0; animation: hud-in 1.4s 2.4s var(--out) forwards; }
+    .ticker__track { display: flex; gap: 3.5rem; white-space: nowrap; animation: tick 36s linear infinite; padding-left: 100vw; }
     .ticker__track span { font-size: 0.6rem; letter-spacing: 0.26em; text-transform: uppercase; color: var(--paper-dim); }
     .ticker__track b { color: var(--gold); font-weight: 400; }
     .ticker__track em { color: var(--seal); font-style: normal; }
     @keyframes tick { to { transform: translateX(-100%); } }
 
     @media (max-width: 899px) {
-      .qi, .spy, .hud__stat--tl { display: none; }
+      .qi, .spy, .hud__stat--tl, .sfx { display: none; }
       .hud__stat--tr { right: 20px; }
       .hud__corner--bl, .hud__corner--br { bottom: 40px; }
     }
 
-    /* ── NỀN ─────────────────────────────────────────────────────────── */
+    /* ── NỀN: núi đường cong mềm ─────────────────────────────────────── */
     .sky { position: fixed; inset: 0; z-index: -3;
-      background:
-        radial-gradient(90% 60% at 72% 18%, rgba(217,164,65,0.07), transparent 60%),
-        linear-gradient(180deg, #0a0d12 0%, #0d1119 45%, #131a24 100%); }
-    .moon {
-      position: fixed; top: 9vh; right: 12vw; z-index: -2; will-change: transform;
+      background: radial-gradient(90% 60% at 72% 18%, rgba(217,164,65,0.07), transparent 60%),
+                  linear-gradient(180deg, #0a0d12 0%, #0d1119 45%, #131a24 100%); }
+    .moon { position: fixed; top: 9vh; right: 12vw; z-index: -2; will-change: transform;
       width: clamp(90px, 13vw, 170px); aspect-ratio: 1; border-radius: 50%;
       background: radial-gradient(circle at 42% 38%, #f4ecd9, #e4d5b2 65%, #cdb98d);
-      box-shadow: 0 0 60px 18px rgba(240,228,197,0.14), 0 0 160px 60px rgba(240,228,197,0.06);
-      animation: moon-breathe 7s ease-in-out infinite;
-    }
-    @keyframes moon-breathe { 50% { box-shadow: 0 0 80px 26px rgba(240,228,197,0.2), 0 0 200px 80px rgba(240,228,197,0.09); } }
-    .mountains { position: fixed; left: -2vw; right: -2vw; bottom: 0; z-index: -2; pointer-events: none; will-change: transform; }
+      box-shadow: 0 0 70px 24px rgba(240,228,197,0.13), 0 0 190px 80px rgba(240,228,197,0.05);
+      animation: moon-breathe 9s ease-in-out infinite; }
+    @keyframes moon-breathe { 50% { box-shadow: 0 0 90px 32px rgba(240,228,197,0.18), 0 0 230px 100px rgba(240,228,197,0.08); } }
+    .moon::before, .moon::after { content: ''; position: absolute; inset: 0; border-radius: 50%;
+      border: 1px solid rgba(240,228,197,0.2); animation: moon-ring 7s var(--out) infinite; }
+    .moon::after { animation-delay: 3.5s; }
+    @keyframes moon-ring { from { transform: scale(1); opacity: 0.55; } to { transform: scale(1.9); opacity: 0; } }
+    .mountains { position: fixed; left: -3vw; right: -3vw; bottom: 0; z-index: -2; pointer-events: none; will-change: transform; }
     .mountains svg { display: block; width: 100%; height: clamp(180px, 38vh, 420px); }
     .m-far { opacity: 0.5; } .m-mid { opacity: 0.75; }
-    .mist { position: fixed; z-index: -1; pointer-events: none; width: 60vw; height: 22vh; border-radius: 50%;
-      background: radial-gradient(closest-side, rgba(233,226,210,0.05), transparent); filter: blur(30px);
-      animation: mist-drift 26s ease-in-out infinite alternate; }
-    .mist--1 { bottom: 6vh; left: -10vw; } .mist--2 { bottom: 18vh; right: -14vw; animation-duration: 34s; animation-delay: -12s; }
-    @keyframes mist-drift { to { transform: translateX(12vw); } }
+    .mist { position: fixed; z-index: -1; pointer-events: none; width: 64vw; height: 24vh; border-radius: 50%;
+      background: radial-gradient(closest-side, rgba(233,226,210,0.05), transparent); filter: blur(34px);
+      animation: mist-drift 32s ease-in-out infinite alternate; }
+    .mist--1 { bottom: 6vh; left: -12vw; } .mist--2 { bottom: 18vh; right: -14vw; animation-duration: 42s; animation-delay: -16s; }
+    @keyframes mist-drift { to { transform: translateX(13vw); } }
     #fx { position: fixed; inset: 0; z-index: 5; pointer-events: none; }
-    /* hán tự trôi mờ sau hero */
-    .hanzi { position: fixed; z-index: -1; font-family: var(--serif); color: rgba(233,226,210,0.04);
-      user-select: none; pointer-events: none; animation: hanzi-drift linear infinite; }
-    @keyframes hanzi-drift { from { transform: translateY(8vh) rotate(-4deg); } to { transform: translateY(-14vh) rotate(3deg); } }
+    .hanzi { position: fixed; z-index: -1; font-family: var(--serif); color: rgba(233,226,210,0.038);
+      user-select: none; pointer-events: none; animation: hanzi-drift linear infinite alternate; }
+    @keyframes hanzi-drift { from { transform: translateY(4vh) rotate(-3deg); } to { transform: translateY(-8vh) rotate(2deg); } }
 
-    /* ── RAIL nav ─────────────────────────────────────────────────────── */
-    .rail {
-      position: fixed; top: 0; left: 0; bottom: 30px; z-index: 50; width: 84px;
+    /* ── RAIL ────────────────────────────────────────────────────────── */
+    .rail { position: fixed; top: 0; left: 0; bottom: 30px; z-index: 50; width: 84px;
       display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 1.4rem 0;
-      border-right: 1px solid var(--line); background: rgba(11,14,19,0.55); backdrop-filter: blur(8px);
-    }
-    .seal {
-      width: 48px; height: 48px; display: grid; place-items: center;
-      background: var(--seal); color: #f4ede0; border-radius: 8px;
+      border-right: 1px solid var(--line); background: rgba(11,14,19,0.5); backdrop-filter: blur(10px); }
+    .seal { width: 48px; height: 48px; display: grid; place-items: center;
+      background: var(--seal); color: #f4ede0; border-radius: 12px;
       font-family: var(--serif); font-weight: 700; font-size: 0.82rem; line-height: 1.05; text-align: center;
-      box-shadow: 0 6px 24px -6px rgba(200,64,47,0.55);
-      transform: rotate(-4deg); transition: transform 0.4s var(--ease), box-shadow 0.4s var(--ease);
-      animation: seal-stamp 0.5s 1.4s var(--ease) backwards;
-    }
-    @keyframes seal-stamp { 0% { transform: rotate(-4deg) scale(2.4); opacity: 0; } 60% { transform: rotate(-4deg) scale(0.92); opacity: 1; } }
-    .seal:hover { transform: rotate(0deg) scale(1.08); box-shadow: 0 10px 34px -6px rgba(200,64,47,0.8); }
+      box-shadow: 0 8px 28px -8px rgba(200,64,47,0.6);
+      transform: rotate(-4deg); transition: transform 0.7s var(--out), box-shadow 0.7s var(--out);
+      animation: seal-stamp 1s 1.5s var(--out) backwards; }
+    @keyframes seal-stamp { 0% { transform: rotate(-4deg) scale(1.8); opacity: 0; } 100% { transform: rotate(-4deg) scale(1); opacity: 1; } }
+    .seal:hover { transform: rotate(0deg) scale(1.07); box-shadow: 0 12px 38px -8px rgba(200,64,47,0.85); }
     .rail-nav { display: flex; flex-direction: column; gap: 2.2rem; }
     .rail-nav a { writing-mode: vertical-rl; font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.34em;
-      text-transform: uppercase; color: var(--paper-mut); transition: color 0.3s ease; position: relative; }
+      text-transform: uppercase; color: var(--paper-mut); transition: color 0.6s var(--soft); position: relative; }
     .rail-nav a::before { content: ''; position: absolute; left: 50%; top: -1.2rem; width: 1px; height: 0.8rem;
-      background: var(--seal); transform: scaleY(0); transform-origin: top; transition: transform 0.3s var(--ease); }
+      background: var(--seal); transform: scaleY(0); transform-origin: top; transition: transform 0.6s var(--out); }
     .rail-nav a:hover { color: var(--paper); }
     .rail-nav a:hover::before { transform: scaleY(1); }
     .rail-foot { writing-mode: vertical-rl; font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.3em; color: var(--paper-dim); }
@@ -203,38 +220,48 @@
       main { margin-left: 0; padding-top: 60px; }
     }
 
-    /* ── HERO ─────────────────────────────────────────────────────────── */
+    /* ── HERO ────────────────────────────────────────────────────────── */
     .hero { min-height: 100vh; display: flex; flex-direction: column; justify-content: center;
-      padding: 0 clamp(1.4rem, 6vw, 7rem); position: relative; perspective: 900px; }
+      padding: 0 clamp(1.4rem, 6vw, 7rem); position: relative; perspective: 1100px; }
     .hero-eyebrow { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.4em; text-transform: uppercase;
       color: var(--gold); margin-bottom: 1.6rem; display: flex; align-items: center; gap: 1rem; }
     .hero-eyebrow::before { content: ''; width: 44px; height: 1px; background: var(--gold); opacity: 0.6; }
     .hero h1 { font-family: var(--serif); font-weight: 700; font-size: clamp(3rem, 11vw, 8.5rem);
-      line-height: 0.98; letter-spacing: 0.01em; will-change: transform; }
-    .hero h1 .l { display: block; }
-    .hero h1 .l:nth-child(2) { color: transparent; -webkit-text-stroke: 1px rgba(233,226,210,0.55); }
-    .hero h1 em { font-style: normal; color: var(--seal); position: relative; text-shadow: 0 0 34px rgba(200,64,47,0.45); }
+      line-height: 1.02; letter-spacing: 0.01em; will-change: transform; }
+    .hero h1 .l { display: block; overflow: hidden; }
+    .hero h1 .l > span { display: inline-block; transform: translateY(112%); animation: rise 1.6s var(--out) forwards; }
+    .hero h1 .l:nth-child(1) > span { animation-delay: 1.55s; }
+    .hero h1 .l:nth-child(2) > span { animation-delay: 1.7s; }
+    .hero h1 .l:nth-child(3) > span { animation-delay: 1.85s; }
+    @keyframes rise { to { transform: translateY(0); } }
+    .hero h1 .l:nth-child(2) { color: transparent; -webkit-text-stroke: 1px rgba(233,226,210,0.5); }
+    .hero h1 em { font-style: normal; color: var(--seal); text-shadow: 0 0 44px rgba(200,64,47,0.4);
+      animation: ember 5s ease-in-out infinite; }
+    @keyframes ember { 50% { text-shadow: 0 0 70px rgba(200,64,47,0.65); } }
     .brush { width: clamp(180px, 30vw, 340px); margin-top: 0.6rem; }
     .brush path { stroke: var(--seal); stroke-width: 6; fill: none; stroke-linecap: round;
-      stroke-dasharray: 480; stroke-dashoffset: 480; animation: draw 1.4s 2s var(--ease) forwards; }
+      stroke-dasharray: 480; stroke-dashoffset: 480; animation: draw 2.2s 2.3s var(--out) forwards; }
     @keyframes draw { to { stroke-dashoffset: 0; } }
     .hero-sub { margin-top: 2rem; max-width: 46ch; color: var(--paper-mut);
-      font-size: clamp(0.9rem, 1.6vw, 1.05rem); line-height: 1.8; font-family: var(--serif); font-style: italic; }
-    .hero-cta { display: flex; gap: 1rem; margin-top: 2.6rem; flex-wrap: wrap; }
-    .btn { position: relative; overflow: hidden; padding: 1rem 2.4rem; font-family: var(--mono); font-size: 0.72rem;
-      letter-spacing: 0.22em; text-transform: uppercase; font-weight: 700;
-      transition: transform 0.35s var(--ease), box-shadow 0.35s var(--ease); will-change: transform; }
-    .btn--seal { background: var(--seal); color: #f4ede0; box-shadow: 0 14px 40px -14px rgba(200,64,47,0.7); }
+      font-size: clamp(0.9rem, 1.6vw, 1.05rem); line-height: 1.85; font-family: var(--serif); font-style: italic;
+      opacity: 0; animation: fade-in 1.6s 2.5s var(--soft) forwards; }
+    .hero-cta { display: flex; gap: 1rem; margin-top: 2.6rem; flex-wrap: wrap;
+      opacity: 0; animation: fade-in 1.6s 2.7s var(--soft) forwards; }
+    .btn { position: relative; overflow: hidden; padding: 1.05rem 2.5rem; border-radius: 99px;
+      font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.22em; text-transform: uppercase; font-weight: 700;
+      transition: box-shadow 0.7s var(--out), background 0.7s var(--soft), color 0.7s var(--soft), border-color 0.7s var(--soft);
+      will-change: transform; }
+    .btn--seal { background: var(--seal); color: #f4ede0; box-shadow: 0 16px 44px -16px rgba(200,64,47,0.65); }
+    .btn--seal:hover { box-shadow: 0 20px 56px -14px rgba(200,64,47,0.9); }
     .btn--ghost { border: 1px solid var(--line); color: var(--paper-mut); }
-    .btn--ghost:hover { color: var(--paper); border-color: var(--paper-mut); }
-    .btn::after { /* vệt sáng quét */
-      content: ''; position: absolute; top: 0; left: -70%; width: 45%; height: 100%;
-      background: linear-gradient(100deg, transparent, rgba(255,255,255,0.22), transparent);
-      transform: skewX(-18deg); transition: left 0.55s var(--ease); }
-    .btn:hover::after { left: 130%; }
-    /* HUD đếm ngược bang chiến trong hero */
-    .countdown { margin-top: 3rem; display: inline-flex; align-items: stretch; gap: 0; border: 1px solid var(--line);
-      background: rgba(11,14,19,0.5); backdrop-filter: blur(6px); }
+    .btn--ghost:hover { color: var(--paper); border-color: rgba(233,226,210,0.35); }
+    .btn::after { content: ''; position: absolute; top: 0; left: -70%; width: 45%; height: 100%;
+      background: linear-gradient(100deg, transparent, rgba(255,255,255,0.16), transparent);
+      transform: skewX(-18deg); transition: left 0.9s var(--out); }
+    .btn:hover::after { left: 135%; }
+    .countdown { margin-top: 3rem; display: inline-flex; align-items: stretch; border: 1px solid var(--line);
+      border-radius: var(--r-md); overflow: hidden; background: rgba(11,14,19,0.45); backdrop-filter: blur(8px);
+      opacity: 0; animation: fade-in 1.6s 2.9s var(--soft) forwards; }
     .countdown__label { display: flex; flex-direction: column; justify-content: center; gap: 0.2rem;
       padding: 0.8rem 1.2rem; border-right: 1px solid var(--line); }
     .countdown__label b { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--seal); font-weight: 700; }
@@ -247,7 +274,7 @@
       font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--paper-dim);
       display: flex; align-items: center; gap: 0.8rem; }
     .hero-scroll i { width: 1px; height: 44px; background: linear-gradient(var(--paper-mut), transparent);
-      display: block; animation: fall-line 1.8s ease-in-out infinite; }
+      display: block; animation: fall-line 2.6s var(--soft) infinite; }
     @keyframes fall-line { 50% { transform: scaleY(0.4); transform-origin: top; } }
     .hero-side { position: absolute; right: clamp(3.4rem, 6vw, 5.4rem); top: 50%; transform: translateY(-50%);
       writing-mode: vertical-rl; font-family: var(--serif); font-size: 0.85rem; letter-spacing: 0.55em;
@@ -255,147 +282,177 @@
     .hero-side b { color: var(--gold); font-weight: 400; }
     @media (max-width: 700px) { .hero-side { display: none; } .countdown { flex-wrap: wrap; } }
 
-    /* ── SECTIONS ─────────────────────────────────────────────────────── */
+    /* ── SECTIONS ────────────────────────────────────────────────────── */
     section { padding: clamp(4.5rem, 11vh, 8.5rem) clamp(1.4rem, 6vw, 7rem); position: relative; }
-    .sec-head { display: flex; align-items: baseline; gap: 1.4rem; margin-bottom: 3rem; flex-wrap: wrap; }
+    .sec-head { display: flex; align-items: baseline; gap: 1.4rem; margin-bottom: 3rem; flex-wrap: wrap; position: relative; }
     .sec-no { font-family: var(--mono); font-size: 0.7rem; color: var(--seal); letter-spacing: 0.2em; }
     .sec-title { font-family: var(--serif); font-weight: 700; font-size: clamp(1.7rem, 4.6vw, 3rem); }
+    .sec-title .ch { display: inline-block; transform: translateY(0.55em); opacity: 0; filter: blur(6px); }
+    .sec-head.in .sec-title .ch { animation: ch-up 1.1s var(--out) forwards; }
+    @keyframes ch-up { to { transform: none; opacity: 1; filter: blur(0); } }
     .sec-title small { display: block; font-family: var(--mono); font-weight: 400; font-size: 0.62rem;
       letter-spacing: 0.34em; text-transform: uppercase; color: var(--paper-dim); margin-top: 0.5rem; }
-    .rev { opacity: 0; transform: translateY(40px); clip-path: inset(0 0 34% 0);
-      transition: opacity 0.9s var(--ease), transform 0.9s var(--ease), clip-path 0.9s var(--ease); }
-    .rev.in { opacity: 1; transform: none; clip-path: inset(0 0 0% 0); }
+    .stamp { position: absolute; right: 0; top: -0.6em; font-family: var(--serif);
+      font-size: clamp(6rem, 16vw, 12rem); line-height: 1; color: transparent;
+      -webkit-text-stroke: 1px rgba(200,64,47,0.14); pointer-events: none; user-select: none;
+      opacity: 0; transform: scale(1.5) rotate(4deg); filter: blur(4px); }
+    .sec-head.in .stamp { animation: stamp-in 1.4s 0.3s var(--out) forwards; }
+    @keyframes stamp-in { to { opacity: 1; transform: scale(1) rotate(-3deg); filter: blur(0); } }
+    .rev { opacity: 0; transform: translateY(56px) scale(0.985); filter: blur(7px);
+      transition: opacity 1.3s var(--out), transform 1.3s var(--out), filter 1.3s var(--out); }
+    .rev.in { opacity: 1; transform: none; filter: blur(0); }
 
-    /* ── THẺ khám phá (tilt 3D + glare) ──────────────────────────────── */
-    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.2rem; }
-    .card { position: relative; padding: 2.2rem 1.8rem 1.9rem; min-height: 280px;
+    /* ── CARDS ───────────────────────────────────────────────────────── */
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.3rem; }
+    .card { position: relative; padding: 2.2rem 1.9rem 2rem; min-height: 280px; border-radius: var(--r-lg);
       display: flex; flex-direction: column; justify-content: flex-end; gap: 0.7rem;
-      border: 1px solid var(--line); background: linear-gradient(165deg, rgba(233,226,210,0.045), rgba(233,226,210,0.01));
+      border: 1px solid var(--line);
+      background: linear-gradient(165deg, rgba(233,226,210,0.05), rgba(233,226,210,0.012));
       overflow: hidden; transform-style: preserve-3d; will-change: transform;
-      transition: border-color 0.45s var(--ease); }
-    .card:hover { border-color: rgba(217,164,65,0.4); }
+      transition: border-color 0.8s var(--soft), transform 0.9s var(--out), box-shadow 0.9s var(--out); }
+    .card:hover { border-color: rgba(217,164,65,0.35); box-shadow: 0 30px 60px -30px rgba(0,0,0,0.7); }
     .card__glare { position: absolute; inset: -40%; pointer-events: none; opacity: 0;
-      background: radial-gradient(320px circle at var(--gx, 50%) var(--gy, 50%), rgba(233,226,210,0.1), transparent 60%);
-      transition: opacity 0.3s; }
+      background: radial-gradient(340px circle at var(--gx, 50%) var(--gy, 50%), rgba(233,226,210,0.09), transparent 60%);
+      transition: opacity 0.7s var(--soft); }
     .card:hover .card__glare { opacity: 1; }
     .card__glyph { position: absolute; top: 1.2rem; right: 1.4rem; font-family: var(--serif); font-size: 3.4rem;
-      line-height: 1; color: var(--seal-soft); transition: color 0.45s var(--ease), transform 0.45s var(--ease); }
-    .card:hover .card__glyph { color: rgba(200,64,47,0.5); transform: rotate(-6deg) scale(1.14); }
+      line-height: 1; color: var(--seal-soft); transition: color 0.8s var(--soft), transform 0.9s var(--out); }
+    .card:hover .card__glyph { color: rgba(200,64,47,0.42); transform: rotate(-5deg) scale(1.1); }
     .card__no { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.3em; color: var(--paper-dim); }
     .card__title { font-family: var(--serif); font-weight: 700; font-size: 1.5rem; }
-    .card__desc { color: var(--paper-mut); font-size: 0.85rem; line-height: 1.7; }
+    .card__desc { color: var(--paper-mut); font-size: 0.85rem; line-height: 1.75; }
     .card__go { font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.22em; text-transform: uppercase;
-      color: var(--gold); margin-top: 0.5rem; transition: letter-spacing 0.35s var(--ease); }
-    .card:hover .card__go { letter-spacing: 0.34em; }
-    .card::after { content: ''; position: absolute; left: 0; bottom: 0; height: 2px; width: 100%;
+      color: var(--gold); margin-top: 0.5rem; transition: letter-spacing 0.7s var(--out); }
+    .card:hover .card__go { letter-spacing: 0.3em; }
+    .card::after { content: ''; position: absolute; left: 1.2rem; right: 1.2rem; bottom: 0; height: 2px; border-radius: 99px;
       background: linear-gradient(90deg, var(--seal), var(--gold));
-      transform: scaleX(0); transform-origin: left; transition: transform 0.5s var(--ease); }
+      transform: scaleX(0); transform-origin: left; transition: transform 0.9s var(--out); }
     .card:hover::after { transform: scaleX(1); }
 
-    /* thống kê HUD */
     .stats { display: flex; gap: clamp(2rem, 6vw, 5rem); flex-wrap: wrap; margin-top: 3.4rem; }
     .stat b { display: block; font-family: var(--serif); font-weight: 700; font-size: clamp(2rem, 5vw, 3.2rem);
       color: var(--paper); font-variant-numeric: tabular-nums; }
     .stat b i { font-style: normal; color: var(--seal); }
     .stat span { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--paper-dim); }
 
-    /* ── POSTER phim ─────────────────────────────────────────────────── */
-    .strip { display: flex; gap: 1.1rem; overflow-x: auto; padding: 0.4rem 0.4rem 1rem; scroll-snap-type: x proximity; }
+    /* ── POSTERS ─────────────────────────────────────────────────────── */
+    .strip { display: flex; gap: 1.2rem; overflow-x: auto; padding: 0.6rem 0.4rem 1.2rem; scroll-snap-type: x proximity; }
     .strip::-webkit-scrollbar { height: 6px; }
     .strip::-webkit-scrollbar-thumb { background: var(--line); border-radius: 99px; }
-    .poster { flex: 0 0 clamp(150px, 22vw, 200px); aspect-ratio: 2/3; scroll-snap-align: start;
+    .poster { flex: 0 0 clamp(150px, 22vw, 200px); aspect-ratio: 2/3; scroll-snap-align: start; border-radius: var(--r-md);
       position: relative; overflow: hidden; border: 1px solid var(--line); display: flex; align-items: flex-end; padding: 1rem;
-      transition: transform 0.45s var(--ease), border-color 0.45s var(--ease), box-shadow 0.45s var(--ease); will-change: transform; }
-    .poster:hover { transform: translateY(-8px) rotate(-1deg); border-color: rgba(217,164,65,0.55);
-      box-shadow: 0 24px 50px -20px rgba(0,0,0,0.8), 0 0 30px -8px rgba(217,164,65,0.25); }
+      transition: transform 0.9s var(--out), border-color 0.8s var(--soft), box-shadow 0.9s var(--out); will-change: transform; }
+    .poster:hover { transform: translateY(-10px); border-color: rgba(217,164,65,0.45);
+      box-shadow: 0 30px 56px -24px rgba(0,0,0,0.75), 0 0 34px -10px rgba(217,164,65,0.2); }
     .poster span { font-family: var(--serif); font-weight: 700; font-size: 1.02rem; line-height: 1.25; position: relative; z-index: 1; }
-    .poster i { position: absolute; inset: 0; opacity: 0.9; transition: transform 0.7s var(--ease); }
-    .poster:hover i { transform: scale(1.07); }
+    .poster i { position: absolute; inset: 0; opacity: 0.92; transition: transform 1.4s var(--out); }
+    .poster:hover i { transform: scale(1.06); }
     .poster:nth-child(1) i { background: linear-gradient(160deg, #23364a, #0d1119 70%); }
     .poster:nth-child(2) i { background: linear-gradient(160deg, #4a2323, #120d0d 70%); }
     .poster:nth-child(3) i { background: linear-gradient(160deg, #23453a, #0d1512 70%); }
     .poster:nth-child(4) i { background: linear-gradient(160deg, #453f23, #14120c 70%); }
     .poster:nth-child(5) i { background: linear-gradient(160deg, #3a2345, #110d15 70%); }
+    .poster::before { content: ''; position: absolute; top: 0; left: -90%; width: 45%; height: 100%; z-index: 1;
+      background: linear-gradient(100deg, transparent, rgba(233,226,210,0.08), transparent);
+      transform: skewX(-16deg); animation: sheen 7s var(--soft) infinite; }
+    .poster:nth-child(2)::before { animation-delay: 1.4s; } .poster:nth-child(3)::before { animation-delay: 2.8s; }
+    .poster:nth-child(4)::before { animation-delay: 4.2s; } .poster:nth-child(5)::before { animation-delay: 5.6s; }
+    @keyframes sheen { 0%, 70% { left: -90%; } 100% { left: 170%; } }
     .poster b { position: absolute; top: 0.8rem; left: 0.8rem; z-index: 1; font-family: var(--mono); font-weight: 700;
-      font-size: 0.56rem; letter-spacing: 0.12em; padding: 0.25rem 0.6rem; background: var(--seal); color: #f4ede0; }
+      font-size: 0.56rem; letter-spacing: 0.12em; padding: 0.28rem 0.66rem; border-radius: 99px; background: var(--seal); color: #f4ede0; }
     .poster u { position: absolute; inset: 0; z-index: 1; text-decoration: none; display: grid; place-items: center;
-      background: rgba(11,14,19,0.55); opacity: 0; transition: opacity 0.35s; font-family: var(--mono);
-      font-size: 0.62rem; letter-spacing: 0.3em; color: var(--gold); text-transform: uppercase; }
+      background: rgba(11,14,19,0.5); backdrop-filter: blur(2px); opacity: 0; transition: opacity 0.7s var(--soft);
+      font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.3em; color: var(--gold); text-transform: uppercase; }
     .poster:hover u { opacity: 1; }
 
-    /* ── GACHA teaser (mô phỏng chạy tự động) ────────────────────────── */
-    .gacha-panel { border: 1px solid var(--line); padding: clamp(2.4rem, 6vw, 4.5rem); text-align: center;
-      position: relative; overflow: hidden;
+    /* ── GACHA ───────────────────────────────────────────────────────── */
+    .gacha-panel { border: 1px solid var(--line); border-radius: var(--r-lg);
+      padding: clamp(2.4rem, 6vw, 4.5rem); text-align: center; position: relative; overflow: hidden;
       background: radial-gradient(120% 100% at 50% 0%, var(--seal-soft), transparent 55%),
                   linear-gradient(165deg, rgba(233,226,210,0.03), transparent); }
-    .gacha-panel::before { /* vòng khí xoay */
-      content: ''; position: absolute; inset: -55%; pointer-events: none;
-      background: conic-gradient(from 0deg, transparent, rgba(200,64,47,0.07), transparent 30%);
-      animation: rot 16s linear infinite; }
+    .gacha-panel::before { content: ''; position: absolute; inset: -55%; pointer-events: none;
+      background: conic-gradient(from 0deg, transparent, rgba(200,64,47,0.06), transparent 30%);
+      animation: rot 22s linear infinite; }
     @keyframes rot { to { transform: rotate(360deg); } }
     .gacha-panel > * { position: relative; }
+    .gacha-panel.quake { animation: quake 0.6s var(--out); }
+    @keyframes quake { 20% { transform: translate(-4px, 3px); } 45% { transform: translate(4px, -3px); }
+      70% { transform: translate(-2px, -1px); } }
     .gacha-title { font-family: var(--serif); font-weight: 700; font-size: clamp(1.5rem, 4vw, 2.4rem); }
     .gacha-sub { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.3em; text-transform: uppercase;
       color: var(--paper-dim); margin-top: 0.7rem; }
-    .gacha-sub em { color: var(--seal); font-style: normal; animation: blink 1.4s ease-in-out infinite; }
-    .chips { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; margin: 1.8rem 0 2.4rem; }
-    .chip { padding: 0.42rem 1rem; border: 1px solid var(--line); border-radius: 999px;
+    .gacha-sub em { color: var(--seal); font-style: normal; animation: breathe 2.2s ease-in-out infinite; }
+    .chips { display: flex; flex-wrap: wrap; gap: 0.55rem; justify-content: center; margin: 1.8rem 0 2.4rem; }
+    .chip { padding: 0.45rem 1.05rem; border: 1px solid var(--line); border-radius: 999px;
       font-family: var(--serif); font-size: 0.85rem; color: var(--paper-mut);
-      transition: all 0.4s var(--ease); }
-    .chip.danger { border-color: var(--seal); color: var(--seal); background: var(--seal-soft);
-      transform: scale(1.1); box-shadow: 0 0 20px -4px rgba(200,64,47,0.6); }
-    .chip.dead { opacity: 0.22; text-decoration: line-through; transform: scale(0.92); filter: blur(0.4px); }
-    .chip.gold { border-color: rgba(217,164,65,0.6); color: var(--gold); background: var(--gold-soft);
-      box-shadow: 0 0 24px -6px rgba(217,164,65,0.7); animation: chip-pulse 1.3s ease-in-out infinite; }
-    @keyframes chip-pulse { 50% { box-shadow: 0 0 38px -4px rgba(217,164,65,0.95); } }
+      transition: all 0.8s var(--out); }
+    .chip.danger { border-color: rgba(200,64,47,0.7); color: var(--seal); background: var(--seal-soft);
+      transform: scale(1.08); box-shadow: 0 0 24px -6px rgba(200,64,47,0.55);
+      animation: danger-breathe 0.7s ease-in-out infinite; }
+    @keyframes danger-breathe { 50% { box-shadow: 0 0 34px -4px rgba(200,64,47,0.8); } }
+    .chip.dead { opacity: 0.2; text-decoration: line-through; transform: scale(0.92); filter: blur(0.5px); }
+    .chip.gold { border-color: rgba(217,164,65,0.55); color: var(--gold); background: var(--gold-soft);
+      box-shadow: 0 0 26px -8px rgba(217,164,65,0.65); animation: chip-pulse 2s ease-in-out infinite; }
+    @keyframes chip-pulse { 50% { box-shadow: 0 0 40px -6px rgba(217,164,65,0.9); } }
 
-    /* ── FOOTER ──────────────────────────────────────────────────────── */
     footer { padding: 2.6rem clamp(1.4rem, 6vw, 7rem) 4.4rem; border-top: 1px solid var(--line);
       display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
       font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--paper-dim); }
+    footer a { transition: color 0.6s var(--soft); }
     footer a:hover { color: var(--gold); }
-
-    .demo-tag { position: fixed; bottom: 44px; right: 1rem; z-index: 210; padding: 0.5rem 1rem;
+    .demo-tag { position: fixed; bottom: 44px; right: 1rem; z-index: 251; padding: 0.5rem 1.05rem; border-radius: 99px;
       background: var(--gold); color: #14110a; font-family: var(--mono); font-size: 0.6rem; font-weight: 700;
       letter-spacing: 0.2em; text-transform: uppercase; box-shadow: 0 10px 30px -10px rgba(217,164,65,0.6); }
 
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: 0.001s !important; animation-iteration-count: 1 !important; transition-duration: 0.001s !important; }
-      .rev { opacity: 1; transform: none; clip-path: none; }
-      .splash { display: none; }
-      html { scroll-behavior: auto; }
+      .rev { opacity: 1; transform: none; filter: none; }
+      .sec-title .ch { transform: none; opacity: 1; filter: none; }
+      .hero h1 .l > span { transform: none; }
+      .hero-sub, .hero-cta, .countdown { opacity: 1; }
+      .splash, .grain { display: none; }
     }
   </style>
 </head>
 <body>
 
-  <!-- SPLASH -->
   <div class="splash" id="splash">
     <div class="splash__ink"></div>
     <div class="splash__name" id="splash-name">NHẤT MỘNG</div>
+    <div class="splash__boot" id="splash-boot"></div>
     <div class="splash__bar"><i id="splash-fill"></i></div>
     <div class="splash__pct" id="splash-pct">000</div>
   </div>
 
-  <!-- CURSOR -->
+  <div class="veil" id="veil"><div class="veil__silk"></div></div>
   <div class="cur-dot" id="cur-dot"></div>
   <div class="cur-ring" id="cur-ring"><span id="cur-label"></span></div>
 
-  <!-- NỀN -->
   <div class="sky"></div>
   <div class="moon" id="moon"></div>
   <div class="mist mist--1"></div>
   <div class="mist mist--2"></div>
-  <div class="mountains m-far"  data-speed="0.06"><svg viewBox="0 0 1440 320" preserveAspectRatio="none"><path fill="#141b24" d="M0,240 L120,200 L260,250 L420,150 L560,230 L720,120 L900,220 L1080,160 L1240,230 L1360,190 L1440,220 L1440,320 L0,320 Z"/></svg></div>
-  <div class="mountains m-mid"  data-speed="0.12"><svg viewBox="0 0 1440 320" preserveAspectRatio="none"><path fill="#10151d" d="M0,270 L160,210 L330,270 L520,180 L700,260 L880,170 L1060,255 L1250,200 L1440,250 L1440,320 L0,320 Z"/></svg></div>
-  <div class="mountains m-near" data-speed="0.2"><svg viewBox="0 0 1440 320" preserveAspectRatio="none"><path fill="#0b0e13" d="M0,300 L200,250 L380,300 L600,230 L820,295 L1040,240 L1260,295 L1440,265 L1440,320 L0,320 Z"/></svg></div>
+  <!-- Núi đường cong thủy mặc, 3 lớp -->
+  <div class="mountains m-far" data-speed="0.06">
+    <svg viewBox="0 0 1440 320" preserveAspectRatio="none"><path fill="#141b24" d="M0,246 C110,206 200,238 320,214 C460,186 520,148 660,172 C790,194 850,232 980,208 C1110,184 1180,146 1300,178 C1370,196 1410,208 1440,204 L1440,320 L0,320 Z"/></svg>
+  </div>
+  <div class="mountains m-mid" data-speed="0.12">
+    <svg viewBox="0 0 1440 320" preserveAspectRatio="none"><path fill="#10151d" d="M0,272 C130,236 230,258 360,238 C500,216 570,186 700,210 C830,232 900,262 1030,244 C1150,228 1250,198 1360,224 C1400,234 1425,242 1440,240 L1440,320 L0,320 Z"/></svg>
+  </div>
+  <div class="mountains m-near" data-speed="0.2">
+    <svg viewBox="0 0 1440 320" preserveAspectRatio="none"><path fill="#0b0e13" d="M0,300 C160,272 280,292 430,278 C580,264 660,244 810,262 C950,278 1040,296 1180,284 C1290,274 1380,264 1440,270 L1440,320 L0,320 Z"/></svg>
+  </div>
   <canvas id="fx"></canvas>
+  <div class="grain"></div>
+  <div class="vignette"></div>
 
-  <!-- HUD -->
   <div class="hud">
     <i class="hud__corner hud__corner--tl"></i><i class="hud__corner hud__corner--tr"></i>
     <i class="hud__corner hud__corner--bl"></i><i class="hud__corner hud__corner--br"></i>
-    <div class="hud__stat hud__stat--tl"><i class="hud__dot"></i> GIANG HỒ <b>ONLINE</b></div>
+    <div class="hud__stat hud__stat--tl">
+      <i class="hud__dot"></i> GIANG HỒ <b>ONLINE</b>
+      <span class="eq"><i></i><i></i><i></i><i></i></span>
+    </div>
     <div class="hud__stat hud__stat--tr"><b id="hud-clock">00:00:00</b> · <span id="hud-date">—</span></div>
     <div class="qi">
       <span class="qi__label">KHÍ · TIẾN ĐỘ</span>
@@ -408,6 +465,7 @@
       <a href="#phim" data-hover="XEM"><i></i><span>Phim</span></a>
       <a href="#gacha" data-hover="QUAY"><i></i><span>Quay thưởng</span></a>
     </nav>
+    <button class="sfx" id="sfx" data-hover="ÂM">SFX OFF</button>
     <div class="ticker">
       <div class="ticker__track" id="ticker">
         <span>⟡ Chào mừng đến <b>NHẤT MỘNG</b></span>
@@ -424,7 +482,6 @@
     </div>
   </div>
 
-  <!-- RAIL -->
   <aside class="rail">
     <a class="seal" href="#top" data-hover="VỀ ĐẦU">NHẤT<br>MỘNG</a>
     <nav class="rail-nav">
@@ -436,14 +493,15 @@
     <span class="rail-foot">© 2026 · giang hồ</span>
   </aside>
 
+  <div id="page">
   <main id="top">
-    <!-- HERO -->
+
     <section class="hero">
       <div class="hero-eyebrow">Bang hội · Nhất Mộng</div>
       <h1 id="hero-title">
-        <span class="l" data-decode>GIANG HỒ</span>
-        <span class="l" data-decode>MỘT GIẤC</span>
-        <span class="l"><em data-decode>MỘNG</em></span>
+        <span class="l"><span>GIANG HỒ</span></span>
+        <span class="l"><span>MỘT GIẤC</span></span>
+        <span class="l"><span><em>MỘNG</em></span></span>
       </h1>
       <svg class="brush" viewBox="0 0 340 24" aria-hidden="true"><path d="M6,14 C60,4 120,20 175,12 C230,4 290,18 334,10" /></svg>
       <p class="hero-sub">Trăng lên đầu núi, anh em tụ nghĩa. Xem phim khuya, quay thưởng cuối tuần — một chốn dừng chân giữa chốn giang hồ.</p>
@@ -451,7 +509,6 @@
         <button class="btn btn--seal" data-hover="ĐI ▸">Xem phim ngay</button>
         <button class="btn btn--ghost" data-hover="QUAY ✦">Quay thưởng »</button>
       </div>
-      <!-- HUD đếm ngược tới 21:00 Chủ nhật -->
       <div class="countdown" id="countdown">
         <div class="countdown__label"><b>Bang chiến</b><span>quay thưởng · CN 21:00</span></div>
         <div class="countdown__cell"><b id="cd-d">0</b><span>ngày</span></div>
@@ -463,11 +520,10 @@
       <div class="hero-side">nhất mộng giang hồ · <b>✦</b> · bang chiến vinh quang</div>
     </section>
 
-    <!-- KHÁM PHÁ -->
-    <section id="kham-pha">
+    <section id="kham-pha" data-stamp="探">
       <div class="sec-head rev">
         <span class="sec-no">壹 · 01</span>
-        <h2 class="sec-title">Khám phá<small>ba lối vào giang hồ</small></h2>
+        <h2 class="sec-title" data-letters>Khám phá<small>ba lối vào giang hồ</small></h2>
       </div>
       <div class="cards">
         <div class="card rev" data-tilt data-hover="VÀO ▸">
@@ -500,11 +556,10 @@
       </div>
     </section>
 
-    <!-- PHIM -->
-    <section id="phim">
+    <section id="phim" data-stamp="影">
       <div class="sec-head rev">
         <span class="sec-no">貳 · 02</span>
-        <h2 class="sec-title">Phim đề cử<small>xem gì đêm nay</small></h2>
+        <h2 class="sec-title" data-letters>Phim đề cử<small>xem gì đêm nay</small></h2>
       </div>
       <div class="strip rev">
         <div class="poster" data-hover="XEM ▸"><i></i><b>TẬP 24</b><span>Kiếm Lai</span><u>Xem ngay</u></div>
@@ -515,15 +570,15 @@
       </div>
     </section>
 
-    <!-- GACHA (mô phỏng tự chạy) -->
-    <section id="gacha">
-      <div class="gacha-panel rev">
+    <section id="gacha" data-stamp="運">
+      <div class="gacha-panel rev" id="gacha-panel">
         <h2 class="gacha-title">Chủ nhật này, ai mang thẻ tháng về?</h2>
         <p class="gacha-sub">Vòng loại sinh tồn · <em>● LIVE DEMO</em></p>
         <div class="chips" id="gacha-chips"></div>
         <button class="btn btn--seal" data-hover="QUAY ✦">Vào vòng quay</button>
       </div>
     </section>
+
   </main>
 
   <footer>
@@ -531,6 +586,7 @@
     <a href="#" data-hover="MỞ ↗">Discord — emancomchua</a>
     <a href="#top" data-hover="LÊN ↑">↑ Đầu trang</a>
   </footer>
+  </div><!-- /page -->
 
   <div class="demo-tag">Bản mẫu — chưa áp dụng</div>
 
@@ -539,9 +595,24 @@
       'use strict';
       var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       var finePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+      var lerp = function (a, b, t) { return a + (b - a) * t; };
 
-      /* ══ TIỆN ÍCH: giải mã chữ (scramble/decode) ══ */
-      var GLYPHS = '劍影夢江湖風雲月◇✦░▒#@%&*+=';
+      /* ══ CUỘN QUÁN TÍNH (kiểu Lenis, tự viết ~30 dòng) ══
+         #page fixed + translate theo giá trị scroll đã làm mượt.
+         Núi / trăng / thanh KHÍ đều bám theo CÙNG giá trị → cả trang một nhịp. */
+      var page = document.getElementById('page');
+      var smoothScroll = finePointer && !reduceMotion;
+      var curY = 0; // scroll đã lerp — mọi hiệu ứng nền đọc từ đây
+      if (smoothScroll) {
+        document.body.classList.add('lerp');
+        var setH = function () { document.body.style.height = page.offsetHeight + 'px'; };
+        setH();
+        if ('ResizeObserver' in window) new ResizeObserver(setH).observe(page);
+        addEventListener('resize', setH);
+      }
+
+      /* ══ Giải mã chữ ══ */
+      var GLYPHS = '劍影夢江湖風雲月◇✦';
       function decode(el, text, dur, done) {
         if (reduceMotion) { el.textContent = text; if (done) done(); return; }
         var start = null, len = text.length;
@@ -550,9 +621,7 @@
           var p = Math.min(1, (ts - start) / dur);
           var solved = Math.floor(p * len);
           var out = text.slice(0, solved);
-          for (var i = solved; i < len; i++) {
-            out += text[i] === ' ' ? ' ' : GLYPHS[(Math.random() * GLYPHS.length) | 0];
-          }
+          for (var i = solved; i < len; i++) out += text[i] === ' ' ? ' ' : GLYPHS[(Math.random() * GLYPHS.length) | 0];
           el.textContent = out;
           if (p < 1) requestAnimationFrame(frame);
           else { el.textContent = text; if (done) done(); }
@@ -560,51 +629,115 @@
         requestAnimationFrame(frame);
       }
 
-      /* ══ SPLASH: % chạy + giải mã tên + trượt lên ══ */
+      /* ══ SFX ══ */
+      var sfxOn = false, actx = null;
+      var sfxBtn = document.getElementById('sfx');
+      function blip(freq, dur, vol, type) {
+        if (!sfxOn) return;
+        try {
+          actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+          if (actx.state === 'suspended') actx.resume();
+          var o = actx.createOscillator(), g = actx.createGain();
+          o.type = type || 'sine'; o.frequency.value = freq;
+          g.gain.setValueAtTime(vol, actx.currentTime);
+          g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + dur);
+          o.connect(g); g.connect(actx.destination);
+          o.start(); o.stop(actx.currentTime + dur);
+        } catch (e) {}
+      }
+      sfxBtn.addEventListener('click', function () {
+        sfxOn = !sfxOn;
+        sfxBtn.classList.toggle('on', sfxOn);
+        sfxBtn.textContent = sfxOn ? 'SFX ON' : 'SFX OFF';
+        if (sfxOn) blip(660, 0.12, 0.045);
+      });
+      document.addEventListener('mouseover', function (e) {
+        if (e.target.closest && e.target.closest('[data-hover]')) blip(880, 0.05, 0.014);
+      });
+
+      /* ══ SPLASH ══ */
       var splash = document.getElementById('splash');
-      var pctEl = document.getElementById('splash-pct');
-      var fillEl = document.getElementById('splash-fill');
+      var bootEl = document.getElementById('splash-boot');
+      var BOOT = ['▸ nạp kho phim ................ <b>OK</b>',
+                  '▸ kết nối bang hội ............ <b>OK</b>',
+                  '▸ triệu hồi đom đóm ........... <b>OK</b>',
+                  '▸ mài kiếm, pha trà ........... <b>OK</b>'];
       decode(document.getElementById('splash-name'), 'NHẤT MỘNG', 900);
       if (reduceMotion) { splash.style.display = 'none'; }
       else {
+        BOOT.forEach(function (line, i) {
+          setTimeout(function () {
+            var d = document.createElement('div');
+            d.innerHTML = line;
+            bootEl.appendChild(d);
+          }, 150 + i * 240);
+        });
+        var pctEl = document.getElementById('splash-pct');
+        var fillEl = document.getElementById('splash-fill');
         var p0 = null;
         (function pump(ts) {
           if (!p0) p0 = ts;
           var p = Math.min(1, (ts - p0) / 1400);
-          var eased = 1 - Math.pow(1 - p, 3);
-          var v = Math.round(eased * 100);
+          var v = Math.round((1 - Math.pow(1 - p, 3)) * 100);
           pctEl.textContent = String(v).padStart(3, '0');
           fillEl.style.width = v + '%';
           if (p < 1) requestAnimationFrame(pump);
-          else setTimeout(function () { splash.classList.add('done'); }, 180);
+          else splash.classList.add('done');
         })(performance.now());
-        setTimeout(function () { splash.style.display = 'none'; }, 2600);
+        setTimeout(function () { splash.style.display = 'none'; }, 3000);
       }
 
-      /* ══ HERO: giải mã 3 dòng tiêu đề sau splash ══ */
-      document.querySelectorAll('[data-decode]').forEach(function (el, i) {
-        var t = el.textContent;
-        el.textContent = '';
-        setTimeout(function () { decode(el, t, 700); }, reduceMotion ? 0 : 1500 + i * 220);
-      });
-
-      /* ══ HOVER: scramble chữ nav ══ */
+      /* ══ Nav scramble hover ══ */
       document.querySelectorAll('[data-scramble]').forEach(function (a) {
         var t = a.textContent;
-        a.addEventListener('mouseenter', function () { decode(a, t, 380); });
+        a.addEventListener('mouseenter', function () { decode(a, t, 420); });
       });
 
-      /* ══ CURSOR mực + nhãn ngữ cảnh + vết mực khi click ══ */
+      /* ══ CHUYỂN MỤC: dải lụa + cuộn quán tính tới nơi ══ */
+      var veil = document.getElementById('veil');
+      var veilBusy = false;
+      document.querySelectorAll('a[href^="#"]').forEach(function (a) {
+        a.addEventListener('click', function (e) {
+          e.preventDefault();
+          var id = a.getAttribute('href');
+          var target = id.length > 1 ? document.getElementById(id.slice(1)) : null;
+          if (!reduceMotion && !veilBusy) {
+            veilBusy = true;
+            veil.classList.remove('go'); void veil.offsetWidth;
+            veil.classList.add('go');
+            blip(520, 0.25, 0.03);
+            setTimeout(function () { veil.classList.remove('go'); veilBusy = false; }, 950);
+          }
+          var top = 0;
+          if (target) {
+            var r = target.getBoundingClientRect();
+            top = smoothScroll ? r.top + curY : r.top + scrollY;
+          }
+          scrollTo({ top: Math.max(0, top), behavior: smoothScroll || reduceMotion ? 'auto' : 'smooth' });
+          /* với smoothScroll: scrollY nhảy ngay, curY lerp đuổi theo → mượt tự nhiên */
+        });
+      });
+
+      /* ══ CURSOR ══ */
+      var inks = [];
       if (finePointer && !reduceMotion) {
         document.body.classList.add('no-cursor');
         var dot = document.getElementById('cur-dot');
         var ring = document.getElementById('cur-ring');
         var label = document.getElementById('cur-label');
-        var mx = innerWidth / 2, my = innerHeight / 2, rx = mx, ry = my;
+        var mx = innerWidth / 2, my = innerHeight / 2, rx = mx, ry = my, lastInk = 0;
         addEventListener('mousemove', function (e) {
           mx = e.clientX; my = e.clientY;
-          dot.style.transform = 'translate(' + (mx - 3) + 'px,' + (my - 3) + 'px)';
+          var now = performance.now();
+          if (now - lastInk > 34) { lastInk = now; inks.push({ x: mx, y: my, r: 2.2 + Math.random() * 1.8, life: 1 }); }
+          if (inks.length > 50) inks.shift();
         });
+        (function curLoop() {
+          rx = lerp(rx, mx, 0.14); ry = lerp(ry, my, 0.14);
+          dot.style.transform = 'translate(' + (mx - 3) + 'px,' + (my - 3) + 'px)';
+          ring.style.transform = 'translate(' + (rx - 18) + 'px,' + (ry - 18) + 'px)';
+          requestAnimationFrame(curLoop);
+        })();
         document.addEventListener('mouseover', function (e) {
           var t = e.target.closest('[data-hover]');
           if (t) { ring.classList.add('hot'); label.textContent = t.dataset.hover || ''; }
@@ -614,64 +747,103 @@
           if (t && !t.contains(e.relatedTarget)) { ring.classList.remove('hot'); label.textContent = ''; }
         });
         addEventListener('click', function (e) {
+          blip(420, 0.1, 0.035);
           var s = document.createElement('i');
           s.className = 'ink-splash';
-          s.style.left = (e.clientX - 4) + 'px';
-          s.style.top = (e.clientY - 4) + 'px';
+          s.style.left = (e.clientX - 4) + 'px'; s.style.top = (e.clientY - 4) + 'px';
           document.body.appendChild(s);
-          setTimeout(function () { s.remove(); }, 650);
+          setTimeout(function () { s.remove(); }, 950);
         });
       }
 
-      /* ══ CANVAS: cánh hoa rơi + đom đóm ══ */
+      /* ══ CANVAS: hoa + đom đóm + sao băng + mực + confetti ══ */
       var canvas = document.getElementById('fx');
       var ctx = canvas.getContext('2d');
-      var W, H, petals = [], flies = [];
+      var W, H, petals = [], flies = [], meteors = [], confetti = [];
+      var meteorIn = 500;
       function resize() {
         W = canvas.width = innerWidth; H = canvas.height = innerHeight;
         petals = []; flies = [];
-        var np = Math.min(30, (W / 46) | 0), nf = Math.min(14, (W / 100) | 0);
+        var np = Math.min(28, (W / 50) | 0), nf = Math.min(12, (W / 110) | 0);
         for (var i = 0; i < np; i++) petals.push(newPetal(true));
         for (var j = 0; j < nf; j++) flies.push(newFly());
       }
       function newPetal(anywhere) {
         return { x: Math.random() * W, y: anywhere ? Math.random() * H : -20,
-          r: 3 + Math.random() * 5, vy: 0.35 + Math.random() * 0.7,
-          sway: Math.random() * Math.PI * 2, sv: 0.008 + Math.random() * 0.014,
-          rot: Math.random() * Math.PI * 2, rv: (Math.random() - 0.5) * 0.02,
-          gold: Math.random() < 0.25 };
+          r: 3 + Math.random() * 5, vy: 0.3 + Math.random() * 0.55,
+          sway: Math.random() * Math.PI * 2, sv: 0.006 + Math.random() * 0.012,
+          rot: Math.random() * Math.PI * 2, rv: (Math.random() - 0.5) * 0.016, gold: Math.random() < 0.25 };
       }
       function newFly() {
         return { x: Math.random() * W, y: H * 0.45 + Math.random() * H * 0.5,
-          a: Math.random() * Math.PI * 2, va: (Math.random() - 0.5) * 0.03,
-          v: 0.25 + Math.random() * 0.4, ph: Math.random() * Math.PI * 2,
-          pv: 0.02 + Math.random() * 0.03 };
+          a: Math.random() * Math.PI * 2, va: (Math.random() - 0.5) * 0.02,
+          v: 0.2 + Math.random() * 0.35, ph: Math.random() * Math.PI * 2, pv: 0.015 + Math.random() * 0.02 };
+      }
+      function spawnConfetti(x, y, n) {
+        for (var i = 0; i < n; i++) {
+          var a = Math.random() * Math.PI * 2, sp = 1.6 + Math.random() * 4;
+          confetti.push({ x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 2.6,
+            rot: Math.random() * Math.PI, rv: (Math.random() - 0.5) * 0.22,
+            w: 4 + Math.random() * 5, h: 7 + Math.random() * 6, life: 1,
+            c: ['#c8402f', '#d9a441', '#e9e2d2', '#2fa8c8'][(Math.random() * 4) | 0] });
+        }
       }
       function tick() {
         ctx.clearRect(0, 0, W, H);
         var i, p;
         for (i = 0; i < petals.length; i++) {
           p = petals[i];
-          p.sway += p.sv; p.x += Math.sin(p.sway) * 0.6; p.y += p.vy; p.rot += p.rv;
+          p.sway += p.sv; p.x += Math.sin(p.sway) * 0.5; p.y += p.vy; p.rot += p.rv;
           if (p.y > H + 20) petals[i] = newPetal(false);
           ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
           ctx.beginPath(); ctx.moveTo(0, -p.r);
           ctx.quadraticCurveTo(p.r, -p.r * 0.2, 0, p.r);
           ctx.quadraticCurveTo(-p.r, -p.r * 0.2, 0, -p.r);
-          ctx.fillStyle = p.gold ? 'rgba(217,164,65,0.5)' : 'rgba(200,64,47,0.42)';
+          ctx.fillStyle = p.gold ? 'rgba(217,164,65,0.45)' : 'rgba(200,64,47,0.38)';
           ctx.fill(); ctx.restore();
         }
         for (i = 0; i < flies.length; i++) {
           p = flies[i];
-          p.a += p.va; p.x += Math.cos(p.a) * p.v; p.y += Math.sin(p.a) * p.v * 0.6;
-          p.ph += p.pv;
+          p.a += p.va; p.x += Math.cos(p.a) * p.v; p.y += Math.sin(p.a) * p.v * 0.6; p.ph += p.pv;
           if (p.x < -10) p.x = W + 10; if (p.x > W + 10) p.x = -10;
           if (p.y < H * 0.3) p.y = H * 0.3; if (p.y > H + 10) p.y = H * 0.5;
-          var glow = 0.25 + 0.55 * (0.5 + 0.5 * Math.sin(p.ph));
-          ctx.beginPath(); ctx.arc(p.x, p.y, 1.6, 0, Math.PI * 2);
+          var glow = 0.2 + 0.5 * (0.5 + 0.5 * Math.sin(p.ph));
+          ctx.beginPath(); ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
           ctx.fillStyle = 'rgba(217,196,120,' + glow.toFixed(2) + ')';
-          ctx.shadowColor = 'rgba(217,196,120,0.9)'; ctx.shadowBlur = 8;
+          ctx.shadowColor = 'rgba(217,196,120,0.85)'; ctx.shadowBlur = 7;
           ctx.fill(); ctx.shadowBlur = 0;
+        }
+        if (--meteorIn <= 0) {
+          meteorIn = 600 + (Math.random() * 800) | 0;
+          meteors.push({ x: W * (0.3 + Math.random() * 0.6), y: -20,
+            vx: -(4 + Math.random() * 3), vy: 2 + Math.random() * 1.3, life: 1 });
+        }
+        for (i = meteors.length - 1; i >= 0; i--) {
+          p = meteors[i];
+          p.x += p.vx; p.y += p.vy; p.life -= 0.01;
+          if (p.life <= 0 || p.x < -80 || p.y > H + 80) { meteors.splice(i, 1); continue; }
+          var grad = ctx.createLinearGradient(p.x, p.y, p.x - p.vx * 14, p.y - p.vy * 14);
+          grad.addColorStop(0, 'rgba(240,228,197,' + (0.7 * p.life).toFixed(2) + ')');
+          grad.addColorStop(1, 'transparent');
+          ctx.strokeStyle = grad; ctx.lineWidth = 1.4; ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * 14, p.y - p.vy * 14); ctx.stroke();
+        }
+        for (i = inks.length - 1; i >= 0; i--) {
+          p = inks[i];
+          p.life -= 0.022; p.r += 0.05;
+          if (p.life <= 0) { inks.splice(i, 1); continue; }
+          ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(200,64,47,' + (0.11 * p.life).toFixed(3) + ')';
+          ctx.fill();
+        }
+        for (i = confetti.length - 1; i >= 0; i--) {
+          p = confetti[i];
+          p.vy += 0.1; p.x += p.vx; p.y += p.vy; p.rot += p.rv; p.life -= 0.009;
+          if (p.life <= 0 || p.y > H + 30) { confetti.splice(i, 1); continue; }
+          ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+          ctx.globalAlpha = Math.max(0, p.life);
+          ctx.fillStyle = p.c; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+          ctx.restore(); ctx.globalAlpha = 1;
         }
         requestAnimationFrame(tick);
       }
@@ -679,41 +851,40 @@
       addEventListener('resize', resize);
       if (!reduceMotion) tick();
 
-      /* ══ PARALLAX: núi + trăng theo cuộn, hero theo chuột ══ */
+      /* ══ VÒNG CHUYỂN ĐỘNG CHÍNH: cuộn lerp + parallax + KHÍ ══ */
       var layers = [].slice.call(document.querySelectorAll('.mountains'));
       var moon = document.getElementById('moon');
       var heroTitle = document.getElementById('hero-title');
+      var qiFill = document.getElementById('qi-fill');
+      var qiPct = document.getElementById('qi-pct');
       var tx = 0, ty = 0, cx = 0, cy = 0;
-      function onScroll() {
-        var y = scrollY;
-        layers.forEach(function (l) { l.style.transform = 'translateY(' + y * parseFloat(l.dataset.speed) + 'px)'; });
-        moon.style.transform = 'translateY(' + y * 0.14 + 'px)';
-        var max = document.documentElement.scrollHeight - innerHeight;
-        var pr = max > 0 ? y / max : 0;
-        document.getElementById('qi-fill').style.height = (pr * 100) + '%';
-        document.getElementById('qi-pct').textContent = Math.round(pr * 100) + '%';
-      }
-      if (!reduceMotion) {
-        addEventListener('scroll', onScroll, { passive: true });
-        onScroll();
-        if (finePointer) {
-          addEventListener('mousemove', function (e) {
-            tx = (e.clientX / innerWidth - 0.5); ty = (e.clientY / innerHeight - 0.5);
-          });
-          (function sway() {
-            cx += (tx - cx) * 0.06; cy += (ty - cy) * 0.06;
-            if (heroTitle) heroTitle.style.transform =
-              'rotateY(' + (cx * 4) + 'deg) rotateX(' + (-cy * 3) + 'deg) translate(' + (cx * -10) + 'px,' + (cy * -6) + 'px)';
-            layers.forEach(function (l, i) {
-              var f = (i + 1) * 4;
-              l.style.marginLeft = (cx * -f) + 'px';
-            });
-            requestAnimationFrame(sway);
-          })();
-        }
-      }
+      if (finePointer) addEventListener('mousemove', function (e) {
+        tx = e.clientX / innerWidth - 0.5; ty = e.clientY / innerHeight - 0.5;
+      });
+      if (!reduceMotion) (function motionLoop() {
+        var targetY = scrollY;
+        curY = lerp(curY, targetY, 0.085);
+        if (Math.abs(curY - targetY) < 0.1) curY = targetY;
+        if (smoothScroll) page.style.transform = 'translate3d(0,' + (-curY).toFixed(2) + 'px,0)';
+        /* các lớp nền bám cùng giá trị đã mượt */
+        layers.forEach(function (l, i) {
+          l.style.transform = 'translate3d(' + (cx * -(i + 1) * 5).toFixed(1) + 'px,' +
+                              (curY * parseFloat(l.dataset.speed)).toFixed(1) + 'px,0)';
+        });
+        moon.style.transform = 'translate3d(0,' + (curY * 0.14).toFixed(1) + 'px,0)';
+        var max = (smoothScroll ? page.offsetHeight : document.documentElement.scrollHeight) - innerHeight;
+        var pr = max > 0 ? Math.min(1, curY / max) : 0;
+        qiFill.style.height = (pr * 100).toFixed(1) + '%';
+        qiPct.textContent = Math.round(pr * 100) + '%';
+        /* hero nghiêng theo chuột, có lực cản */
+        cx = lerp(cx, tx, 0.045); cy = lerp(cy, ty, 0.045);
+        if (heroTitle) heroTitle.style.transform =
+          'rotateY(' + (cx * 3.4).toFixed(2) + 'deg) rotateX(' + (-cy * 2.6).toFixed(2) + 'deg)' +
+          ' translate(' + (cx * -12).toFixed(1) + 'px,' + (cy * -7).toFixed(1) + 'px)';
+        requestAnimationFrame(motionLoop);
+      })();
 
-      /* ══ HÁN TỰ trôi mờ ══ */
+      /* ══ HÁN TỰ ══ */
       if (!reduceMotion) {
         '夢江湖影運月劍'.split('').forEach(function (ch, i) {
           var s = document.createElement('span');
@@ -721,27 +892,24 @@
           s.style.left = (6 + i * 13) + '%';
           s.style.top = (12 + (i % 3) * 26) + '%';
           s.style.fontSize = (7 + (i % 4) * 4) + 'rem';
-          s.style.animationDuration = (30 + i * 7) + 's';
+          s.style.animationDuration = (36 + i * 8) + 's';
           document.body.appendChild(s);
         });
       }
 
-      /* ══ HUD: đồng hồ + ngày ══ */
-      var clockEl = document.getElementById('hud-clock');
-      var dateEl = document.getElementById('hud-date');
+      /* ══ Đồng hồ + đếm ngược ══ */
       var DAYS = ['CHỦ NHẬT', 'THỨ HAI', 'THỨ BA', 'THỨ TƯ', 'THỨ NĂM', 'THỨ SÁU', 'THỨ BẢY'];
       function pad(n) { return String(n).padStart(2, '0'); }
+      var clockEl = document.getElementById('hud-clock');
+      var dateEl = document.getElementById('hud-date');
       function clock() {
         var d = new Date();
         clockEl.textContent = pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
         dateEl.textContent = DAYS[d.getDay()] + ' ' + pad(d.getDate()) + '/' + pad(d.getMonth() + 1);
       }
       clock(); setInterval(clock, 1000);
-
-      /* ══ ĐẾM NGƯỢC: 21:00 Chủ nhật gần nhất ══ */
       function nextSunday21() {
-        var d = new Date();
-        var t = new Date(d);
+        var d = new Date(), t = new Date(d);
         t.setDate(d.getDate() + ((7 - d.getDay()) % 7));
         t.setHours(21, 0, 0, 0);
         if (t <= d) t.setDate(t.getDate() + 7);
@@ -759,7 +927,7 @@
       }
       cd(); setInterval(cd, 1000);
 
-      /* ══ SPY: chấm mục lục sáng theo section ══ */
+      /* ══ SPY ══ */
       var spyLinks = [].slice.call(document.querySelectorAll('#spy a'));
       var secs = ['top', 'kham-pha', 'phim', 'gacha'].map(function (id) { return document.getElementById(id); });
       if ('IntersectionObserver' in window) {
@@ -773,16 +941,37 @@
         secs.forEach(function (s) { if (s) spyIO.observe(s); });
       }
 
-      /* ══ REVEAL + đếm số ══ */
+      /* ══ Tách chữ tiêu đề + dấu Hán ══ */
+      document.querySelectorAll('[data-letters]').forEach(function (h) {
+        var node = h.childNodes[0];
+        if (!node || node.nodeType !== 3) return;
+        var frag = document.createDocumentFragment();
+        node.textContent.split('').forEach(function (c, i) {
+          if (c === ' ') { frag.appendChild(document.createTextNode(' ')); return; }
+          var s = document.createElement('span');
+          s.className = 'ch'; s.textContent = c;
+          s.style.animationDelay = (i * 0.045) + 's';
+          frag.appendChild(s);
+        });
+        h.replaceChild(frag, node);
+      });
+      document.querySelectorAll('section[data-stamp]').forEach(function (sec) {
+        var head = sec.querySelector('.sec-head');
+        if (!head) return;
+        var st = document.createElement('span');
+        st.className = 'stamp'; st.textContent = sec.dataset.stamp;
+        head.appendChild(st);
+      });
+
+      /* ══ Reveal + đếm số ══ */
       function countUp(el) {
         var to = parseInt(el.dataset.count, 10) || 0;
         if (reduceMotion) { el.textContent = to.toLocaleString('vi-VN'); return; }
         var t0 = null;
         (function step(ts) {
           if (!t0) t0 = ts;
-          var p = Math.min(1, (ts - t0) / 1200);
-          var eased = 1 - Math.pow(1 - p, 3);
-          el.textContent = Math.round(to * eased).toLocaleString('vi-VN');
+          var p = Math.min(1, (ts - t0) / 1600);
+          el.textContent = Math.round(to * (1 - Math.pow(1 - p, 4))).toLocaleString('vi-VN');
           if (p < 1) requestAnimationFrame(step);
         })(performance.now());
       }
@@ -801,34 +990,53 @@
         document.querySelectorAll('[data-count]').forEach(countUp);
       }
 
-      /* ══ TILT 3D + glare cho card ══ */
+      /* ══ TILT đàn hồi (lerp) + nam châm đàn hồi ══ */
       if (finePointer && !reduceMotion) {
         document.querySelectorAll('[data-tilt]').forEach(function (card) {
+          var trx = 0, try_ = 0, crx = 0, cry = 0, over = false, raf = null;
+          function loop() {
+            crx = lerp(crx, trx, 0.09); cry = lerp(cry, try_, 0.09);
+            card.style.transform = 'perspective(900px) rotateY(' + crx.toFixed(2) + 'deg) rotateX(' + cry.toFixed(2) + 'deg)' +
+                                   (over ? ' translateY(-4px)' : '');
+            if (over || Math.abs(crx) > 0.05 || Math.abs(cry) > 0.05) raf = requestAnimationFrame(loop);
+            else { card.style.transform = ''; raf = null; }
+          }
           card.addEventListener('mousemove', function (e) {
             var r = card.getBoundingClientRect();
             var px = (e.clientX - r.left) / r.width - 0.5;
             var py = (e.clientY - r.top) / r.height - 0.5;
-            card.style.transform = 'perspective(800px) rotateY(' + (px * 8) + 'deg) rotateX(' + (-py * 8) + 'deg) translateY(-4px)';
+            trx = px * 7; try_ = -py * 7;
             card.style.setProperty('--gx', ((px + 0.5) * 100) + '%');
             card.style.setProperty('--gy', ((py + 0.5) * 100) + '%');
+            over = true;
+            if (!raf) raf = requestAnimationFrame(loop);
           });
-          card.addEventListener('mouseleave', function () { card.style.transform = ''; });
+          card.addEventListener('mouseleave', function () { over = false; trx = 0; try_ = 0; });
         });
-        /* nút nam châm nhẹ */
         document.querySelectorAll('.btn').forEach(function (b) {
+          var tx2 = 0, ty2 = 0, cx2 = 0, cy2 = 0, over = false, raf = null;
+          function loop() {
+            cx2 = lerp(cx2, tx2, 0.11); cy2 = lerp(cy2, ty2, 0.11);
+            b.style.transform = 'translate(' + cx2.toFixed(1) + 'px,' + cy2.toFixed(1) + 'px)';
+            if (over || Math.abs(cx2) > 0.2 || Math.abs(cy2) > 0.2) raf = requestAnimationFrame(loop);
+            else { b.style.transform = ''; raf = null; }
+          }
           b.addEventListener('mousemove', function (e) {
             var r = b.getBoundingClientRect();
-            b.style.transform = 'translate(' + ((e.clientX - r.left - r.width / 2) * 0.18) + 'px,' +
-                                               ((e.clientY - r.top - r.height / 2) * 0.22) + 'px)';
+            tx2 = (e.clientX - r.left - r.width / 2) * 0.22;
+            ty2 = (e.clientY - r.top - r.height / 2) * 0.28;
+            over = true;
+            if (!raf) raf = requestAnimationFrame(loop);
           });
-          b.addEventListener('mouseleave', function () { b.style.transform = ''; });
+          b.addEventListener('mouseleave', function () { over = false; tx2 = 0; ty2 = 0; });
         });
       }
 
-      /* ══ GACHA demo: mô phỏng loại dần chạy lặp vô tận ══ */
+      /* ══ GACHA demo ══ */
       var NAMES = ['Lạc gấu gấu', 'Một Bông Hoa Nhỏ', 'Tiểu Long', 'Hắc Phong', 'Vô Danh',
                    'Mộng Nhi', 'Phong Vân', 'Lãnh Nguyệt', 'Bạch Hổ', 'Thanh Xà'];
       var chipBox = document.getElementById('gacha-chips');
+      var panel = document.getElementById('gacha-panel');
       chipBox.innerHTML = NAMES.map(function (n) { return '<span class="chip">' + n + '</span>'; }).join('');
       var chips = [].slice.call(chipBox.children);
       if (!reduceMotion) (function loopSim() {
@@ -838,18 +1046,27 @@
         (function round() {
           if (alive.length <= winners) {
             alive.forEach(function (c) { c.classList.add('gold'); });
-            setTimeout(loopSim, 3800); // nghỉ ngắm người thắng rồi chạy lại
+            blip(784, 0.3, 0.04);
+            panel.classList.add('quake');
+            setTimeout(function () { panel.classList.remove('quake'); }, 650);
+            var r = panel.getBoundingClientRect();
+            if (r.bottom > 0 && r.top < innerHeight) {
+              spawnConfetti(r.left + r.width / 2, r.top + r.height * 0.4, 54);
+            }
+            setTimeout(loopSim, 4600);
             return;
           }
           var vi = (Math.random() * alive.length) | 0;
           var victim = alive[vi];
           victim.classList.add('danger');
+          blip(340, 0.06, 0.016);
           setTimeout(function () {
             victim.classList.remove('danger');
             victim.classList.add('dead');
+            blip(160, 0.11, 0.024);
             alive.splice(vi, 1);
-            setTimeout(round, alive.length <= winners + 2 ? 900 : 450);
-          }, alive.length <= winners + 2 ? 700 : 350);
+            setTimeout(round, alive.length <= winners + 2 ? 1100 : 560);
+          }, alive.length <= winners + 2 ? 850 : 420);
         })();
       })();
     })();
