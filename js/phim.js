@@ -10,6 +10,8 @@
   const PKEY = 'nm_phim_progress';            // localStorage: tập đã xem theo slug
   const HKEY = 'nm_phim_history';             // localStorage: danh sách phim vừa xem
   const HMAX = 12;                            // số phim tối đa lưu trong "Vừa xem"
+  const WKEY = 'nm_phim_watchlist';           // localStorage: danh sách "Xem sau"
+  const WMAX = 30;                            // số phim tối đa trong "Xem sau"
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent(
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><rect fill="#10151c" width="200" height="300"/><text x="100" y="155" fill="#5b6573" font-size="34" font-family="sans-serif" text-anchor="middle">NM</text></svg>');
@@ -44,6 +46,11 @@
     recent: document.getElementById('phim-recent'),
     recentRow: document.getElementById('phim-recent-row'),
     recentClear: document.getElementById('phim-recent-clear'),
+    watch: document.getElementById('phim-watch'),
+    watchRow: document.getElementById('phim-watch-row'),
+    watchClear: document.getElementById('phim-watch-clear'),
+    random: document.getElementById('phim-random'),
+    theater: document.getElementById('film-theater'),
   };
 
   // ── API helpers ─────────────────────────────────────────────────────────
@@ -81,10 +88,26 @@
   }
 
   // ── Render grid ──────────────────────────────────────────────────────────
+  // Cache dữ liệu tối thiểu của các phim đã render để nút "Xem sau" dùng lại
+  const movieCache = new Map();
+  function entryOf(m) {
+    return {
+      slug: m.slug,
+      name: m.name || '',
+      origin: m.origin_name || '',
+      year: m.year || '',
+      badge: m.episode_current || m.quality || '',
+      poster: posterOf(m),
+    };
+  }
+
   function cardHTML(m) {
     const badge = m.episode_current || m.quality || '';
+    movieCache.set(m.slug, entryOf(m));
     return `
       <div class="film" data-slug="${esc(m.slug)}" data-cursor="" tabindex="0" role="button" aria-label="${esc(m.name)}">
+        <button class="film__save ${watchSet.has(m.slug) ? 'on' : ''}" data-slug="${esc(m.slug)}" data-cursor
+                aria-label="Xem sau" title="Xem sau">${watchSet.has(m.slug) ? '✓' : '＋'}</button>
         <div class="film__poster">
           ${badge ? `<span class="film__badge">${esc(badge)}</span>` : ''}
           <img src="${esc(posterOf(m))}" alt="${esc(m.name)}" loading="lazy"
@@ -165,6 +188,55 @@
     if (!h.length) { el.recent.hidden = true; el.recentRow.innerHTML = ''; return; }
     el.recent.hidden = false;
     el.recentRow.innerHTML = h.map(recentCardHTML).join('');
+  }
+
+  // ── Watchlist "Xem sau" ──────────────────────────────────────────────────
+  function loadWatch() {
+    try { return JSON.parse(localStorage.getItem(WKEY) || '[]'); } catch (e) { return []; }
+  }
+  let watchSet = new Set(loadWatch().map((x) => x.slug));
+
+  function renderWatch() {
+    if (!el.watch) return;
+    const w = loadWatch();
+    if (!w.length) { el.watch.hidden = true; el.watchRow.innerHTML = ''; return; }
+    el.watch.hidden = false;
+    el.watchRow.innerHTML = w.map(recentCardHTML).join('');
+  }
+
+  // Đồng bộ trạng thái nút 🔖 trên mọi card đang hiển thị của slug này
+  function syncSaveButtons(slug) {
+    const on = watchSet.has(slug);
+    document.querySelectorAll('.film__save').forEach((b) => {
+      if (b.dataset.slug !== slug) return;
+      b.classList.toggle('on', on);
+      b.textContent = on ? '✓' : '＋';
+    });
+  }
+
+  function toggleWatch(slug) {
+    let w = loadWatch();
+    if (watchSet.has(slug)) {
+      w = w.filter((x) => x.slug !== slug);
+      watchSet.delete(slug);
+    } else {
+      const entry = movieCache.get(slug);
+      if (!entry) return;
+      w.unshift(Object.assign({ ts: Date.now() }, entry));
+      w = w.slice(0, WMAX);
+      watchSet.add(slug);
+    }
+    try { localStorage.setItem(WKEY, JSON.stringify(w)); } catch (e) {}
+    renderWatch();
+    syncSaveButtons(slug);
+  }
+
+  function removeFromWatch(slug) {
+    const w = loadWatch().filter((x) => x.slug !== slug);
+    watchSet.delete(slug);
+    try { localStorage.setItem(WKEY, JSON.stringify(w)); } catch (e) {}
+    renderWatch();
+    syncSaveButtons(slug);
   }
 
   // Cập nhật vùng "tải thêm": spinner khi đang tải · gợi ý bấm khi còn phim · "đã hết"
@@ -640,7 +712,7 @@
   function doClose() {
     destroyPlayer();
     goNextEp = null;
-    el.modal.classList.remove('open');
+    el.modal.classList.remove('open', 'theater');
     el.modal.setAttribute('aria-hidden', 'true');
     el.content.innerHTML = '';
     document.body.style.overflow = '';
@@ -668,6 +740,8 @@
 
   // ── Bind ─────────────────────────────────────────────────────────────────
   el.grid.addEventListener('click', (e) => {
+    const save = e.target.closest('.film__save');
+    if (save) { e.stopPropagation(); toggleWatch(save.dataset.slug); return; }
     const card = e.target.closest('.film');
     if (card && !card.classList.contains('film--skel')) openMovie(card.dataset.slug);
   });
@@ -719,6 +793,50 @@
     renderRecent();
   });
 
+  // Hàng "Xem sau": bấm card để mở, ✕ để bỏ khỏi danh sách
+  if (el.watchRow) {
+    el.watchRow.addEventListener('click', (e) => {
+      const rm = e.target.closest('.film__remove');
+      if (rm) { e.stopPropagation(); removeFromWatch(rm.dataset.slug); return; }
+      const card = e.target.closest('.film--recent');
+      if (card) openMovie(card.dataset.slug);
+    });
+    el.watchRow.addEventListener('keydown', cardKeyOpen);
+  }
+  if (el.watchClear) el.watchClear.addEventListener('click', () => {
+    try { localStorage.removeItem(WKEY); } catch (e) {}
+    watchSet = new Set();
+    renderWatch();
+    document.querySelectorAll('.film__save.on').forEach((b) => { b.classList.remove('on'); b.textContent = '＋'; });
+  });
+
+  // "Hôm nay xem gì?": bốc ngẫu nhiên một phim từ kho mới cập nhật
+  const RANDOM_PAGES = 50; // bốc trong ~50 trang mới nhất (~1200 phim gần đây)
+  let rolling = false;
+  if (el.random) el.random.addEventListener('click', async () => {
+    if (rolling) return;
+    rolling = true;
+    el.random.classList.add('rolling');
+    try {
+      const page = 1 + Math.floor(Math.random() * RANDOM_PAGES);
+      const data = await fetchAPI(`${API}/danh-sach/phim-moi-cap-nhat-v3?page=${page}`);
+      const items = getItems(data);
+      if (items.length) {
+        const pick = items[Math.floor(Math.random() * items.length)];
+        movieCache.set(pick.slug, entryOf(pick));
+        await new Promise((r) => setTimeout(r, 500)); // nhịp "lắc xúc xắc" ngắn
+        openMovie(pick.slug);
+      } else {
+        el.status.textContent = T('Xui quá, thử lại nhé!', 'Bad luck, try again!');
+      }
+    } catch (e) {
+      el.status.textContent = T('Lỗi tải dữ liệu. Thử lại sau.', 'Failed to load. Try again later.');
+    } finally {
+      rolling = false;
+      el.random.classList.remove('rolling');
+    }
+  });
+
   // Dropdown lọc: bấm để xổ, click ra ngoài / Escape để đóng
   [el.catsBtn, el.cntBtn].forEach((btn) => {
     if (!btn) return;
@@ -736,12 +854,19 @@
   el.close.addEventListener('click', closeModal);
   el.backdrop.addEventListener('click', closeModal);
 
+  // Chế độ rạp: làm tối mọi thứ quanh player (phím T)
+  const toggleTheater = () => el.modal.classList.toggle('theater');
+  if (el.theater) el.theater.addEventListener('click', toggleTheater);
+
   // Phím tắt khi đang xem
   document.addEventListener('keydown', (e) => {
     if (!el.modal.classList.contains('open')) return;
     if (e.key === 'Escape') { closeModal(); return; }
+    if (/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+    // Chế độ rạp bật/tắt được cả khi chưa phát video
+    if (e.key === 't' || e.key === 'T') { toggleTheater(); return; }
     const v = activeVideo;
-    if (!v || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+    if (!v) return;
     switch (e.key) {
       case ' ': case 'k': e.preventDefault(); v.paused ? v.play() : v.pause(); break;
       case 'ArrowRight': e.preventDefault(); v.currentTime = Math.min(v.duration || 1e9, v.currentTime + 10); break;
@@ -752,6 +877,7 @@
   });
 
   // ── Init ─────────────────────────────────────────────────────────────────
+  renderWatch();
   renderRecent();
   loadCats();
   loadCountries();

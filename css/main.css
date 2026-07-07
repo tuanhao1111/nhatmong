@@ -473,3 +473,10 @@ body[data-lang="vi"] .hero__title .line > span[data-vi] { display: inline-block;
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* ── Audio: nút chuyển bài (playlist) ────────────────────────────────────── */
+.audio-next {
+  margin-left: 0.5rem; padding: 0 0.45rem; font-size: 1rem; line-height: 1;
+  color: inherit; opacity: 0.65; transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.audio-next:hover { opacity: 1; transform: translateX(2px); }

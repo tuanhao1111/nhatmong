@@ -541,19 +541,40 @@
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setOpen(false); });
   }
 
-  /* ── Audio ───────────────────────────────────────────────────────────── */
+  /* ── Audio (playlist) ────────────────────────────────────────────────── */
+  // Thêm bài mới: bỏ file .mp3 vào repo rồi thêm một dòng { src, name } ở đây.
+  const TRACKS = [
+    { src: 'nhac-nen.mp3', name: 'Phụng Thanh Độ' },
+  ];
+
   function initAudio() {
     const audio = document.getElementById('bg-music');
     const widget = document.getElementById('audio-widget');
     if (!audio || !widget) return;
     let playing = false;
 
-    // Nhạc nối tiếp giữa các trang: lưu vị trí đang phát vào sessionStorage
-    // và tua lại đúng chỗ đó khi trang mới bắt đầu phát.
+    // Nhạc nối tiếp giữa các trang: lưu {bài, giây} vào sessionStorage,
+    // trang mới mở đúng bài đó và tua lại đúng chỗ đang nghe.
     const POS_KEY = 'music_pos';
+    let trackIdx = 0;
+    let startAt = 0;
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(POS_KEY) || 'null');
+      if (saved && TRACKS[saved.i]) { trackIdx = saved.i; startAt = saved.t || 0; }
+    } catch (e) {}
+
+    function setTrack(i, t) {
+      trackIdx = ((i % TRACKS.length) + TRACKS.length) % TRACKS.length;
+      startAt = t || 0;
+      audio.src = TRACKS[trackIdx].src;
+      audio.loop = TRACKS.length === 1; // nhiều bài thì 'ended' tự chuyển bài sau
+      try { sessionStorage.setItem(POS_KEY, JSON.stringify({ i: trackIdx, t: startAt })); } catch (e) {}
+    }
+    setTrack(trackIdx, startAt);
+
     const savePos = () => {
       if (audio.currentTime > 0) {
-        try { sessionStorage.setItem(POS_KEY, String(audio.currentTime)); } catch (e) {}
+        try { sessionStorage.setItem(POS_KEY, JSON.stringify({ i: trackIdx, t: audio.currentTime })); } catch (e) {}
       }
     };
     let lastSave = 0;
@@ -563,31 +584,56 @@
     });
     window.addEventListener('pagehide', savePos);
     audio.addEventListener('loadedmetadata', () => {
-      let t = 0;
-      try { t = parseFloat(sessionStorage.getItem(POS_KEY)) || 0; } catch (e) {}
-      if (t > 0 && (!isFinite(audio.duration) || t < audio.duration)) audio.currentTime = t;
-    }, { once: true });
+      if (startAt > 0 && (!isFinite(audio.duration) || startAt < audio.duration)) {
+        audio.currentTime = startAt;
+      }
+      startAt = 0;
+    });
 
     function setUI(on) {
       widget.classList.toggle('playing', on);
       document.querySelectorAll('#audio-label, #audio-label-en').forEach((l) => {
         const vi = l.hasAttribute('data-vi');
-        l.textContent = on ? (vi ? 'Đang phát' : 'Now playing') : (vi ? 'Phát nhạc' : 'Play music');
+        l.textContent = on ? '♪ ' + TRACKS[trackIdx].name : (vi ? 'Phát nhạc' : 'Play music');
+      });
+    }
+
+    function playNow() {
+      return audio.play().then(() => {
+        playing = true; setUI(true);
+        localStorage.setItem('music_playing', 'true');
       });
     }
 
     function toggle() {
       if (playing) {
-        audio.pause(); playing = false; setUI(false);
+        audio.pause(); playing = false; setUI(false); savePos();
         localStorage.setItem('music_playing', 'false');
       } else {
-        audio.play().then(() => {
-          playing = true; setUI(true);
-          localStorage.setItem('music_playing', 'true');
-        }).catch(() => {});
+        playNow().catch(() => {});
       }
     }
     widget.addEventListener('click', toggle);
+
+    // Nút chuyển bài — chỉ hiện khi playlist có từ 2 bài
+    if (TRACKS.length > 1) {
+      const next = document.createElement('button');
+      next.className = 'audio-next';
+      next.setAttribute('aria-label', 'Bài sau / Next track');
+      next.setAttribute('data-cursor', '');
+      next.textContent = '»';
+      widget.appendChild(next);
+      next.addEventListener('click', (e) => {
+        e.stopPropagation();
+        setTrack(trackIdx + 1, 0);
+        if (playing) playNow().catch(() => {});
+        else setUI(false);
+      });
+      audio.addEventListener('ended', () => {
+        setTrack(trackIdx + 1, 0);
+        playNow().catch(() => {});
+      });
+    }
 
     // Auto-play on entry unless the user explicitly muted it on a previous visit.
     const wantMusic = localStorage.getItem('music_playing') !== 'false';
@@ -595,18 +641,11 @@
       const events = ['pointerdown', 'keydown', 'touchstart', 'scroll'];
       const kick = () => {
         if (playing) { cleanup(); return; }
-        audio.play().then(() => {
-          playing = true; setUI(true);
-          localStorage.setItem('music_playing', 'true');
-          cleanup();
-        }).catch(() => {});
+        playNow().then(cleanup).catch(() => {});
       };
       function cleanup() { events.forEach((ev) => window.removeEventListener(ev, kick)); }
       // Try straight away (works for returning visitors / relaxed autoplay policies)…
-      audio.play().then(() => {
-        playing = true; setUI(true);
-        localStorage.setItem('music_playing', 'true');
-      }).catch(() => {
+      playNow().catch(() => {
         // …otherwise start at the first user gesture.
         events.forEach((ev) => window.addEventListener(ev, kick, { passive: true }));
       });
@@ -634,8 +673,16 @@
     });
   }
 
+  /* ── PWA: đăng ký service worker (cài được lên màn hình chính) ────────── */
+  function initPWA() {
+    if (!('serviceWorker' in navigator)) return;
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost') return;
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+
   /* ── Boot ────────────────────────────────────────────────────────────── */
   function boot() {
+    initPWA();
     initLang();
     initBackground();
     initCursor();

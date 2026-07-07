@@ -238,3 +238,52 @@
 
 /* ── Keyboard focus (card phim mở được bằng Enter/Space) ─────────────────── */
 .film:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 10px; }
+
+/* ── "Hôm nay xem gì?" (gacha phim) ──────────────────────────────────────── */
+.phim-random {
+  display: inline-flex; align-items: center; gap: 0.55rem; padding: 0.6rem 1.2rem;
+  border: 1px solid rgba(244,183,64,0.4); border-radius: 999px;
+  background: rgba(244,183,64,0.08); color: #f4b740;
+  font-family: var(--font-mono); font-size: var(--fs-mono); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  transition: background var(--dur) var(--ease), transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.phim-random:hover { background: rgba(244,183,64,0.16); transform: translateY(-2px); box-shadow: 0 10px 28px -12px rgba(244,183,64,0.5); }
+.phim-random__dice { font-size: 1rem; display: inline-block; }
+.phim-random.rolling { pointer-events: none; opacity: 0.85; }
+.phim-random.rolling .phim-random__dice { animation: dice-roll 0.5s ease infinite; }
+@keyframes dice-roll {
+  25% { transform: rotate(-25deg) translateY(-2px); }
+  75% { transform: rotate(25deg) translateY(1px); }
+}
+@media (prefers-reduced-motion: reduce) { .phim-random.rolling .phim-random__dice { animation: none; } }
+
+/* ── Nút "Xem sau" trên card ─────────────────────────────────────────────── */
+.film__save {
+  position: absolute; top: 6px; right: 6px; z-index: 3; width: 28px; height: 28px; border-radius: 50%;
+  display: grid; place-items: center; background: rgba(5,7,10,0.72); color: #fff;
+  font-size: 0.9rem; line-height: 1; border: 1px solid rgba(255,255,255,0.18);
+  opacity: 0; transform: scale(0.85);
+  transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease),
+              background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+.film:hover .film__save, .film:focus-within .film__save, .film__save.on { opacity: 1; transform: scale(1); }
+.film__save:hover { background: var(--accent); border-color: var(--accent); }
+.film__save.on { background: #f4b740; border-color: #f4b740; color: #04060a; }
+/* Card trong hàng "Xem sau"/"Vừa xem" đã có nút ✕ ở góc đó */
+.film--recent .film__save { display: none; }
+
+/* ── Chế độ rạp ──────────────────────────────────────────────────────────── */
+.film-modal__theater {
+  position: absolute; top: 12px; right: 60px; z-index: 5; width: 40px; height: 40px; border-radius: 50%;
+  background: rgba(0,0,0,0.6); color: #fff; font-size: 1rem;
+  transition: background var(--dur) var(--ease);
+}
+.film-modal__theater:hover { background: var(--accent); }
+.film-modal.theater .film-modal__theater { background: #f4b740; color: #04060a; }
+.film-modal.theater .film-modal__backdrop { background: rgba(0,0,0,0.97); }
+.film-modal.theater .film-modal__box { background: #000; box-shadow: none; }
+.film-modal.theater .fm-body { opacity: 0.1; transition: opacity 0.4s var(--ease); }
+.film-modal.theater .fm-body:hover { opacity: 1; }
+.film-modal.theater .film-modal__close { opacity: 0.35; }
+.film-modal.theater .film-modal__close:hover { opacity: 1; }

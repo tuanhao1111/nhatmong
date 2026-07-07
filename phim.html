@@ -7,6 +7,8 @@
   <meta name="description" content="Khu xem phim — duyệt, tìm kiếm và xem phim trực tuyến." />
   <meta name="theme-color" content="#05070a" />
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
   <meta property="og:type" content="website" />
   <meta property="og:title" content="Phim — Nhất Mộng" />
   <meta property="og:description" content="Kho phim cập nhật liên tục — duyệt, tìm kiếm và xem ngay." />
@@ -71,6 +73,10 @@
         <button type="submit" data-cursor aria-label="Search">⌕</button>
       </form>
       <div class="phim-dropdowns">
+        <button class="phim-random" id="phim-random" type="button" data-cursor>
+          <span class="phim-random__dice" aria-hidden="true">🎲</span>
+          <span data-vi>Hôm nay xem gì?</span><span data-en>Surprise me</span>
+        </button>
         <div class="phim-dd">
           <button class="phim-dd__btn" id="dd-cats-btn" type="button" data-cursor aria-expanded="false">
             <span class="phim-dd__cap"><span data-vi>Thể loại</span><span data-en>Genre</span></span>
@@ -89,6 +95,17 @@
         </div>
       </div>
     </div>
+
+    <!-- Watchlist -->
+    <section class="phim-recent" id="phim-watch" hidden>
+      <div class="phim-recent__head">
+        <h2 class="phim-recent__title"><span data-vi>🔖 Xem sau</span><span data-en>🔖 Watch later</span></h2>
+        <button class="phim-recent__clear" id="phim-watch-clear" data-cursor>
+          <span data-vi>Xóa hết</span><span data-en>Clear</span>
+        </button>
+      </div>
+      <div class="phim-recent__row" id="phim-watch-row"></div>
+    </section>
 
     <!-- Recently watched -->
     <section class="phim-recent" id="phim-recent" hidden>
@@ -116,6 +133,7 @@
   <div class="film-modal" id="film-modal" aria-hidden="true">
     <div class="film-modal__backdrop" id="film-backdrop"></div>
     <div class="film-modal__box" id="film-box">
+      <button class="film-modal__theater" id="film-theater" data-cursor aria-label="Theater mode" title="Chế độ rạp (T)">🎦</button>
       <button class="film-modal__close" id="film-close" data-cursor aria-label="Close">✕</button>
       <div class="film-modal__content" id="film-content"></div>
     </div>
