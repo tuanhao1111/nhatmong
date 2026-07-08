@@ -544,7 +544,7 @@
   /* ── Audio (playlist) ────────────────────────────────────────────────── */
   // Thêm bài mới: bỏ file .mp3 vào repo rồi thêm một dòng { src, name } ở đây.
   const TRACKS = [
-    { src: 'nhac-nen.mp3', name: 'Phụng Thanh Độ' },
+    { src: 'assets/nhac-nen.mp3', name: 'Phụng Thanh Độ' },
   ];
 
   function initAudio() {

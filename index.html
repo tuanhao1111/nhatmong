@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="./support.js"></script>
+<script src="./js/support.js"></script>
 </head>
 <body>
 <x-dc>
@@ -38,7 +38,7 @@
 
 <!-- ═══ GATE ═══ -->
 <div id="gate" data-screen-label="Cổng Mộng v2" style="position: fixed; inset: 0; z-index: 300; background: radial-gradient(1200px 700px at 50% 45%, #100a22, #070510 75%);">
-  <x-import component-from-global-scope="mong-gate" from="./mong-gate.js" text="MỘNG" style="position: absolute; inset: 0;" hint-size="100%,100%"></x-import>
+  <x-import component-from-global-scope="mong-gate" from="./js/mong-gate.js" text="MỘNG" style="position: absolute; inset: 0;" hint-size="100%,100%"></x-import>
   <div style="position: absolute; top: 18px; left: 22px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.3em; color: rgba(178,166,205,0.8); text-transform: uppercase; pointer-events: none;">NHẤT MỘNG // CỔNG MỘNG v2.1</div>
   <div style="position: absolute; top: 18px; right: 22px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.2em; color: rgba(178,166,205,0.8); text-transform: uppercase; pointer-events: none;"><span style="display: inline-block; width: 7px; height: 7px; background: #b44cff; border-radius: 50%; margin-right: 6px; animation: blinkDot 1.6s infinite;"></span><span id="gate-status">HẠT: ĐANG HỘI TỤ…</span></div>
   <!-- gate corner ticks -->
@@ -50,7 +50,7 @@
   </div>
 </div>
 
-<x-import component-from-global-scope="cyber-bg" from="./cyber-bg.js" variant="dream" logo="NHẤT MỘNG" speed="{{ bgSpeed }}" style="position: fixed; inset: 0; z-index: 0; pointer-events: none;" hint-size="100%,100%"></x-import>
+<x-import component-from-global-scope="cyber-bg" from="./js/cyber-bg.js" variant="dream" logo="NHẤT MỘNG" speed="{{ bgSpeed }}" style="position: fixed; inset: 0; z-index: 0; pointer-events: none;" hint-size="100%,100%"></x-import>
 
 <sc-if value="{{ showHud }}" hint-placeholder-val="{{ true }}">
   <div data-comment-anchor="hud-c" style="pointer-events: none;">
@@ -91,14 +91,14 @@
 <div id="open-flash" style="position: fixed; left: 50%; top: 50%; z-index: 260; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; pointer-events: none; opacity: 0; border: 2px solid #b44cff; box-shadow: 0 0 60px 20px rgba(180,76,255,0.55), inset 0 0 40px rgba(0,229,255,0.6);"></div>
 
 <!-- film-grain noise overlay -->
-<div style="position: fixed; inset: 0; z-index: 105; pointer-events: none; opacity: 0.05; background-image: url('data:image/svg+xml;utf8,&lt;svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22140%22 height=%22140%22&gt;&lt;filter id=%22n%22&gt;&lt;feTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%222%22/&gt;&lt;/filter&gt;&lt;rect width=%22140%22 height=%22140%22 filter=%22url(%23n)%22/&gt;&lt;/svg&gt;');"></div>
+<div style="position: fixed; inset: 0; z-index: 105; pointer-events: none; opacity: 0.05; background-image: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22140%22 height=%22140%22%3E%3Cfilter id=%22n%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%222%22/%3E%3C/filter%3E%3Crect width=%22140%22 height=%22140%22 filter=%22url(%23n)%22/%3E%3C/svg%3E');"></div>
 
 <!-- Nav -->
 <nav style="position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 1.4rem clamp(1.5rem, 5vw, 4rem);">
   <a href="#hero" data-cursor="true" style="font-weight: 700; font-size: 1.15rem; letter-spacing: 0.06em; text-shadow: 0 0 20px rgba(180,76,255,0.4);">NHẤT<span style="color: #b44cff;">MỘNG</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; color: #00e5ff; vertical-align: super; margin-left: 4px;">v2.1</span></a>
   <div style="display: flex; align-items: center; gap: clamp(1rem, 3vw, 2.4rem); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;">
     <a href="phim.html" data-magnet="true" data-cursor="true" style="display: inline-block; color: rgba(236,231,247,0.85); padding: 6px 4px;">01 · Phim</a>
-    <a href="quay-thuong.html" data-magnet="true" data-cursor="true" style="display: inline-block; color: rgba(236,231,247,0.85); padding: 6px 4px;">02 · Quay thưởng</a>
+    <a href="gacha.html" data-magnet="true" data-cursor="true" style="display: inline-block; color: rgba(236,231,247,0.85); padding: 6px 4px;">02 · Quay thưởng</a>
     <a href="#contact" data-magnet="true" data-cursor="true" style="display: inline-block; color: rgba(236,231,247,0.85); padding: 6px 4px;">03 · Liên hệ</a>
   </div>
 </nav>
@@ -167,7 +167,7 @@
     </a>
 
     <!-- module 02 · GACHA (mirrored) -->
-    <a href="quay-thuong.html" data-cursor="QUAY" data-tilt="true" data-reveal="true" style="display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(1.5rem, 3vw, 3rem); align-items: end; border: 1px solid rgba(180,76,255,0.3); background: rgba(12,9,24,0.7); padding: clamp(1rem, 2vw, 1.6rem); max-width: 1250px; margin-left: auto; will-change: transform;" style-hover="border-color: #b44cff; box-shadow: 0 0 60px -14px rgba(180,76,255,0.55);">
+    <a href="gacha.html" data-cursor="QUAY" data-tilt="true" data-reveal="true" style="display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(1.5rem, 3vw, 3rem); align-items: end; border: 1px solid rgba(180,76,255,0.3); background: rgba(12,9,24,0.7); padding: clamp(1rem, 2vw, 1.6rem); max-width: 1250px; margin-left: auto; will-change: transform;" style-hover="border-color: #b44cff; box-shadow: 0 0 60px -14px rgba(180,76,255,0.55);">
       <div style="display: flex; flex-direction: column; gap: 0.9rem; padding-bottom: 0.4rem; text-align: right; align-items: flex-end; order: 1; min-width: 0;">
         <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.3em; color: #b44cff; text-transform: uppercase;">— 02</span>
         <span style="font-weight: 700; font-size: clamp(2rem, 4.6vw, 3.6rem); text-transform: uppercase; line-height: 1;">Quay<br>thưởng</span>
