@@ -1,206 +1,146 @@
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="./support.js"></script>
-</head>
-<body>
-<x-dc>
-<helmet>
-  <meta name="description" content="Nhất Mộng — Kho phim">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Phim — Nhất Mộng</title>
+  <meta name="description" content="Nhất Mộng — Kho phim: duyệt, tìm kiếm và xem phim trực tuyến.">
+  <meta name="theme-color" content="#070510">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
-  <style>
-    html { background: #070510; scrollbar-width: thin; scrollbar-color: #b44cff #0c0918; }
-    main { overflow-x: clip; }
-    body { margin: 0; background: #070510; color: #ece7f7; font-family: 'Chakra Petch', 'Be Vietnam Pro', sans-serif; overflow-x: hidden; }
-    a { color: #ece7f7; text-decoration: none; }
-    a:hover { color: #00e5ff; }
-    ::selection { background: #b44cff; color: #070510; }
-    ::-webkit-scrollbar { width: 5px; }
-    ::-webkit-scrollbar-track { background: #0c0918; }
-    ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #00e5ff, #b44cff); border-radius: 8px; box-shadow: 0 0 8px rgba(180,76,255,0.8); }
-    @keyframes blinkDot { 0%, 100% { opacity: 1; } 50% { opacity: 0.15; } }
-    @keyframes scanSweep { 0% { top: -30%; } 100% { top: 130%; } }
-    input::placeholder { color: rgba(178,166,205,0.55); }
-  </style>
-</helmet>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@400;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/phim.css?v=3">
+</head>
+<body data-lang="vi">
 
-<x-import component-from-global-scope="cyber-bg" from="./cyber-bg.js" variant="dream" logo="NHẤT MỘNG" speed="{{ bgSpeed }}" style="position: fixed; inset: 0; z-index: 0; pointer-events: none;" hint-size="100%,100%"></x-import>
+  <!-- 3D background (cyber-bg web component) -->
+  <div class="bg-mount"><cyber-bg variant="dream" logo="NHẤT MỘNG" speed="0.7"></cyber-bg></div>
 
-<sc-if value="{{ showHud }}" hint-placeholder-val="{{ true }}">
-  <div data-comment-anchor="hud-phim" style="pointer-events: none;">
-    <div style="position: fixed; inset: 10px; border: 1px solid rgba(180,76,255,0.22); border-radius: 22px; z-index: 120;"></div>
-    <div style="position: fixed; top: 10px; left: 50%; transform: translateX(-50%); width: 120px; height: 3px; border-radius: 3px; background: linear-gradient(90deg, #00e5ff, #b44cff); z-index: 121; opacity: 0.7;"></div>
-    <div style="position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); width: 120px; height: 3px; border-radius: 3px; background: linear-gradient(90deg, #b44cff, #00e5ff); z-index: 121; opacity: 0.7;"></div>
-    <div style="position: fixed; inset: 0; z-index: 110; background: repeating-linear-gradient(0deg, transparent 0 3px, rgba(0,0,0,0.22) 3px 4px); opacity: 0.5; mix-blend-mode: overlay;"></div>
-    <div style="position: fixed; left: 0; right: 0; height: 22vh; z-index: 110; background: linear-gradient(180deg, transparent, rgba(180,76,255,0.05), transparent); animation: scanSweep 9s linear infinite;"></div>
-    <div style="position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 120; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.3em; color: rgba(178,166,205,0.75); text-transform: uppercase;">[ MOD.02 · PHIM ]</div>
+  <!-- HUD -->
+  <div class="hud" aria-hidden="true">
+    <div class="hud__frame"></div>
+    <div class="hud__bar hud__bar--top"></div>
+    <div class="hud__bar hud__bar--bottom"></div>
+    <div class="hud__scanlines"></div>
+    <div class="hud__sweep"></div>
+    <div class="hud__label">[ MOD.02 · PHIM ]</div>
   </div>
-</sc-if>
+  <div class="grain" aria-hidden="true"></div>
+  <div id="progress"></div>
 
-<div style="position: fixed; inset: 0; z-index: 105; pointer-events: none; opacity: 0.05; background-image: url('data:image/svg+xml;utf8,&lt;svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22140%22 height=%22140%22&gt;&lt;filter id=%22n%22&gt;&lt;feTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%222%22/&gt;&lt;/filter&gt;&lt;rect width=%22140%22 height=%22140%22 filter=%22url(%23n)%22/&gt;&lt;/svg&gt;');"></div>
-
-<div id="progress" style="position: fixed; top: 0; left: 0; height: 2px; width: 100%; background: linear-gradient(90deg, #b44cff, #00e5ff); transform: scaleX(0); transform-origin: 0 50%; z-index: 130;"></div>
-
-<!-- Nav -->
-<nav style="position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 1.4rem clamp(1.5rem, 5vw, 4rem); background: linear-gradient(180deg, rgba(7,5,16,0.85), transparent);">
-  <a href="index.html" style="font-weight: 700; font-size: 1.15rem; letter-spacing: 0.06em; text-shadow: 0 0 20px rgba(180,76,255,0.4);">NHẤT<span style="color: #b44cff;">MỘNG</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; color: #00e5ff; vertical-align: super; margin-left: 4px;">v2.1</span></a>
-  <div style="display: flex; align-items: center; gap: clamp(1rem, 3vw, 2.4rem); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;">
-    <a href="index.html" style="color: rgba(236,231,247,0.85); padding: 6px 4px;">00 · Trang chủ</a>
-    <span style="color: #00e5ff; border-bottom: 1px solid #00e5ff; padding: 6px 4px;">01 · Phim</span>
-    <a href="quay-thuong.html" style="color: rgba(236,231,247,0.85); padding: 6px 4px;">02 · Quay thưởng</a>
-  </div>
-</nav>
-
-<main style="position: relative; z-index: 10; padding: clamp(7rem, 14vh, 9rem) clamp(1.5rem, 6vw, 7rem) 4rem;">
-  <!-- Header -->
-  <header data-screen-label="Phim Header" style="position: relative; margin-bottom: clamp(2.5rem, 6vh, 4rem);">
-    <div style="position: absolute; right: -2vw; top: -8vh; font-weight: 700; font-size: clamp(8rem, 20vw, 18rem); line-height: 1; color: transparent; -webkit-text-stroke: 1.5px rgba(0,229,255,0.12); pointer-events: none; user-select: none;">02</div>
-    <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.3em; color: #00e5ff; text-transform: uppercase; display: flex; align-items: center; gap: 10px; margin-bottom: 1.2rem;"><span style="width: 30px; height: 1px; background: #00e5ff; display: inline-block;"></span>MODULE 02 // KHO PHIM</div>
-    <h1 style="margin: 0; font-weight: 700; font-size: clamp(2.8rem, 8vw, 7rem); line-height: 1; text-transform: uppercase;">
-      <span data-line="true" style="display: block; overflow: hidden; padding-top: 0.14em; margin-top: -0.14em;"><span style="display: inline-block; will-change: transform;">Xem <span style="color: transparent; -webkit-text-stroke: 2px #00e5ff; text-shadow: 0 0 40px rgba(0,229,255,0.3); font-style: italic;">phim</span></span></span>
-    </h1>
-    <p style="margin: 1.2rem 0 0; color: #b2a6cd; max-width: 52ch; font-size: 1.02rem;">Kho phim của bang — tìm theo tên hoặc lọc theo thể loại. Kéo poster thật vào từng ô để thay ảnh mẫu.</p>
-  </header>
-
-  <!-- Toolbar -->
-  <div data-screen-label="Phim Toolbar" style="display: flex; flex-wrap: wrap; align-items: center; gap: 1rem 1.6rem; margin-bottom: clamp(2rem, 5vh, 3rem); position: relative; z-index: 20;">
-    <div style="display: flex; align-items: center; gap: 10px; border: 1px solid rgba(0,229,255,0.35); border-radius: 999px; background: rgba(10,7,20,0.6); backdrop-filter: blur(6px); padding: 0.75rem 1.4rem; min-width: min(340px, 100%);">
-      <span style="color: #00e5ff; font-family: 'JetBrains Mono', monospace; font-size: 12px;">⌕</span>
-      <input id="search" type="text" placeholder="TÌM PHIM_" style="flex: 1; background: transparent; border: 0; outline: none; color: #ece7f7; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;">
+  <!-- Nav -->
+  <nav class="cnav">
+    <a href="index.html" class="cnav__brand">NHẤT<span>MỘNG</span><em>v2.1</em></a>
+    <div class="cnav__links">
+      <a href="index.html">00 · Trang chủ</a>
+      <span class="active">01 · Phim</span>
+      <a href="gacha.html">02 · Quay thưởng</a>
     </div>
-    <div id="chips" style="display: flex; flex-wrap: wrap; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;">
-      <button data-chip="all" style="cursor: pointer; padding: 8px 16px; border-radius: 999px; border: 1px solid #b44cff; background: rgba(180,76,255,0.2); color: #d9b6ff; font-family: inherit; font-size: inherit; letter-spacing: inherit; text-transform: inherit;">Tất cả</button>
-      <button data-chip="kiemhiep" style="cursor: pointer; padding: 8px 16px; border-radius: 999px; border: 1px solid rgba(180,76,255,0.35); background: rgba(10,7,20,0.6); color: #b2a6cd; font-family: inherit; font-size: inherit; letter-spacing: inherit; text-transform: inherit;">Kiếm hiệp</button>
-      <button data-chip="hanhdong" style="cursor: pointer; padding: 8px 16px; border-radius: 999px; border: 1px solid rgba(180,76,255,0.35); background: rgba(10,7,20,0.6); color: #b2a6cd; font-family: inherit; font-size: inherit; letter-spacing: inherit; text-transform: inherit;">Hành động</button>
-      <button data-chip="hoathinh" style="cursor: pointer; padding: 8px 16px; border-radius: 999px; border: 1px solid rgba(180,76,255,0.35); background: rgba(10,7,20,0.6); color: #b2a6cd; font-family: inherit; font-size: inherit; letter-spacing: inherit; text-transform: inherit;">Hoạt hình</button>
-      <button data-chip="kinhdi" style="cursor: pointer; padding: 8px 16px; border-radius: 999px; border: 1px solid rgba(180,76,255,0.35); background: rgba(10,7,20,0.6); color: #b2a6cd; font-family: inherit; font-size: inherit; letter-spacing: inherit; text-transform: inherit;">Kinh dị</button>
-    </div>
-    <span id="count" style="margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.2em; color: rgba(178,166,205,0.75); text-transform: uppercase;">8 PHIM</span>
-  </div>
+  </nav>
 
-  <!-- Grid -->
-  <div id="grid" data-screen-label="Phim Grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: clamp(1.2rem, 2.5vw, 2rem);">
-    <sc-for list="{{ films }}" as="f" hint-placeholder-count="8">
-      <div data-film="true" data-title="{{ f.title }}" data-genre="{{ f.genre }}" data-reveal="true" style="border: 1px solid rgba(180,76,255,0.3); border-radius: 20px; background: linear-gradient(165deg, rgba(26,16,46,0.75), rgba(12,9,24,0.7) 55%); padding: 10px; transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;" style-hover="border-color: #00e5ff; box-shadow: 0 0 50px -12px rgba(0,229,255,0.55); transform: translateY(-6px) rotate(-0.5deg);">
-        <div style="position: relative; aspect-ratio: 2/3; overflow: hidden; border-radius: 12px;">
-          <x-import component-from-global-scope="image-slot" from="./image-slot.js" id="{{ f.slot }}" shape="rect" placeholder="Kéo poster vào đây" style="width: 100%; height: 100%;" hint-size="100%,100%"></x-import>
-          <span style="position: absolute; top: 8px; left: 10px; font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.2em; color: #00e5ff; background: rgba(7,5,16,0.75); padding: 3px 9px; border-radius: 999px; pointer-events: none;">{{ f.tag }}</span>
+  <main class="phim-page">
+    <!-- Header -->
+    <header class="page-head">
+      <div class="page-head__ghost">02</div>
+      <div class="eyebrow"><i></i>MODULE 02 // KHO PHIM</div>
+      <h1 class="page-title"><span>Xem <b>phim</b></span></h1>
+      <p class="page-sub-text">Kho phim cập nhật liên tục — tìm theo tên hoặc lọc theo thể loại, quốc gia. Bấm poster để xem ngay.</p>
+    </header>
+
+    <!-- Toolbar -->
+    <div class="phim-toolbar">
+      <form class="phim-search" id="phim-search">
+        <input type="search" id="search-input" placeholder="TÌM PHIM_" autocomplete="off">
+        <button type="submit" aria-label="Tìm kiếm">⌕</button>
+      </form>
+      <div class="phim-dropdowns">
+        <button class="phim-random" id="phim-random" type="button">
+          <span class="phim-random__dice" aria-hidden="true">🎲</span>
+          <span data-vi>Hôm nay xem gì?</span><span data-en>Surprise me</span>
+        </button>
+        <div class="phim-dd">
+          <button class="phim-dd__btn" id="dd-cats-btn" type="button" aria-expanded="false">
+            <span class="phim-dd__cap"><span data-vi>Thể loại</span><span data-en>Genre</span></span>
+            <span class="phim-dd__val" id="dd-cats-val"><span data-vi>Mới nhất</span><span data-en>Latest</span></span>
+            <span class="phim-dd__caret" aria-hidden="true">▾</span>
+          </button>
+          <div class="phim-dd__panel"><div class="phim-filters" id="phim-cats"></div></div>
         </div>
-        <div style="display: flex; flex-direction: column; gap: 4px; padding: 12px 4px 6px;">
-          <span style="font-weight: 700; font-size: 1.05rem; text-transform: uppercase; letter-spacing: 0.02em;">{{ f.title }}</span>
-          <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.2em; color: rgba(178,166,205,0.8); text-transform: uppercase;">{{ f.meta }}</span>
+        <div class="phim-dd">
+          <button class="phim-dd__btn" id="dd-countries-btn" type="button" aria-expanded="false">
+            <span class="phim-dd__cap"><span data-vi>Quốc gia</span><span data-en>Country</span></span>
+            <span class="phim-dd__val" id="dd-countries-val"><span data-vi>Tất cả</span><span data-en>All</span></span>
+            <span class="phim-dd__caret" aria-hidden="true">▾</span>
+          </button>
+          <div class="phim-dd__panel"><div class="phim-filters" id="phim-countries"></div></div>
         </div>
       </div>
-    </sc-for>
+    </div>
+
+    <!-- Watchlist -->
+    <section class="phim-recent" id="phim-watch" hidden>
+      <div class="phim-recent__head">
+        <h2 class="phim-recent__title"><span data-vi>🔖 Xem sau</span><span data-en>🔖 Watch later</span></h2>
+        <button class="phim-recent__clear" id="phim-watch-clear" type="button">
+          <span data-vi>Xóa hết</span><span data-en>Clear</span>
+        </button>
+      </div>
+      <div class="phim-recent__row" id="phim-watch-row"></div>
+    </section>
+
+    <!-- Recently watched -->
+    <section class="phim-recent" id="phim-recent" hidden>
+      <div class="phim-recent__head">
+        <h2 class="phim-recent__title"><span data-vi>Vừa xem</span><span data-en>Recently watched</span></h2>
+        <button class="phim-recent__clear" id="phim-recent-clear" type="button">
+          <span data-vi>Xóa hết</span><span data-en>Clear</span>
+        </button>
+      </div>
+      <div class="phim-recent__row" id="phim-recent-row"></div>
+    </section>
+
+    <!-- Grid -->
+    <section class="phim-grid-wrap">
+      <div class="phim-grid" id="phim-grid"></div>
+      <div class="phim-status" id="phim-status"></div>
+      <div class="phim-more" id="phim-more" hidden>
+        <span class="phim-more__spin" aria-hidden="true"></span>
+        <span class="phim-more__text"></span>
+      </div>
+    </section>
+
+    <footer class="page-foot">
+      <span>© 2026 NHẤT MỘNG</span>
+      <a href="index.html">← VỀ TRANG CHỦ</a>
+    </footer>
+  </main>
+
+  <!-- Movie modal -->
+  <div class="film-modal" id="film-modal" aria-hidden="true">
+    <div class="film-modal__backdrop" id="film-backdrop"></div>
+    <div class="film-modal__box" id="film-box">
+      <button class="film-modal__theater" id="film-theater" aria-label="Chế độ rạp" title="Chế độ rạp (T)">🎦</button>
+      <button class="film-modal__close" id="film-close" aria-label="Đóng">✕</button>
+      <div class="film-modal__content" id="film-content"></div>
+    </div>
   </div>
-  <div id="empty" style="display: none; padding: 5rem 0; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.25em; color: rgba(178,166,205,0.7); text-transform: uppercase;">— KHÔNG TÌM THẤY PHIM NÀO —</div>
 
-  <footer data-screen-label="Phim Footer" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin-top: clamp(3rem, 8vh, 5rem); padding-top: 2rem; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: #b2a6cd; border-top: 1px solid rgba(180,76,255,0.18);">
-    <span>© 2026 NHẤT MỘNG</span>
-    <a href="index.html" style="color: #b44cff;">← VỀ TRANG CHỦ</a>
-  </footer>
-</main>
-</x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;showHud&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Hiệu ứng&quot;}, &quot;bgSpeed&quot;: {&quot;editor&quot;: &quot;range&quot;, &quot;default&quot;: 0.7, &quot;min&quot;: 0.2, &quot;max&quot;: 3, &quot;step&quot;: 0.1, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;Hiệu ứng&quot;}}">
-class Component extends DCLogic {
-  renderVals() {
-    return {
-      showHud: this.props.showHud ?? true,
-      bgSpeed: this.props.bgSpeed ?? 0.7,
-      films: [
-        { slot: 'phim-1', title: 'Kiếm Xuất Giang Hồ', meta: 'KIẾM HIỆP · 2026', genre: 'kiemhiep', tag: 'EP.24' },
-        { slot: 'phim-2', title: 'Mộng Trường An', meta: 'KIẾM HIỆP · 2025', genre: 'kiemhiep', tag: 'FULL' },
-        { slot: 'phim-3', title: 'Bão Lửa Đô Thành', meta: 'HÀNH ĐỘNG · 2026', genre: 'hanhdong', tag: 'EP.08' },
-        { slot: 'phim-4', title: 'Truy Kích 47', meta: 'HÀNH ĐỘNG · 2025', genre: 'hanhdong', tag: 'FULL' },
-        { slot: 'phim-5', title: 'Thiếu Niên Ca Hành', meta: 'HOẠT HÌNH · 2026', genre: 'hoathinh', tag: 'EP.12' },
-        { slot: 'phim-6', title: 'Phàm Nhân Tu Tiên', meta: 'HOẠT HÌNH · 2026', genre: 'hoathinh', tag: 'EP.30' },
-        { slot: 'phim-7', title: 'Đêm Trắng', meta: 'KINH DỊ · 2025', genre: 'kinhdi', tag: 'FULL' },
-        { slot: 'phim-8', title: 'Căn Phòng 302', meta: 'KINH DỊ · 2026', genre: 'kinhdi', tag: 'EP.04' },
-      ],
-    };
-  }
-
-  componentDidMount() {
-    this._cleanup = [];
-    this._poll = setInterval(() => {
-      if (window.gsap && window.ScrollTrigger) {
-        clearInterval(this._poll);
-        this._init();
-      }
-    }, 40);
-  }
-
-  componentWillUnmount() {
-    clearInterval(this._poll);
-    (this._cleanup || []).forEach((fn) => { try { fn(); } catch (e) {} });
-    if (window.ScrollTrigger) ScrollTrigger.getAll().forEach((st) => st.kill());
-  }
-
-  _init() {
-    gsap.registerPlugin(ScrollTrigger);
-    const q = (s) => document.querySelector(s);
-    const qa = (s) => Array.from(document.querySelectorAll(s));
-
-    gsap.fromTo('[data-line] > span', { yPercent: 115 }, { yPercent: 0, duration: 1.1, ease: 'power4.out', delay: 0.2 });
-    qa('[data-reveal]').forEach((el, i) => {
-      gsap.fromTo(el, { y: 40, opacity: 0 }, {
-        y: 0, opacity: 1, duration: 0.9, ease: 'power3.out', delay: (i % 4) * 0.07,
-        scrollTrigger: { trigger: el, start: 'top 92%' },
-      });
-    });
-
-    // progress
-    const prog = q('#progress');
-    const onScroll = () => {
-      const max = Math.max(1, document.documentElement.scrollHeight - innerHeight);
-      if (prog) prog.style.transform = 'scaleX(' + Math.min(1, scrollY / max) + ')';
-    };
-    addEventListener('scroll', onScroll, { passive: true });
-    this._cleanup.push(() => removeEventListener('scroll', onScroll));
-
-    // ── search + genre filter ──
-    this._genre = 'all';
-    const search = q('#search'), count = q('#count'), empty = q('#empty');
-    const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    const apply = () => {
-      const term = norm(search ? search.value : '');
-      let vis = 0;
-      qa('[data-film]').forEach((card) => {
-        const okG = this._genre === 'all' || card.getAttribute('data-genre') === this._genre;
-        const okT = !term || norm(card.getAttribute('data-title')).includes(term);
-        const show = okG && okT;
-        card.style.display = show ? '' : 'none';
-        if (show) vis++;
-      });
-      if (count) count.textContent = vis + ' PHIM';
-      if (empty) empty.style.display = vis === 0 ? 'block' : 'none';
-    };
-    if (search) {
-      search.addEventListener('input', apply);
-      this._cleanup.push(() => search.removeEventListener('input', apply));
-    }
-    qa('[data-chip]').forEach((btn) => {
-      const onClick = () => {
-        this._genre = btn.getAttribute('data-chip');
-        qa('[data-chip]').forEach((b) => {
-          const active = b === btn;
-          b.style.borderColor = active ? '#b44cff' : 'rgba(180,76,255,0.35)';
-          b.style.background = active ? 'rgba(180,76,255,0.2)' : 'rgba(10,7,20,0.6)';
-          b.style.color = active ? '#d9b6ff' : '#b2a6cd';
-        });
-        apply();
-      };
-      btn.addEventListener('click', onClick);
-      this._cleanup.push(() => btn.removeEventListener('click', onClick));
-    });
-  }
-}
-</script>
+  <script src="js/cyber-bg.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"></script>
+  <script src="js/phim.js"></script>
+  <script>
+    // Thanh tiến độ cuộn trang
+    (function () {
+      var bar = document.getElementById('progress');
+      addEventListener('scroll', function () {
+        var max = Math.max(1, document.documentElement.scrollHeight - innerHeight);
+        bar.style.transform = 'scaleX(' + Math.min(1, scrollY / max) + ')';
+      }, { passive: true });
+    })();
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
+  </script>
 </body>
 </html>

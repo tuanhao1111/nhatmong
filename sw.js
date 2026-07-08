@@ -5,16 +5,14 @@
    - Cross-origin (API phim, CDN, video): KHÔNG can thiệp — đi mạng như thường
    Đổi VERSION mỗi khi muốn ép mọi máy tải lại bản mới.
    ========================================================================== */
-const VERSION = 'nm-v2';
+const VERSION = 'nm-v3';
 const SHELL = [
   './',
   'index.html',
   'phim.html',
   'gacha.html',
   '404.html',
-  'css/main.css',
-  'css/phim.css',
-  'js/site.js',
+  'css/phim.css?v=3',
   'js/phim.js',
   'js/support.js',
   'js/cyber-bg.js',
