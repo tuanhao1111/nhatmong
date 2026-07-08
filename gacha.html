@@ -1,202 +1,401 @@
 <!DOCTYPE html>
-<html lang="vi" class="no-js">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Quay Thưởng Bang Chiến — Nhất Mộng</title>
-  <meta name="description" content="Vòng quay may mắn — bốc ngẫu nhiên thành viên trúng thẻ tháng Bang Chiến." />
-  <meta name="theme-color" content="#05070a" />
-  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-  <link rel="manifest" href="manifest.json" />
-  <link rel="apple-touch-icon" href="icon-192.png" />
-  <meta property="og:type" content="website" />
-  <meta property="og:title" content="Quay Thưởng Bang Chiến — Nhất Mộng" />
-  <meta property="og:description" content="Vòng loại sinh tồn — bốc ngẫu nhiên thành viên trúng thẻ tháng Bang Chiến." />
-  <script>document.documentElement.classList.remove('no-js');</script>
-
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/main.css" />
-  <link rel="stylesheet" href="css/gacha.css" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
 </head>
-<body data-lang="vi" class="page-sub">
-
-  <audio id="bg-music" src="nhac-nen.mp3" loop preload="none"></audio>
-  <div id="vanta-bg"></div>
-  <canvas id="bg-canvas"></canvas>
-  <div class="grain"></div>
-  <div class="cursor" id="cursor-dot"></div>
-  <div class="cursor cursor--ring" id="cursor-ring"><span class="cursor__label" id="cursor-label"></span></div>
-
-  <!-- Nav -->
-  <nav class="nav">
-    <a href="index.html" class="nav__brand" data-cursor>NHẤT<b>MỘNG</b></a>
-    <div class="nav__right">
-      <div class="lang-toggle" id="lang-toggle">
-        <button data-set-lang="vi" class="active">VI</button>
-        <button data-set-lang="en">EN</button>
-      </div>
-      <button class="menu-btn" id="menu-btn" data-cursor aria-label="Menu">
-        <span></span><span></span><em>Menu</em>
-      </button>
-    </div>
-  </nav>
-
-  <div class="menu-overlay" id="menu-overlay" aria-hidden="true">
-    <nav class="menu-nav">
-      <a href="index.html" class="menu-link" data-cursor><span class="menu-no">01</span><span data-vi>Trang chủ</span><span data-en>Home</span></a>
-      <a href="phim.html" class="menu-link" data-cursor><span class="menu-no">02</span><span data-vi>Xem phim</span><span data-en>Movies</span></a>
-      <a href="gacha.html" class="menu-link" data-cursor><span class="menu-no">03</span><span data-vi>Quay thưởng</span><span data-en>Raffle</span></a>
-      <a href="index.html#contact" class="menu-link" data-cursor><span class="menu-no">04</span><span data-vi>Liên hệ</span><span data-en>Contact</span></a>
-    </nav>
-    <div class="menu-foot">
-      <a href="https://discord.gg/emancomchua" target="_blank" rel="noopener" data-cursor>Discord — emancomchua</a>
-      <span>© 2026 Nhất Mộng</span>
-    </div>
-  </div>
-
-  <main class="gacha-page">
-    <header class="page-head">
-      <div class="eyebrow"><span data-vi>Quay thưởng Bang Chiến</span><span data-en>Guild Raffle</span> · 03</div>
-      <h1 class="page-title" data-split>QUAY THƯỞNG</h1>
-      <p class="page-sub-text">
-        <span data-vi>Vòng quay may mắn — bốc ngẫu nhiên anh em trúng thẻ tháng.</span>
-        <span data-en>Lucky draw — randomly pick members to win monthly cards.</span>
-      </p>
-    </header>
-
-    <!-- ── Stage: the spinner ─────────────────────────────────────────── -->
-    <section class="gacha-stage">
-      <!-- Slot display -->
-      <div class="raffle-slot" id="raffle-slot">
-        <div class="raffle-slot__label"><span data-vi>Người may mắn</span><span data-en>Lucky one</span></div>
-        <div class="raffle-reel" id="reel">
-          <div class="raffle-reel__strip" id="reel-strip"><div class="raffle-reel__item">—</div></div>
-        </div>
-        <div class="raffle-slot__sub" id="slot-sub"><span data-vi>Nhấn “Quay” để bắt đầu</span><span data-en>Press “Spin” to start</span></div>
-      </div>
-
-      <!-- Stats -->
-      <div class="gacha-stats">
-        <div class="gstat"><span class="gstat__num" id="stat-members">0</span><span class="gstat__lbl"><span data-vi>Thành viên</span><span data-en>Members</span></span></div>
-        <div class="gstat"><span class="gstat__num" id="stat-prizes">2</span><span class="gstat__lbl"><span data-vi>Số thẻ</span><span data-en>Cards</span></span></div>
-        <div class="gstat"><span class="gstat__num" id="stat-draws">0</span><span class="gstat__lbl"><span data-vi>Lần quay</span><span data-en>Draws</span></span></div>
-      </div>
-
-      <!-- Prize count selector -->
-      <div class="raffle-prizes" id="raffle-prizes" role="group" aria-label="Số thẻ">
-        <span class="raffle-prizes__lbl"><span data-vi>Số người trúng</span><span data-en>Winners</span></span>
-        <button class="pchip" data-prize="2">2</button>
-        <button class="pchip active" data-prize="3">3</button>
-        <button class="pchip" data-prize="4">4</button>
-        <input class="pchip-input" id="raffle-prizes-custom" type="number" min="1" step="1"
-               inputmode="numeric" aria-label="Số người trúng tùy chỉnh" placeholder="…">
-      </div>
-
-      <!-- Controls -->
-      <div class="gacha-controls">
-        <button class="gbtn gbtn--10" id="spin" data-cursor>
-          <span data-vi>Quay thưởng</span><span data-en>Spin</span>
-        </button>
-        <button class="gbtn gbtn--ghost" id="clear-winners" data-cursor>
-          <span data-vi>Xoá kết quả</span><span data-en>Clear results</span>
-        </button>
-      </div>
-    </section>
-
-    <!-- ── Members manager ─────────────────────────────────────────────── -->
-    <section class="raffle-block">
-      <div class="eyebrow"><span data-vi>Danh sách thành viên</span><span data-en>Member list</span></div>
-      <p class="raffle-hint">
-        <span data-vi>Mỗi tên một dòng. Danh sách được lưu tự động trên máy bạn.</span>
-        <span data-en>One name per line. The list is saved locally on your device.</span>
-      </p>
-      <textarea id="member-input" class="raffle-textarea" spellcheck="false"
-        placeholder="Lạc gấu gấu&#10;Một Bông Hoa Nhỏ&#10;..."></textarea>
-      <div class="raffle-actions">
-        <button class="gbtn gbtn--1" id="save-members" data-cursor>
-          <span data-vi>Lưu danh sách</span><span data-en>Save list</span>
-        </button>
-        <span class="raffle-count" id="member-count"></span>
-      </div>
-      <div class="raffle-chips" id="member-chips"></div>
-    </section>
-
-    <!-- ── History ─────────────────────────────────────────────────────── -->
-    <section class="raffle-block">
-      <div class="eyebrow"><span data-vi>Lịch sử quay</span><span data-en>History</span></div>
-      <div class="raffle-history" id="raffle-history">
-        <p class="gacha-empty"><span data-vi>Chưa có lần quay nào.</span><span data-en>No draws yet.</span></p>
-      </div>
-      <button class="gbtn gbtn--ghost raffle-history__reset" id="reset-history" data-cursor>
-        <span data-vi>Xoá lịch sử</span><span data-en>Clear history</span>
-      </button>
-    </section>
-
-    <!-- ── Rules / announcement ───────────────────────────────────────── -->
-    <section class="raffle-block">
-      <details class="raffle-rules" id="raffle-rules" open>
-        <summary data-cursor>
-          <span data-vi>📜 Nội quy &amp; thể lệ quay thưởng</span>
-          <span data-en>📜 Rules &amp; announcement</span>
-        </summary>
-        <div class="raffle-rules__body">
-          <h3>🎉 THÔNG BÁO SIÊU HẤP DẪN CHO BANG CHIẾN CÁC KỲ TỚI !!!!</h3>
-          <p>🌈 Được sự tài trợ từ <b>@Lạc gấu gấu</b>, bang sẽ có quà cho tất cả anh chị em trong bang, không phân biệt chức vụ. 🌈</p>
-          <p><b>Phần thưởng:</b> GA 2 – 4 thẻ tháng / Chu Kỳ<br>
-             <b>Phạm vi:</b> tất cả thành viên bang.</p>
-          <p>🚨 Luật chơi cực dễ, chỉ cần anh chị em lưu ý:</p>
-          <ol>
-            <li>Phải có mặt đúng giờ của 2 tuần bang chiến trong chu kỳ (gồm đánh chính và dự bị). Online trễ sau <b>19h50</b> (không có báo trước) sẽ mất quyền tham gia.</li>
-            <li>Phần thưởng sẽ làm mới mỗi tháng (2 chu kỳ BC sẽ reset người nhận thưởng).</li>
-            <li>Thời gian quay thưởng là <b>21 giờ Chủ Nhật</b> (tuần 2 cùng kỳ) hoặc sau sự kiện Giải cứu mỹ nhân.</li>
-            <li>Bang Chiến thắng càng nhiều giải càng to.</li>
-            <li>Thưởng dành cho thành viên bang (bao gồm bang chúng và học việc) có tham gia đánh bang chiến / scrim.</li>
-            <li>Leader / Member có quyền góp ý về tác phong / thái độ của mọi người trong bang chiến / scrim (nếu bị đánh giá không tốt thì không có thưởng).</li>
-            <li>Giải thưởng được tài trợ — vui lòng liên hệ <b>@Lạc gấu gấu</b> hoặc <b>@Một Bông Hoa Nhỏ</b> nếu có vấn đề hoặc thắc mắc.</li>
-          </ol>
-          <p class="raffle-rules__foot">Đã đọc kỹ &amp; đồng thuận thì cho 1 react 🌈 nhé. Quy tắc được lưu ở phần nội quy bang để mọi người xem lại.</p>
-        </div>
-      </details>
-    </section>
-  </main>
-
-  <!-- Elimination arena overlay -->
-  <div class="arena" id="arena" aria-hidden="true">
-    <div class="arena__head">
-      <span class="arena__eyebrow"><span data-vi>Vòng loại sinh tồn</span><span data-en>Survival elimination</span></span>
-      <span class="arena__count" id="arena-count">—</span>
-    </div>
-    <div class="arena__grid" id="arena-grid"></div>
-    <button class="arena__skip" id="arena-skip" data-cursor>
-      <span data-vi>Bỏ qua »</span><span data-en>Skip »</span>
-    </button>
-  </div>
-
-  <!-- Winner reveal modal -->
-  <div class="reveal" id="reveal" aria-hidden="true">
-    <div class="reveal__head">
-      <span class="reveal__eyebrow"><span data-vi>Phần thưởng Bang Chiến</span><span data-en>Guild reward</span></span>
-      <span class="reveal__title"><span data-vi>Chúc mừng người trúng thưởng</span><span data-en>Congratulations</span></span>
-    </div>
-    <div class="reveal__inner" id="reveal-inner"></div>
-    <button class="reveal__close" id="reveal-close" data-cursor>
-      <span data-vi>Đóng</span><span data-en>Close</span>
-    </button>
-  </div>
-
-  <!-- Audio widget -->
-  <div class="audio-widget" id="audio-widget" data-cursor>
-    <span class="eq"><i></i><i></i><i></i></span>
-    <span id="audio-label" data-vi>Phát nhạc</span>
-    <span id="audio-label-en" data-en>Play music</span>
-  </div>
-
+<body>
+<x-dc>
+<helmet>
+  <meta name="description" content="Nhất Mộng — Quay thưởng Bang Chiến">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
-  <script src="js/site.js"></script>
-  <script src="js/gacha.js"></script>
+  <style>
+    html { background: #070510; scrollbar-width: thin; scrollbar-color: #b44cff #0c0918; }
+    main { overflow-x: clip; }
+    body { margin: 0; background: #070510; color: #ece7f7; font-family: 'Chakra Petch', 'Be Vietnam Pro', sans-serif; overflow-x: hidden; }
+    a { color: #ece7f7; text-decoration: none; }
+    a:hover { color: #00e5ff; }
+    ::selection { background: #b44cff; color: #070510; }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: #0c0918; }
+    ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #00e5ff, #b44cff); border-radius: 8px; box-shadow: 0 0 8px rgba(180,76,255,0.8); }
+    @keyframes blinkDot { 0%, 100% { opacity: 1; } 50% { opacity: 0.15; } }
+    @keyframes scanSweep { 0% { top: -30%; } 100% { top: 130%; } }
+    @keyframes winPulse { 0%, 100% { box-shadow: 0 0 40px -8px rgba(0,229,255,0.7); } 50% { box-shadow: 0 0 80px -4px rgba(180,76,255,0.9); } }
+    @keyframes beamsSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes guidePulse { 0%, 100% { box-shadow: 0 0 12px rgba(0,229,255,0.25); } 50% { box-shadow: 0 0 34px rgba(0,229,255,0.75); } }
+    textarea::placeholder { color: rgba(178,166,205,0.55); }
+  </style>
+</helmet>
+
+<x-import component-from-global-scope="cyber-bg" from="./cyber-bg.js" variant="dream" logo="NHẤT MỘNG" speed="{{ bgSpeed }}" style="position: fixed; inset: 0; z-index: 0; pointer-events: none;" hint-size="100%,100%"></x-import>
+
+<sc-if value="{{ showHud }}" hint-placeholder-val="{{ true }}">
+  <div data-comment-anchor="hud-gacha" style="pointer-events: none;">
+    <div style="position: fixed; inset: 10px; border: 1px solid rgba(180,76,255,0.22); border-radius: 22px; z-index: 120;"></div>
+    <div style="position: fixed; top: 10px; left: 50%; transform: translateX(-50%); width: 120px; height: 3px; border-radius: 3px; background: linear-gradient(90deg, #00e5ff, #b44cff); z-index: 121; opacity: 0.7;"></div>
+    <div style="position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); width: 120px; height: 3px; border-radius: 3px; background: linear-gradient(90deg, #b44cff, #00e5ff); z-index: 121; opacity: 0.7;"></div>
+    <div style="position: fixed; inset: 0; z-index: 110; background: repeating-linear-gradient(0deg, transparent 0 3px, rgba(0,0,0,0.22) 3px 4px); opacity: 0.5; mix-blend-mode: overlay;"></div>
+    <div style="position: fixed; left: 0; right: 0; height: 22vh; z-index: 110; background: linear-gradient(180deg, transparent, rgba(180,76,255,0.05), transparent); animation: scanSweep 9s linear infinite;"></div>
+    <div style="position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 120; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.3em; color: rgba(178,166,205,0.75); text-transform: uppercase;">[ MOD.03 · GACHA ]</div>
+  </div>
+</sc-if>
+
+<div style="position: fixed; inset: 0; z-index: 105; pointer-events: none; opacity: 0.05; background-image: url('data:image/svg+xml;utf8,&lt;svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22140%22 height=%22140%22&gt;&lt;filter id=%22n%22&gt;&lt;feTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%222%22/&gt;&lt;/filter&gt;&lt;rect width=%22140%22 height=%22140%22 filter=%22url(%23n)%22/&gt;&lt;/svg&gt;');"></div>
+
+<!-- Nav -->
+<nav style="position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 1.4rem clamp(1.5rem, 5vw, 4rem); background: linear-gradient(180deg, rgba(7,5,16,0.85), transparent);">
+  <a href="index.html" style="font-weight: 700; font-size: 1.15rem; letter-spacing: 0.06em; text-shadow: 0 0 20px rgba(180,76,255,0.4);">NHẤT<span style="color: #b44cff;">MỘNG</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; color: #00e5ff; vertical-align: super; margin-left: 4px;">v2.1</span></a>
+  <div style="display: flex; align-items: center; gap: clamp(1rem, 3vw, 2.4rem); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;">
+    <a href="index.html" style="color: rgba(236,231,247,0.85); padding: 6px 4px;">00 · Trang chủ</a>
+    <a href="phim.html" style="color: rgba(236,231,247,0.85); padding: 6px 4px;">01 · Phim</a>
+    <span style="color: #b44cff; border-bottom: 1px solid #b44cff; padding: 6px 4px;">02 · Quay thưởng</span>
+  </div>
+</nav>
+
+<main style="position: relative; z-index: 10; padding: clamp(7rem, 14vh, 9rem) clamp(1.5rem, 6vw, 7rem) 4rem;">
+  <!-- Header -->
+  <header data-screen-label="Gacha Header" style="position: relative; margin-bottom: clamp(2.5rem, 6vh, 4rem);">
+    <div style="position: absolute; right: -2vw; top: -8vh; font-weight: 700; font-size: clamp(8rem, 20vw, 18rem); line-height: 1; color: transparent; -webkit-text-stroke: 1.5px rgba(180,76,255,0.12); pointer-events: none; user-select: none;">03</div>
+    <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.3em; color: #b44cff; text-transform: uppercase; display: flex; align-items: center; gap: 10px; margin-bottom: 1.2rem;"><span style="width: 30px; height: 1px; background: #b44cff; display: inline-block;"></span>MODULE 03 // VÒNG QUAY BANG CHIẾN</div>
+    <h1 style="margin: 0; font-weight: 700; font-size: clamp(2.8rem, 8vw, 7rem); line-height: 1; text-transform: uppercase;">
+      <span data-line="true" style="display: block; overflow: hidden; padding-top: 0.14em; margin-top: -0.14em;"><span style="display: inline-block; will-change: transform;">Quay <span style="color: transparent; -webkit-text-stroke: 2px #b44cff; text-shadow: 0 0 40px rgba(180,76,255,0.3); font-style: italic;">thưởng</span></span></span>
+    </h1>
+    <p style="margin: 1.2rem 0 0; color: #b2a6cd; max-width: 52ch; font-size: 1.02rem;">Dán danh sách anh em tham gia — mỗi dòng một tên. Bấm quay, hệ thống bốc ngẫu nhiên người trúng thẻ tháng.</p>
+  </header>
+
+  <!-- 2-col: roster | spinner -->
+  <div data-screen-label="Gacha Body" style="display: grid; grid-template-columns: minmax(260px, 5fr) minmax(0, 7fr); gap: clamp(1.5rem, 3.5vw, 3.5rem); align-items: start;">
+    <!-- roster -->
+    <div style="border: 1px solid rgba(180,76,255,0.3); border-radius: 22px; background: linear-gradient(165deg, rgba(26,16,46,0.75), rgba(12,9,24,0.7) 55%); padding: clamp(1.2rem, 2vw, 1.8rem); display: flex; flex-direction: column; gap: 1rem;">
+      <div style="display: flex; justify-content: space-between; align-items: baseline;">
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.25em; color: #b44cff; text-transform: uppercase;">DANH SÁCH THAM GIA</span>
+        <span id="roster-count" style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.2em; color: rgba(178,166,205,0.8);">0 NGƯỜI</span>
+      </div>
+      <textarea id="roster" rows="14" placeholder="Mỗi dòng một tên…" style="resize: vertical; background: rgba(7,5,16,0.7); border: 1px solid rgba(180,76,255,0.25); border-radius: 14px; outline: none; color: #ece7f7; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.7; padding: 12px 14px; letter-spacing: 0.05em;"></textarea>
+      <label style="display: flex; align-items: center; gap: 10px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.18em; color: #b2a6cd; text-transform: uppercase; cursor: pointer;">
+        <input id="remove-winner" type="checkbox" style="accent-color: #b44cff; width: 15px; height: 15px;">
+        Loại người trúng khỏi danh sách
+      </label>
+    </div>
+
+    <!-- spinner -->
+    <div style="display: flex; flex-direction: column; gap: 1.4rem;">
+      <div id="stage" style="position: relative; border: 1px solid rgba(0,229,255,0.35); border-radius: 22px; background: radial-gradient(120% 140% at 50% 0%, rgba(26,16,46,0.85), rgba(12,9,24,0.8) 60%); min-height: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.6rem; overflow: hidden; padding: 2rem;">
+        <div style="position: absolute; top: 12px; left: 18px; font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.25em; color: #00e5ff;">RNG.CORE // SẴN SÀNG</div>
+        <span id="reel-label" style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.3em; color: rgba(178,166,205,0.75); text-transform: uppercase;">NGƯỜI TRÚNG THƯỞNG</span>
+        <!-- 3D drum viewport -->
+        <div style="position: relative; width: 100%; max-width: 620px;">
+          <div id="guide" style="position: absolute; left: 0; right: 0; top: 50%; height: 78px; transform: translateY(-50%); border-top: 1px solid rgba(0,229,255,0.45); border-bottom: 1px solid rgba(0,229,255,0.45); border-radius: 10px; background: rgba(0,229,255,0.05); pointer-events: none; transition: box-shadow 0.1s, border-color 0.1s;"></div>
+          <div style="position: absolute; left: -6px; top: 50%; transform: translateY(-50%); color: #00e5ff; font-size: 1rem; pointer-events: none;">▶</div>
+          <div style="position: absolute; right: -6px; top: 50%; transform: translateY(-50%); color: #00e5ff; font-size: 1rem; pointer-events: none;">◀</div>
+          <div id="drum-vp" style="perspective: 900px; height: 220px; overflow: hidden; -webkit-mask-image: linear-gradient(180deg, transparent, #000 28%, #000 72%, transparent); mask-image: linear-gradient(180deg, transparent, #000 28%, #000 72%, transparent);">
+            <div id="drum" style="position: relative; width: 100%; height: 78px; top: 71px; transform-style: preserve-3d; will-change: transform;">
+              <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: clamp(1.6rem, 4vw, 2.8rem); text-transform: uppercase; color: rgba(178,166,205,0.9);">— ? —</div>
+            </div>
+          </div>
+        </div>
+        <div id="reel-sub" style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.25em; color: rgba(178,166,205,0.6); text-transform: uppercase;">BẤM QUAY ĐỂ BẮT ĐẦU</div>
+        <!-- drama layers -->
+        <div id="dim" style="position: absolute; inset: 0; background: radial-gradient(85% 85% at 50% 50%, transparent 25%, rgba(0,0,0,0.88)); opacity: 0; pointer-events: none;"></div>
+        <div id="beams" style="position: absolute; left: 50%; top: 50%; width: 620px; height: 620px; margin: -310px 0 0 -310px; border-radius: 50%; background: conic-gradient(from 0deg, transparent 0 18deg, rgba(0,229,255,0.2) 24deg 34deg, transparent 40deg 78deg, rgba(180,76,255,0.22) 84deg 94deg, transparent 100deg 138deg, rgba(0,229,255,0.16) 146deg 156deg, transparent 162deg 198deg, rgba(180,76,255,0.2) 206deg 216deg, transparent 222deg 258deg, rgba(0,229,255,0.16) 266deg 276deg, transparent 282deg 360deg); opacity: 0; pointer-events: none; animation: beamsSpin 7s linear infinite; filter: blur(2px);"></div>
+        <div id="shock" style="position: absolute; left: 50%; top: 50%; width: 40px; height: 40px; margin: -20px 0 0 -20px; border: 3px solid #00e5ff; border-radius: 50%; opacity: 0; pointer-events: none; box-shadow: 0 0 40px rgba(0,229,255,0.8), inset 0 0 20px rgba(0,229,255,0.5);"></div>
+        <div id="sparks" style="position: absolute; inset: 0; pointer-events: none; perspective: 700px;"></div>
+      </div>
+      <button id="spin" style="cursor: pointer; align-self: flex-start; padding: 1.05rem 3.4rem; border-radius: 999px; background: rgba(180,76,255,0.14); border: 1px solid #b44cff; color: #d9b6ff; font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: 0.3em; text-transform: uppercase; transition: background 0.3s, color 0.3s, box-shadow 0.3s, transform 0.2s;" style-hover="background: rgba(180,76,255,0.3); color: #fff; box-shadow: 0 0 40px -8px rgba(180,76,255,0.8); transform: translateY(-2px);">QUAY_</button>
+
+      <!-- history -->
+      <div style="border: 1px solid rgba(180,76,255,0.25); border-radius: 20px; background: rgba(12,9,24,0.6); padding: 1.2rem 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.8rem;">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.25em; color: #b44cff; text-transform: uppercase;">LỊCH SỬ TRÚNG THƯỞNG</span>
+          <button id="clear-history" style="cursor: pointer; background: none; border: 0; font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.2em; color: rgba(178,166,205,0.6); text-transform: uppercase;">XÓA</button>
+        </div>
+        <div id="history" style="display: flex; flex-direction: column; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.06em; color: #ece7f7;">
+          <span style="color: rgba(178,166,205,0.55); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;">— CHƯA CÓ —</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer data-screen-label="Gacha Footer" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin-top: clamp(3rem, 8vh, 5rem); padding-top: 2rem; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: #b2a6cd; border-top: 1px solid rgba(180,76,255,0.18);">
+    <span>© 2026 NHẤT MỘNG</span>
+    <a href="index.html" style="color: #b44cff;">← VỀ TRANG CHỦ</a>
+  </footer>
+</main>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;showHud&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Hiệu ứng&quot;}, &quot;bgSpeed&quot;: {&quot;editor&quot;: &quot;range&quot;, &quot;default&quot;: 0.7, &quot;min&quot;: 0.2, &quot;max&quot;: 3, &quot;step&quot;: 0.1, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;Hiệu ứng&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      showHud: this.props.showHud ?? true,
+      bgSpeed: this.props.bgSpeed ?? 0.7,
+    };
+  }
+
+  componentDidMount() {
+    this._cleanup = [];
+    this._poll = setInterval(() => {
+      if (window.gsap) {
+        clearInterval(this._poll);
+        this._init();
+      }
+    }, 40);
+  }
+
+  componentWillUnmount() {
+    clearInterval(this._poll);
+    (this._cleanup || []).forEach((fn) => { try { fn(); } catch (e) {} });
+  }
+
+  _init() {
+    const q = (s) => document.querySelector(s);
+    gsap.fromTo('[data-line] > span', { yPercent: 115 }, { yPercent: 0, duration: 1.1, ease: 'power4.out', delay: 0.2 });
+
+    const roster = q('#roster'), rosterCount = q('#roster-count');
+    const drum = q('#drum'), reelSub = q('#reel-sub'), stage = q('#stage'), sparksBox = q('#sparks');
+    const spin = q('#spin'), history = q('#history'), clearBtn = q('#clear-history');
+    const removeWinner = q('#remove-winner');
+    // set imperatively — the runtime strips the `checked` attribute into a controlled prop
+    if (removeWinner) {
+      let savedRW = null;
+      try { savedRW = localStorage.getItem('nm-gacha-remove-winner'); } catch (e) {}
+      removeWinner.checked = savedRW == null ? true : savedRW === '1';
+      const onRW = () => { try { localStorage.setItem('nm-gacha-remove-winner', removeWinner.checked ? '1' : '0'); } catch (e) {} };
+      removeWinner.addEventListener('change', onRW);
+      this._cleanup.push(() => removeWinner.removeEventListener('change', onRW));
+    }
+
+    // restore state
+    try {
+      const saved = localStorage.getItem('nm-gacha-roster');
+      if (roster) roster.value = saved != null ? saved : 'Bún Bò\nBủn Tiếu\nMèo Lười\nKiếm Khách 9x\nTiểu Long Nữ\nVô Danh';
+    } catch (e) {}
+    this._history = [];
+    try { this._history = JSON.parse(localStorage.getItem('nm-gacha-history') || '[]'); } catch (e) {}
+
+    const names = () => (roster ? roster.value : '').split('\n').map((s) => s.trim()).filter(Boolean);
+    const updateCount = () => { if (rosterCount) rosterCount.textContent = names().length + ' NGƯỜI'; };
+    const renderHistory = () => {
+      if (!history) return;
+      if (!this._history.length) {
+        history.innerHTML = '<span style="color: rgba(178,166,205,0.55); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;">— CHƯA CÓ —</span>';
+        return;
+      }
+      history.innerHTML = this._history.map((h, i) =>
+        '<span style="display:flex;justify-content:space-between;gap:12px;"><span><span style="color:#00e5ff;">' + String(this._history.length - i).padStart(2, '0') + '</span> · ' + h.name.replace(/</g, '&lt;') + '</span><span style="color:rgba(178,166,205,0.6);">' + h.time + '</span></span>'
+      ).join('');
+    };
+    updateCount();
+    renderHistory();
+    if (roster) {
+      const onIn = () => { updateCount(); try { localStorage.setItem('nm-gacha-roster', roster.value); } catch (e) {} };
+      roster.addEventListener('input', onIn);
+      this._cleanup.push(() => roster.removeEventListener('input', onIn));
+    }
+
+    // ── 3D drum spin: names on a rotating cylinder, decelerates onto the winner ──
+    const FACES = 14;
+    const ANGLE = 360 / FACES;
+    const RADIUS = Math.round((78 / 2) / Math.tan(Math.PI / FACES));
+    let spinning = false;
+    let drumRot = { r: 0 };
+
+    const buildDrum = (list, winner, winnerFace) => {
+      if (!drum) return;
+      drum.innerHTML = '';
+      for (let i = 0; i < FACES; i++) {
+        const face = document.createElement('div');
+        const name = i === winnerFace ? winner : list[Math.floor(Math.random() * list.length)];
+        face.textContent = name;
+        face.setAttribute('data-face', String(i));
+        face.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:clamp(1.5rem,3.6vw,2.6rem);text-transform:uppercase;letter-spacing:0.03em;color:#ece7f7;backface-visibility:hidden;transform:rotateX(' + (i * ANGLE) + 'deg) translateZ(' + RADIUS + 'px);';
+        drum.appendChild(face);
+      }
+    };
+
+    const burstSparks = () => {
+      if (!sparksBox) return;
+      const r = sparksBox.getBoundingClientRect();
+      for (let i = 0; i < 30; i++) {
+        const s = document.createElement('div');
+        const c = i % 2 ? '#00e5ff' : '#b44cff';
+        s.style.cssText = 'position:absolute;left:50%;top:50%;width:6px;height:6px;border-radius:50%;background:' + c + ';box-shadow:0 0 10px ' + c + ';';
+        sparksBox.appendChild(s);
+        const ang = Math.random() * Math.PI * 2;
+        const dist = 60 + Math.random() * (r.width / 2.4);
+        gsap.fromTo(s, { x: 0, y: 0, opacity: 1, scale: 0.6 + Math.random() }, {
+          x: Math.cos(ang) * dist, y: Math.sin(ang) * dist * 0.7,
+          opacity: 0, scale: 0.2, duration: 0.9 + Math.random() * 0.7, ease: 'power3.out',
+          onComplete: () => s.remove(),
+        });
+      }
+    };
+
+    const doSpin = () => {
+      const list = names();
+      if (spinning) return;
+      if (list.length < 2) {
+        if (reelSub) reelSub.textContent = 'CẦN ÍT NHẤT 2 NGƯỜI TRONG DANH SÁCH';
+        return;
+      }
+      spinning = true;
+      spin.disabled = true;
+      spin.style.opacity = '0.5';
+      stage.style.animation = 'none';
+      if (reelSub) reelSub.textContent = 'ĐANG QUAY LỒNG 3D…';
+
+      const winner = list[Math.floor(Math.random() * list.length)];
+      const winnerFace = Math.floor(Math.random() * FACES);
+      buildDrum(list, winner, winnerFace);
+
+      const dim = q('#dim'), beams = q('#beams'), shock = q('#shock'), guide = q('#guide');
+      const turns = 5 + Math.floor(Math.random() * 3);
+      const target = -(turns * 360 + winnerFace * ANGLE);
+      const overshoot = ANGLE * 0.62; // stop "suýt trượt" giữa 2 ô rồi mới nhích về
+      drumRot.r = 0;
+      drum.style.filter = 'blur(0px)';
+      let lastFaceTick = 0;
+
+      const tickFlash = () => {
+        // mỗi lần một ô lướt qua vạch ngắm → nháy khung
+        const idx = Math.floor(Math.abs(drumRot.r) / ANGLE);
+        if (idx !== lastFaceTick) {
+          lastFaceTick = idx;
+          if (guide) {
+            guide.style.borderColor = 'rgba(0,229,255,0.95)';
+            guide.style.boxShadow = '0 0 28px rgba(0,229,255,0.55)';
+            setTimeout(() => {
+              guide.style.borderColor = 'rgba(0,229,255,0.45)';
+              guide.style.boxShadow = 'none';
+            }, 70);
+          }
+        }
+      };
+      const applyRot = () => { drum.style.transform = 'rotateX(' + drumRot.r + 'deg)'; };
+
+      const winFx = () => {
+        const face = drum.querySelector('[data-face="' + winnerFace + '"]');
+        // 1 · sốc: vòng xung kích 3D nổ ra
+        if (shock) gsap.fromTo(shock, { opacity: 1, scale: 0.25 }, { opacity: 0, scale: 16, duration: 1.1, ease: 'power3.out' });
+        // 2 · chùm sáng xoay phía sau tên
+        if (beams) gsap.fromTo(beams, { opacity: 0, scale: 0.6 }, { opacity: 0.95, scale: 1, duration: 0.5, ease: 'power2.out' });
+        // 3 · tên người trúng "bay" về phía người xem (3D pop)
+        if (face) {
+          face.style.color = '#00e5ff';
+          face.style.textShadow = '0 0 50px rgba(0,229,255,0.9)';
+          face.style.zIndex = '5';
+          gsap.fromTo(face, { scale: 0.8 }, { scale: 1.45, duration: 1, ease: 'elastic.out(1, 0.38)' });
+        }
+        // 4 · rung màn hình + pulse
+        gsap.fromTo(stage, { x: 0 }, { x: 7, duration: 0.05, yoyo: true, repeat: 9, ease: 'power1.inOut', onComplete: () => gsap.set(stage, { x: 0 }) });
+        stage.style.animation = 'winPulse 1.4s ease-in-out 4';
+        // 5 · pháo giấy 3D lộn nhào + tia lửa
+        burstSparks();
+        confetti3D();
+        setTimeout(burstSparks, 400);
+        setTimeout(confetti3D, 650);
+        if (reelSub) {
+          reelSub.textContent = '🎉 CHÚC MỪNG ' + winner.toUpperCase() + ' — TRÚNG THẺ THÁNG';
+          reelSub.style.color = '#00e5ff';
+        }
+        // hạ màn sau 3s
+        setTimeout(() => {
+          if (dim) gsap.to(dim, { opacity: 0, duration: 1.2 });
+          if (beams) gsap.to(beams, { opacity: 0, duration: 1.4 });
+        }, 3000);
+        this._history.unshift({ name: winner, time: new Date().toLocaleTimeString('vi-VN', { hour12: false }) });
+        this._history = this._history.slice(0, 30);
+        try { localStorage.setItem('nm-gacha-history', JSON.stringify(this._history)); } catch (e) {}
+        renderHistory();
+        if (removeWinner && removeWinner.checked && roster) {
+          roster.value = names().filter((n) => n !== winner).join('\n');
+          try { localStorage.setItem('nm-gacha-roster', roster.value); } catch (e) {}
+          updateCount();
+        }
+        spinning = false;
+        spin.disabled = false;
+        spin.style.opacity = '1';
+      };
+
+      // ═══ kịch bản 4 hồi: nạp → tăng tốc → giảm tốc nghẹt thở → suýt trượt ═══
+      const tl = gsap.timeline();
+      gsap.set(stage, { transformPerspective: 900, transformOrigin: '50% 50%' });
+      // HỒI 1 · nạp năng lượng: tối sân khấu, trống giật ngược, khung ngắm đập nhịp tim
+      if (reelSub) { reelSub.style.color = ''; reelSub.textContent = 'NẠP NĂNG LƯỢNG…'; }
+      if (guide) guide.style.animation = 'guidePulse 0.85s ease-in-out infinite';
+      if (dim) tl.to(dim, { opacity: 0.85, duration: 0.5, ease: 'power2.out' }, 0);
+      tl.to(stage, { scale: 1.015, duration: 0.5, ease: 'power2.out' }, 0);
+      tl.to(drumRot, { r: 26, duration: 0.55, ease: 'power2.inOut', onUpdate: applyRot }, 0.05);
+      // HỒI 2 · bung: quay cực nhanh, mờ chuyển động, sân khấu nghiêng 3D
+      tl.add(() => { if (reelSub) reelSub.textContent = 'ĐANG QUAY — TỐC ĐỘ TỐI ĐA'; });
+      tl.to(stage, { rotateX: 5, duration: 0.8, ease: 'power1.out' }, '<');
+      tl.to(drumRot, {
+        r: target * 0.62, duration: 1.3, ease: 'power2.in',
+        onUpdate: () => { applyRot(); drum.style.filter = 'blur(3px)'; tickFlash(); },
+      }, '<');
+      // HỒI 3 · giảm tốc nghẹt thở: từng ô tích tắc lướt qua vạch ngắm
+      tl.add(() => { if (reelSub) reelSub.textContent = 'ĐANG GIẢM TỐC…'; });
+      tl.to(drumRot, {
+        r: target - overshoot, duration: 2.9, ease: 'power4.out',
+        onUpdate: function () {
+          applyRot(); tickFlash();
+          const pr = this.progress();
+          drum.style.filter = 'blur(' + (pr < 0.35 ? 1.6 : pr < 0.6 ? 0.7 : 0) + 'px)';
+          if (pr > 0.75 && reelSub && reelSub.textContent !== 'SUÝT NỮA…') reelSub.textContent = 'SUÝT NỮA…';
+        },
+      });
+      tl.to(stage, { rotateX: 0, duration: 1.2, ease: 'power2.inOut' }, '<');
+      // HỒI 4 · khựng giữa 2 ô — nín thở — rồi nhích về ô trúng
+      tl.to({}, { duration: 0.55 });
+      tl.add(() => { if (reelSub) reelSub.textContent = '…'; });
+      tl.to(drumRot, { r: target, duration: 1.0, ease: 'back.out(2.4)', onUpdate: applyRot });
+      tl.to(stage, { scale: 1, duration: 0.4, ease: 'power2.out' }, '<');
+      tl.add(() => { if (guide) guide.style.animation = 'none'; winFx(); });
+    };
+
+    // pháo giấy 3D: mảnh giấy lộn nhào rơi trong không gian
+    const confetti3D = () => {
+      if (!sparksBox) return;
+      const r = sparksBox.getBoundingClientRect();
+      const colors = ['#00e5ff', '#b44cff', '#ff3df2', '#eaf6ff'];
+      for (let i = 0; i < 34; i++) {
+        const s = document.createElement('div');
+        const c = colors[i % colors.length];
+        s.style.cssText = 'position:absolute;left:50%;top:42%;width:9px;height:14px;border-radius:2px;background:' + c + ';box-shadow:0 0 8px ' + c + '55;will-change:transform;';
+        sparksBox.appendChild(s);
+        const ang = (Math.random() - 0.5) * Math.PI * 1.6 - Math.PI / 2;
+        const dist = 90 + Math.random() * (r.width / 2.6);
+        gsap.fromTo(s,
+          { x: 0, y: 0, opacity: 1, rotationX: 0, rotationY: 0, rotation: 0 },
+          {
+            x: Math.cos(ang) * dist,
+            y: Math.sin(ang) * dist * 0.6 + 120 + Math.random() * 90,
+            rotationX: 360 + Math.random() * 540,
+            rotationY: 360 + Math.random() * 540,
+            rotation: (Math.random() - 0.5) * 240,
+            opacity: 0,
+            duration: 1.6 + Math.random() * 1.1,
+            ease: 'power1.out',
+            onComplete: () => s.remove(),
+          });
+      }
+    };
+    if (spin) {
+      spin.addEventListener('click', doSpin);
+      this._cleanup.push(() => spin.removeEventListener('click', doSpin));
+    }
+    if (clearBtn) {
+      const onClear = () => { this._history = []; try { localStorage.setItem('nm-gacha-history', '[]'); } catch (e) {} renderHistory(); };
+      clearBtn.addEventListener('click', onClear);
+      this._cleanup.push(() => clearBtn.removeEventListener('click', onClear));
+    }
+    this._cleanup.push(() => { if (window.gsap) gsap.killTweensOf(drumRot); });
+  }
+}
+</script>
 </body>
 </html>
