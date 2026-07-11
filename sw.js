@@ -5,18 +5,19 @@
    - Cross-origin (API phim, CDN, video): KHÔNG can thiệp — đi mạng như thường
    Đổi VERSION mỗi khi muốn ép mọi máy tải lại bản mới.
    ========================================================================== */
-const VERSION = 'nm-v3';
+const VERSION = 'nm-v4';
 const SHELL = [
   './',
   'index.html',
   'phim.html',
   'gacha.html',
   '404.html',
-  'css/phim.css?v=3',
+  'css/phim.css?v=4',
   'js/phim.js',
   'js/support.js',
   'js/cyber-bg.js',
   'js/mong-gate.js',
+  'js/nhac-nen.js',
   'assets/favicon.svg',
   'assets/icon-192.png',
   'assets/icon-512.png',
@@ -42,13 +43,16 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // API / CDN / video: mặc định qua mạng
+  // Request Range (tua audio/video) trả về 206 — Cache API không nhận → đi mạng thẳng
+  if (req.headers.get('range')) return;
 
   // Stale-while-revalidate: trả bản cache ngay, đồng thời tải bản mới về thay
   e.respondWith(
     caches.open(VERSION).then((cache) =>
       cache.match(req).then((cached) => {
         const fresh = fetch(req).then((res) => {
-          if (res && res.ok) cache.put(req, res.clone());
+          // Chỉ cache bản đầy đủ (200); .catch chống lỗi put làm hỏng response
+          if (res && res.status === 200) cache.put(req, res.clone()).catch(() => {});
           return res;
         }).catch(() => cached);
         return cached || fresh;

@@ -24,6 +24,19 @@
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   }[c]));
 
+  // 1514 → "25:14" · 3753 → "1:02:33" (hiện chỗ "Xem tiếp từ …")
+  function fmtTime(t) {
+    t = Math.max(0, Math.floor(t || 0));
+    const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+    const p = (n) => String(n).padStart(2, '0');
+    return (h ? h + ':' + p(m) : String(m)) + ':' + p(s);
+  }
+
+  // Tiến độ xem dở của một phim: { s: server, e: tập, t: giây } hoặc null
+  function loadProgress(slug) {
+    try { return JSON.parse(localStorage.getItem(PKEY) || '{}')[slug] || null; } catch (e) { return null; }
+  }
+
   const state = { mode: 'latest', keyword: '', category: '', country: '', page: 1, loading: false, hasMore: false };
 
   const el = {
@@ -167,11 +180,16 @@
     renderRecent();
   }
   function recentCardHTML(e) {
+    // Badge "⏵ 25:14" nếu phim này đang xem dở — bấm vào là xem tiếp từ đó
+    const prog = loadProgress(e.slug);
+    const resume = prog && prog.t > 60
+      ? `<span class="film__resume" title="${T('Xem tiếp từ ', 'Resume from ')}${fmtTime(prog.t)}">⏵ ${fmtTime(prog.t)}</span>` : '';
     return `
       <div class="film film--recent" data-slug="${esc(e.slug)}" tabindex="0" role="button" aria-label="${esc(e.name)}">
         <button class="film__remove" data-slug="${esc(e.slug)}" data-cursor aria-label="Remove">✕</button>
         <div class="film__poster">
           ${e.badge ? `<span class="film__badge">${esc(e.badge)}</span>` : ''}
+          ${resume}
           <img src="${esc(e.poster || PLACEHOLDER)}" alt="${esc(e.name)}" loading="lazy"
                onerror="this.onerror=null;this.src='${PLACEHOLDER}'">
           <span class="film__play">▶</span>
@@ -506,16 +524,38 @@
     }
   }
 
-  function showFallbackToast(name) {
+  function showToast(msg) {
     const wrap = document.getElementById('fm-player');
     if (!wrap) return;
     const old = wrap.querySelector('.fm-toast');
     if (old) old.remove();
     const toast = document.createElement('div');
     toast.className = 'fm-toast';
-    toast.textContent = T('Server lỗi, đang chuyển sang ', 'Server failed, switching to ') + name + '…';
+    toast.textContent = msg;
     wrap.appendChild(toast);
     setTimeout(() => toast.remove(), 4000);
+  }
+  const showFallbackToast = (name) =>
+    showToast(T('Server lỗi, đang chuyển sang ', 'Server failed, switching to ') + name + '…');
+
+  // Copy link "xem chung" — clipboard API, fallback textarea cho trình duyệt cũ
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).then(() => true, () => copyTextFallback(text));
+    }
+    return Promise.resolve(copyTextFallback(text));
+  }
+  function copyTextFallback(text) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      ta.remove();
+      return ok;
+    } catch (e) { return false; }
   }
 
   function toggleFullscreen() {
@@ -538,16 +578,29 @@
     if (!box) return;
 
     // Khôi phục tập + phút đang xem dở (nếu có)
-    try {
-      const saved = JSON.parse(localStorage.getItem(PKEY) || '{}')[slug];
-      if (saved) {
-        if (episodes[saved.s]) srvIdx = saved.s;
-        if (((episodes[srvIdx] || {}).server_data || [])[saved.e]) {
-          epIdx = saved.e;
-          resumeT = saved.t || 0;
-        }
+    const saved = loadProgress(slug);
+    if (saved) {
+      if (episodes[saved.s]) srvIdx = saved.s;
+      if (((episodes[srvIdx] || {}).server_data || [])[saved.e]) {
+        epIdx = saved.e;
+        resumeT = saved.t || 0;
       }
-    } catch (e) {}
+    }
+
+    // Link "xem chung" (?tap=&t=) đè lên tiến độ đã lưu — cả bang mở cùng một chỗ
+    if (deepLink) {
+      const wantEp = deepLink.ep;
+      if (wantEp >= 0) {
+        if (!((episodes[srvIdx] || {}).server_data || [])[wantEp]) {
+          for (let i = 0; i < episodes.length; i++) {
+            if (((episodes[i] || {}).server_data || [])[wantEp]) { srvIdx = i; break; }
+          }
+        }
+        if (((episodes[srvIdx] || {}).server_data || [])[wantEp]) epIdx = wantEp;
+      }
+      resumeT = deepLink.t || 0;
+      deepLink = null;
+    }
 
     function saveProgress(t) {
       try {
@@ -600,7 +653,7 @@
       box.querySelectorAll('.fm-ep').forEach((b) =>
         b.addEventListener('click', () => { epIdx = +b.dataset.i; resumeT = 0; play(true); }));
 
-      // Thanh "đang xem" + nút tập sau
+      // Thanh "đang xem" + nút tập sau + nút rủ xem chung
       const bar = document.getElementById('fm-bar');
       const now = document.getElementById('fm-now');
       const nextBtn = document.getElementById('fm-next');
@@ -608,10 +661,24 @@
       if (bar && now && curEp) {
         bar.hidden = false;
         now.textContent = T('Đang xem: ', 'Watching: ') + (curEp.name || epIdx + 1) +
-          ' · ' + (episodes[srvIdx].server_name || 'Server ' + (srvIdx + 1));
+          ' · ' + (episodes[srvIdx].server_name || 'Server ' + (srvIdx + 1)) +
+          (resumeT > 60 ? ' · ' + T('xem tiếp từ ', 'resumed from ') + fmtTime(resumeT) : '');
         const hasNext = epIdx < eps.length - 1;
         nextBtn.hidden = !hasNext;
         nextBtn.onclick = nextEp;
+      }
+      // Rủ xem chung: copy link mở đúng phim + tập + thời điểm hiện tại → dán vào Discord
+      const shareBtn = document.getElementById('fm-share');
+      if (shareBtn) {
+        shareBtn.onclick = () => {
+          const t = Math.floor(activeVideo ? activeVideo.currentTime : resumeT || 0);
+          let link = location.origin + location.pathname +
+            '?phim=' + encodeURIComponent(slug) + '&tap=' + (epIdx + 1);
+          if (t > 5) link += '&t=' + t;
+          copyText(link).then((ok) => showToast(ok
+            ? T('Đã copy link — dán vào Discord cho anh em cùng xem!', 'Link copied — paste it in Discord!')
+            : link));
+        };
       }
     }
 
@@ -648,6 +715,7 @@
       draw();
       saveProgress(resumeT);
       playEpisode(eps[epIdx], fallback, nextEp, resumeT, saveProgress);
+      if (resumeT > 60) showToast('⏵ ' + T('Xem tiếp từ ', 'Resuming from ') + fmtTime(resumeT));
     }
 
     goNextEp = nextEp;
@@ -655,6 +723,8 @@
   }
 
   // ── Modal ──────────────────────────────────────────────────────────────
+  // Link "xem chung": ?phim=&tap=&t= → nhảy thẳng tới tập + giây này (dùng một lần)
+  let deepLink = null;
   let modalHistoryActive = false;
   let modalFromURL = false; // mở từ deep-link → đóng bằng replaceState, không back()
 
@@ -693,7 +763,11 @@
           <p class="fm-desc">${esc((movie.content || '').replace(/<[^>]*>/g, ''))}</p>
           <div class="fm-bar" id="fm-bar" hidden>
             <span class="fm-now" id="fm-now"></span>
-            <button class="fm-next" id="fm-next" data-cursor hidden>${T('Tập sau', 'Next')} ›</button>
+            <span class="fm-bar__btns">
+              <button class="fm-share" id="fm-share" data-cursor
+                title="${T('Copy link mở đúng tập + thời điểm này', 'Copy link to this episode + timestamp')}">🔗 ${T('Rủ xem chung', 'Watch together')}</button>
+              <button class="fm-next" id="fm-next" data-cursor hidden>${T('Tập sau', 'Next')} ›</button>
+            </span>
           </div>
           <div class="fm-servers" id="fm-servers"></div>
           <div class="fm-ranges" id="fm-ranges" hidden></div>
@@ -712,6 +786,8 @@
   function doClose() {
     destroyPlayer();
     goNextEp = null;
+    renderRecent(); // làm mới badge "⏵ xem tiếp từ …" với phút vừa xem
+    renderWatch();
     el.modal.classList.remove('open', 'theater');
     el.modal.setAttribute('aria-hidden', 'true');
     el.content.innerHTML = '';
@@ -884,6 +960,13 @@
   loadList(true);
 
   // Deep-link: mở thẳng phim nếu URL có ?phim=<slug>
-  const startSlug = new URLSearchParams(location.search).get('phim');
-  if (startSlug) openMovie(startSlug, true);
+  // Kèm ?tap=<số tập>&t=<giây> (link "xem chung") thì nhảy đúng tập + thời điểm đó
+  const qs = new URLSearchParams(location.search);
+  const startSlug = qs.get('phim');
+  if (startSlug) {
+    const tap = parseInt(qs.get('tap'), 10);
+    const t = parseInt(qs.get('t'), 10);
+    if (tap > 0 || t > 0) deepLink = { ep: tap > 0 ? tap - 1 : -1, t: t > 0 ? t : 0 };
+    openMovie(startSlug, true);
+  }
 })();
