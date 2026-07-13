@@ -189,6 +189,12 @@ body[data-lang="en"] [data-vi] { display: none; }
   color: #00e5ff; background: rgba(7,5,16,0.75); padding: 3px 9px; border-radius: 999px; pointer-events: none;
   max-width: calc(100% - 20px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+/* Nhãn nguồn (OPhim/NguonC) trên card "Vừa xem"/"Xem sau" — mở lại đúng nguồn cũ */
+.film__src {
+  position: absolute; bottom: 8px; right: 10px; z-index: 2;
+  font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.12em;
+  color: #d9b6ff; background: rgba(7,5,16,0.82); padding: 3px 8px; border-radius: 999px; pointer-events: none;
+}
 .film__resume {
   position: absolute; bottom: 8px; left: 10px; z-index: 2;
   font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.12em;
