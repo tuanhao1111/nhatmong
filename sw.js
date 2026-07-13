@@ -5,7 +5,7 @@
    - Cross-origin (API phim, CDN, video): KHÔNG can thiệp — đi mạng như thường
    Đổi VERSION mỗi khi muốn ép mọi máy tải lại bản mới.
    ========================================================================== */
-const VERSION = 'nm-v5';
+const VERSION = 'nm-v7';
 const SHELL = [
   './',
   'index.html',

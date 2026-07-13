@@ -107,12 +107,60 @@
     },
   };
 
-  let curSrc = 'kk';
-  try { if (SOURCES[localStorage.getItem(SRC_KEY)]) curSrc = localStorage.getItem(SRC_KEY); } catch (e) {}
+  // Chế độ "Tự động" (mặc định): trang tự chọn nguồn — nguồn lỗi hoặc tìm kiếm
+  // không có kết quả thì tự nhảy sang nguồn kế tiếp; xem phim mà mọi server chết
+  // thì tự dò cùng phim ở nguồn khác. Chọn tay một nguồn cụ thể sẽ tắt tự động.
+  let autoMode = true;
+  let curSrc = 'kk';               // nguồn đang dùng thực tế (kể cả khi auto)
+  try {
+    const savedSrc = localStorage.getItem(SRC_KEY);
+    if (SOURCES[savedSrc]) { curSrc = savedSrc; autoMode = false; }
+  } catch (e) {}
 
   // Khóa lưu trữ (tiến độ / lịch sử / xem sau) theo nguồn — nguồn mặc định (kk)
   // giữ nguyên slug trần để không mất dữ liệu đã lưu từ trước.
   const keyOf = (src, slug) => (!src || src === 'kk' ? slug : src + ':' + slug);
+
+  // ── Xếp hạng nguồn theo tốc độ ───────────────────────────────────────────
+  // Lúc mở trang (chế độ Tự động): ping cả 3 nguồn cùng lúc — nguồn trả lời
+  // trước được dùng mở màn; thứ hạng đầy đủ quyết định thứ tự failover về sau
+  // (nguồn chết xuống cuối hàng).
+  let srcOrder = Object.keys(SOURCES);
+
+  function pingSources() {
+    const t0 = performance.now();
+    return Object.keys(SOURCES).map((id) => {
+      const ctl = 'AbortController' in window ? new AbortController() : null;
+      const kill = setTimeout(() => { if (ctl) ctl.abort(); }, 6000);
+      return fetchAPI(SOURCES[id].latest(1), ctl && ctl.signal)
+        .then(() => ({ id, ms: performance.now() - t0 }))
+        .catch(() => ({ id, ms: Infinity }))
+        .then((r) => { clearTimeout(kill); return r; });
+    });
+  }
+
+  async function pickFastestSource() {
+    const pings = pingSources();
+    // Thứ hạng đầy đủ chạy nền — không chặn việc hiển thị
+    Promise.all(pings).then((rs) => {
+      rs.sort((a, b) => a.ms - b.ms);
+      srcOrder = rs.map((r) => r.id);
+    });
+    // Chờ nguồn ĐẦU TIÊN trả lời (tối đa 4s) để chọn nguồn mở màn
+    try {
+      const winner = await Promise.race([
+        new Promise((resolve, reject) => {
+          let fails = 0;
+          pings.forEach((p) => p.then((r) => {
+            if (r.ms < Infinity) resolve(r);
+            else if (++fails === pings.length) reject(new Error('all sources down'));
+          }));
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('ping timeout')), 4000)),
+      ]);
+      curSrc = winner.id;
+    } catch (e) { /* giữ nguồn mặc định — failover trong loadList lo phần còn lại */ }
+  }
 
   const PKEY = 'nm_phim_progress';            // localStorage: tập đã xem theo slug
   const HKEY = 'nm_phim_history';             // localStorage: danh sách phim vừa xem
@@ -210,28 +258,34 @@
   // Cache dữ liệu tối thiểu của các phim đã render để nút "Xem sau" dùng lại
   const movieCache = new Map();
   function entryOf(m) {
+    const isrc = m.__src || curSrc;
     return {
       slug: m.slug,
-      src: curSrc,
+      src: isrc,
       name: m.name || '',
       origin: m.origin_name || '',
       year: m.year || '',
       badge: m.episode_current || m.quality || '',
-      poster: posterOf(m),
+      poster: posterOf(m, isrc),
     };
   }
 
+  // m.__src: nguồn của item (khác curSrc khi tìm kiếm gộp nhiều nguồn)
   function cardHTML(m) {
+    const isrc = m.__src || curSrc;
     const badge = m.episode_current || m.quality || '';
-    const wkey = keyOf(curSrc, m.slug);
+    const wkey = keyOf(isrc, m.slug);
     movieCache.set(wkey, entryOf(m));
+    const srcTag = isrc !== curSrc
+      ? `<span class="film__src">${esc(SOURCES[isrc].name)}</span>` : '';
     return `
-      <div class="film" data-slug="${esc(m.slug)}" data-cursor="" tabindex="0" role="button" aria-label="${esc(m.name)}">
-        <button class="film__save ${watchSet.has(wkey) ? 'on' : ''}" data-slug="${esc(m.slug)}" data-cursor
+      <div class="film" data-slug="${esc(m.slug)}" data-src="${esc(isrc)}" data-cursor="" tabindex="0" role="button" aria-label="${esc(m.name)}">
+        <button class="film__save ${watchSet.has(wkey) ? 'on' : ''}" data-slug="${esc(m.slug)}" data-src="${esc(isrc)}" data-cursor
                 aria-label="Xem sau" title="Xem sau">${watchSet.has(wkey) ? '✓' : '＋'}</button>
         <div class="film__poster">
           ${badge ? `<span class="film__badge">${esc(badge)}</span>` : ''}
-          <img src="${esc(posterOf(m))}" alt="${esc(m.name)}" loading="lazy"
+          ${srcTag}
+          <img src="${esc(posterOf(m, isrc))}" alt="${esc(m.name)}" loading="lazy"
                onerror="this.onerror=null;this.src='${PLACEHOLDER}'">
           <span class="film__play">▶</span>
         </div>
@@ -335,20 +389,19 @@
     el.watchRow.innerHTML = w.map(recentCardHTML).join('');
   }
 
-  // Đồng bộ trạng thái nút 🔖 trên mọi card đang hiển thị của slug này.
-  // Card trong lưới luôn thuộc nguồn đang chọn → chỉ đồng bộ khi src trùng.
+  // Đồng bộ trạng thái nút 🔖 trên mọi card đang hiển thị của phim này —
+  // so cả slug lẫn nguồn (lưới tìm kiếm gộp có thể chứa card từ nhiều nguồn).
   function syncSaveButtons(slug, src) {
-    if ((src || 'kk') !== curSrc) return;
-    const on = watchSet.has(keyOf(curSrc, slug));
+    const on = watchSet.has(keyOf(src, slug));
     document.querySelectorAll('.film__save').forEach((b) => {
-      if (b.dataset.slug !== slug) return;
+      if (b.dataset.slug !== slug || (b.dataset.src || 'kk') !== (src || 'kk')) return;
       b.classList.toggle('on', on);
       b.textContent = on ? '✓' : '＋';
     });
   }
 
-  function toggleWatch(slug) {
-    const k = keyOf(curSrc, slug);
+  function toggleWatch(slug, src) {
+    const k = keyOf(src, slug);
     let w = loadWatch();
     if (watchSet.has(k)) {
       w = w.filter((x) => keyOf(x.src, x.slug) !== k);
@@ -362,7 +415,7 @@
     }
     try { localStorage.setItem(WKEY, JSON.stringify(w)); } catch (e) {}
     renderWatch();
-    syncSaveButtons(slug, curSrc);
+    syncSaveButtons(slug, src);
   }
 
   function removeFromWatch(slug, src) {
@@ -397,6 +450,66 @@
   // response cũ về chậm đè lên kết quả của từ khóa mới).
   let listAbort = null;
 
+  // Tìm kiếm ở chế độ Tự động: hỏi CẢ 3 nguồn cùng lúc rồi gộp một lưới —
+  // trộn xen kẽ theo thứ hạng tốc độ (phim liên quan nhất của mỗi nguồn lên đầu),
+  // bỏ trùng slug xuyên trang bằng searchSeen (reset khi đổi từ khóa).
+  const searchSeen = new Set();
+  async function fetchSearchAll(signal) {
+    const rs = await Promise.all(srcOrder.map((id) =>
+      fetchAPI(SOURCES[id].search(state.keyword, state.page), signal)
+        .then((data) => ({ id, data }))
+        .catch((err) => { if (signal && signal.aborted) throw err; return null; })
+    ));
+    const lists = rs.filter(Boolean).map(({ id, data }) => {
+      let list = getItems(data);
+      if (SOURCES[id].normItem) list = list.map(SOURCES[id].normItem);
+      const tp = getTotalPages(data);
+      return { id, list, more: tp ? state.page < tp : list.length >= 10 };
+    });
+    if (!lists.length) throw new Error('search failed on all sources');
+    const items = [];
+    const max = Math.max.apply(null, lists.map((l) => l.list.length));
+    for (let i = 0; i < max; i++) {
+      lists.forEach((l) => {
+        const m = l.list[i];
+        if (!m || !m.slug || searchSeen.has(m.slug)) return;
+        searchSeen.add(m.slug);
+        m.__src = l.id;
+        items.push(m);
+      });
+    }
+    return { data: null, items, from: curSrc, hasMore: lists.some((l) => l.more) };
+  }
+
+  // Tải danh sách với auto-failover: nguồn đang dùng lỗi thì lần lượt thử các
+  // nguồn còn lại theo thứ hạng tốc độ. Chỉ chạy ở chế độ Tự động và khi tải
+  // mới (reset) — "tải thêm" giữa chừng không đổi nguồn kẻo lưới lẫn phim.
+  async function fetchList(signal, reset) {
+    if (autoMode && state.mode === 'search') {
+      if (reset) searchSeen.clear();
+      return fetchSearchAll(signal);
+    }
+    const orig = curSrc;
+    const order = reset && autoMode
+      ? [curSrc].concat(srcOrder.filter((id) => id !== curSrc))
+      : [curSrc];
+    let lastErr = null;
+    for (let i = 0; i < order.length; i++) {
+      curSrc = order[i];
+      try {
+        const data = await fetchAPI(listURL(), signal);
+        let items = getItems(data);
+        if (SOURCES[curSrc].normItem) items = items.map(SOURCES[curSrc].normItem);
+        return { data, items, from: orig };
+      } catch (err) {
+        if (signal && signal.aborted) throw err;
+        lastErr = err;
+      }
+    }
+    curSrc = orig;
+    throw lastErr || new Error('list failed');
+  }
+
   async function loadList(reset) {
     if (state.loading) {
       if (!reset) return;                     // "tải thêm" thì chờ lượt trước
@@ -409,20 +522,30 @@
     if (reset) { state.page = 1; el.grid.innerHTML = skeletonHTML(12); el.more.hidden = true; }
     else updateMore(); // hiện spinner ngay khi bắt đầu tải thêm
     try {
-      const src = SOURCES[curSrc];
-      const data = await fetchAPI(listURL(), ctl && ctl.signal);
-      let items = getItems(data);
-      if (src.normItem) items = items.map(src.normItem);
+      const res = await fetchList(ctl && ctl.signal, reset);
+      const items = res.items;
       clearSkeletons();
+      // Auto đã nhảy nguồn → làm mới nhãn + bộ lọc theo nguồn mới, báo người xem biết
+      let note = '';
+      if (res.from !== curSrc) {
+        renderSources();
+        loadCats();
+        loadCountries();
+        note = T(`Nguồn ${SOURCES[res.from].name} lỗi — đã tự chuyển sang ${SOURCES[curSrc].name}.`,
+                 `${SOURCES[res.from].name} failed — auto-switched to ${SOURCES[curSrc].name}.`);
+      }
       if (reset && !items.length) {
         state.hasMore = false;
         el.status.textContent = T('Không tìm thấy phim nào.', 'No movies found.');
       } else {
         el.grid.insertAdjacentHTML('beforeend', items.map(cardHTML).join(''));
         revealCards();
-        el.status.textContent = '';
-        const tp = getTotalPages(data);
-        state.hasMore = tp ? state.page < tp : items.length >= 10;
+        el.status.textContent = note;
+        if (res.hasMore !== undefined) state.hasMore = res.hasMore; // tìm kiếm gộp: tự tính sẵn
+        else {
+          const tp = getTotalPages(res.data);
+          state.hasMore = tp ? state.page < tp : items.length >= 10;
+        }
       }
     } catch (e) {
       if (ctl && ctl.signal.aborted) return;  // đã có request mới thay thế → không đụng UI
@@ -524,23 +647,31 @@
   }
 
   // ── Chọn nguồn phim ──────────────────────────────────────────────────────
-  // Đổi nguồn = về "Mới nhất" của nguồn đó + nạp lại thể loại/quốc gia
-  // (slug lọc của nguồn này chưa chắc tồn tại bên nguồn kia).
+  // "Tự động" (mặc định): trang tự lo — nguồn nào lỗi thì tự nhảy nguồn khác.
+  // Chọn tay = khóa vào đúng nguồn đó. Đổi nguồn = về "Mới nhất" của nguồn mới
+  // + nạp lại thể loại/quốc gia (slug lọc của nguồn này chưa chắc có bên kia).
   function renderSources() {
     const box = document.getElementById('phim-sources');
     const val = document.getElementById('dd-src-val');
     if (!box) return;
-    if (val) val.textContent = SOURCES[curSrc].name;
-    box.innerHTML = Object.keys(SOURCES).map((id) =>
-      `<button class="cat-chip ${id === curSrc ? 'active' : ''}" data-slug="${id}">${SOURCES[id].name}</button>`).join('');
+    if (val) val.textContent = autoMode
+      ? T('Tự động', 'Auto') + ' · ' + SOURCES[curSrc].name
+      : SOURCES[curSrc].name;
+    box.innerHTML =
+      `<button class="cat-chip ${autoMode ? 'active' : ''}" data-slug="auto"><span data-vi>Tự động</span><span data-en>Auto</span></button>` +
+      Object.keys(SOURCES).map((id) =>
+        `<button class="cat-chip ${!autoMode && id === curSrc ? 'active' : ''}" data-slug="${id}">${SOURCES[id].name}</button>`).join('');
     box.querySelectorAll('.cat-chip').forEach((chip) => {
       chip.addEventListener('click', () => {
         const id = chip.dataset.slug;
         closeAllDD();
-        if (id === curSrc) return;
-        curSrc = id;
-        try { localStorage.setItem(SRC_KEY, id); } catch (e) {}
+        const wasSrc = curSrc;
+        if (id === 'auto') { if (autoMode) return; autoMode = true; }
+        else { if (!autoMode && id === curSrc) return; autoMode = false; curSrc = id; }
+        try { localStorage.setItem(SRC_KEY, autoMode ? 'auto' : curSrc); } catch (e) {}
         renderSources();
+        // Bật/tắt auto mà nguồn thực tế không đổi thì khỏi tải lại gì
+        if (curSrc === wasSrc) return;
         state.mode = 'latest'; state.keyword = ''; state.category = ''; state.country = '';
         el.searchInput.value = '';
         resetFilters();
@@ -722,8 +853,11 @@
 
   // ── Episodes ───────────────────────────────────────────────────────────
   const RANGE = 50; // gom tập theo dải khi danh sách quá dài
+  // Nguồn đã dùng cho phim đang mở — chống nhảy vòng quanh khi nguồn nào cũng lỗi
+  let srcTried = new Set();
 
   function renderEpisodes(movie, episodes, slug, src) {
+    srcTried.add(src);
     let srvIdx = 0, epIdx = 0, rangeStart = 0;
     let resumeT = 0;           // giây xem dở của tập hiện tại (0 = xem từ đầu)
     const tried = new Set();   // server đã thử trong lượt fallback hiện tại
@@ -853,14 +987,42 @@
       if (activeVideo && activeVideo.currentTime > 3) resumeT = activeVideo.currentTime;
       const next = nextServer();
       if (next < 0) {
-        const wrap = document.getElementById('fm-player');
-        if (wrap) wrap.innerHTML =
-          `<div class="fm-player__empty">${T('Mọi server đều lỗi, thử tập hoặc phim khác.', 'All servers failed, try another episode or movie.')}</div>`;
+        // Hết server trong nguồn này → tự dò cùng phim ở nguồn khác trước khi bó tay
+        crossSourceFallback();
         return;
       }
       srvIdx = next;
       showFallbackToast(episodes[srvIdx].server_name || 'Server ' + (srvIdx + 1));
       play(false);
+    }
+
+    // Mọi server của nguồn hiện tại đều lỗi → tìm đúng phim này (cùng slug) ở
+    // nguồn khác, mang theo tập + phút đang xem. Không đâu có mới báo hết cách.
+    async function crossSourceFallback() {
+      const wrap = document.getElementById('fm-player');
+      if (wrap) wrap.innerHTML =
+        `<div class="fm-player__empty">${T('Đang dò nguồn khác…', 'Trying other sources…')}</div>`;
+      const ids = srcOrder;
+      for (let i = 0; i < ids.length; i++) {
+        if (srcTried.has(ids[i])) continue;
+        srcTried.add(ids[i]);
+        try {
+          const d = await fetchAPI(SOURCES[ids[i]].detail(slug));
+          const p = SOURCES[ids[i]].parseDetail(d);
+          if (!(p.episodes || []).length) continue;
+          // Ghi tiến độ sang khóa của nguồn mới để mở lại đúng tập + phút đang xem
+          try {
+            const all = JSON.parse(localStorage.getItem(PKEY) || '{}');
+            all[keyOf(ids[i], slug)] = { s: 0, e: epIdx, t: Math.floor(resumeT || 0) };
+            localStorage.setItem(PKEY, JSON.stringify(all));
+          } catch (e) {}
+          renderEpisodes(p.movie, p.episodes, slug, ids[i]);
+          showToast(T('Đã tự chuyển sang nguồn ', 'Auto-switched to source ') + SOURCES[ids[i]].name);
+          return;
+        } catch (e) {}
+      }
+      if (wrap) wrap.innerHTML =
+        `<div class="fm-player__empty">${T('Mọi server đều lỗi, thử tập hoặc phim khác.', 'All servers failed, try another episode or movie.')}</div>`;
     }
 
     // reset=true khi người dùng tự chọn server/tập (bắt đầu chuỗi fallback mới)
@@ -906,9 +1068,26 @@
     if (window.lenis) window.lenis.stop();
     el.close.focus();
     try {
-      const data = await fetchAPI(S.detail(slug));
-      const parsed = S.parseDetail(data);
-      const movie = parsed.movie || {};
+      // Nguồn được yêu cầu lỗi / không có phim này → tự dò các nguồn còn lại
+      // (slug phần lớn trùng nhau giữa các nguồn vì cùng gốc dữ liệu)
+      const wantSrc = src;
+      let parsed = null;
+      try {
+        const d = await fetchAPI(S.detail(slug));
+        parsed = S.parseDetail(d);
+      } catch (err) { /* thử nguồn khác bên dưới */ }
+      if (!parsed || !(parsed.movie && parsed.movie.name) || !(parsed.episodes || []).length) {
+        for (let i = 0, ids = srcOrder; i < ids.length; i++) {
+          if (ids[i] === wantSrc) continue;
+          try {
+            const d2 = await fetchAPI(SOURCES[ids[i]].detail(slug));
+            const p2 = SOURCES[ids[i]].parseDetail(d2);
+            if (p2.movie && p2.movie.name && (p2.episodes || []).length) { parsed = p2; src = ids[i]; break; }
+          } catch (e2) {}
+        }
+      }
+      if (!parsed || !parsed.movie || !parsed.movie.name) throw new Error('not found on any source');
+      const movie = parsed.movie;
       const episodes = parsed.episodes || [];
       el.content.innerHTML = `
         <div class="fm-player" id="fm-player"><div class="fm-player__empty">${T('Chọn tập để xem', 'Pick an episode')}</div></div>
@@ -935,8 +1114,12 @@
           <div class="fm-eps" id="fm-eplist"></div>
         </div>`;
       if (episodes.length) {
+        srcTried = new Set();   // phim mới → làm lại danh sách nguồn đã thử
         renderEpisodes(movie, episodes, movie.slug || slug, src);
         addToHistory(movie, movie.slug || slug, src);
+        if (src !== wantSrc) {
+          showToast(T('Nguồn cũ không có phim này — đã tự chuyển sang ', 'Auto-switched to source ') + SOURCES[src].name);
+        }
       }
     } catch (e) {
       el.content.innerHTML = `<div class="phim-status">${T('Lỗi tải phim.', 'Failed to load movie.')}</div>`;
@@ -978,9 +1161,9 @@
   // ── Bind ─────────────────────────────────────────────────────────────────
   el.grid.addEventListener('click', (e) => {
     const save = e.target.closest('.film__save');
-    if (save) { e.stopPropagation(); toggleWatch(save.dataset.slug); return; }
+    if (save) { e.stopPropagation(); toggleWatch(save.dataset.slug, save.dataset.src); return; }
     const card = e.target.closest('.film');
-    if (card && !card.classList.contains('film--skel')) openMovie(card.dataset.slug);
+    if (card && !card.classList.contains('film--skel')) openMovie(card.dataset.slug, false, card.dataset.src);
   });
   // Mở phim bằng bàn phím (Enter / Space trên card đang focus)
   const cardKeyOpen = (e) => {
@@ -1119,9 +1302,17 @@
   renderSources();
   renderWatch();
   renderRecent();
-  loadCats();
-  loadCountries();
-  loadList(true);
+  (async () => {
+    if (autoMode) {
+      // Skeleton hiện ngay trong lúc đua ping (nguồn nào trả lời trước dùng nguồn đó)
+      el.grid.innerHTML = skeletonHTML(12);
+      await pickFastestSource();
+      renderSources();   // cập nhật nhãn "Tự động · <nguồn thắng>"
+    }
+    loadCats();
+    loadCountries();
+    loadList(true);
+  })();
 
   // Deep-link: mở thẳng phim nếu URL có ?phim=<slug> (&src=<nguồn> nếu khác mặc định)
   // Kèm ?tap=<số tập>&t=<giây> (link "xem chung") thì nhảy đúng tập + thời điểm đó
