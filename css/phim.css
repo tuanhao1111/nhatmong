@@ -59,6 +59,13 @@ body[data-lang="en"] [data-vi] { display: none; }
 .cnav__links a { color: rgba(236,231,247,0.85); padding: 6px 4px; }
 .cnav__links a:hover { color: #00e5ff; }
 .cnav__links .active { color: #00e5ff; border-bottom: 1px solid #00e5ff; padding: 6px 4px; }
+/* Màn hẹp: 4 mục nav không đủ chỗ trên một hàng → thu nhỏ chữ và khoảng cách */
+@media (max-width: 620px) {
+  .cnav { padding-left: 0.85rem; padding-right: 0.85rem; }
+  .cnav__brand { font-size: 0.95rem; }
+  .cnav__links { gap: 0.5rem; font-size: 8.5px; letter-spacing: 0.06em; }
+  .cnav__links a, .cnav__links .active { padding: 6px 2px; }
+}
 
 /* ── Layout / header ──────────────────────────────────────────────────── */
 .phim-page { position: relative; z-index: 10; padding: clamp(7rem, 14vh, 9rem) clamp(1.5rem, 6vw, 7rem) 4rem; }
