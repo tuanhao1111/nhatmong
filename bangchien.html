@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@400;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/bangchien.css?v=2">
+  <link rel="stylesheet" href="css/bangchien.css?v=3">
 </head>
 <body data-lang="vi">
 
@@ -206,7 +206,7 @@
 
       <div class="bc-modal__sect">
         <h4>4 · Danh sách kỹ năng</h4>
-        <div class="skill-edit" id="cfg-skills"></div>
+        <div class="chip-row" id="cfg-skills"></div>
         <div class="bc-pool__row" style="margin-top:10px">
           <input class="bc-input" id="cfg-skill-new" placeholder="TÊN KỸ NĂNG MỚI" autocomplete="off">
           <button class="bc-btn bc-btn--sm" id="cfg-skill-add" type="button">+ Thêm</button>
@@ -216,7 +216,18 @@
       </div>
 
       <div class="bc-modal__sect">
-        <h4>5 · Quy mô đội hình</h4>
+        <h4>5 · Danh sách nhiệm vụ mẫu</h4>
+        <div class="chip-row" id="cfg-tasks"></div>
+        <div class="bc-pool__row" style="margin-top:10px">
+          <input class="bc-input" id="cfg-task-new" placeholder="TÊN NHIỆM VỤ MẪU MỚI" autocomplete="off">
+          <button class="bc-btn bc-btn--sm" id="cfg-task-add" type="button">+ Thêm</button>
+        </div>
+        <p class="bc-hint">Các chip gợi ý hiện trong ô “Giao nhiệm vụ”. Xoá một mục ở đây sẽ hỏi có gỡ luôn
+          khỏi những người đang được giao nhiệm vụ đó không.</p>
+      </div>
+
+      <div class="bc-modal__sect">
+        <h4>6 · Quy mô đội hình</h4>
         <div class="map-grid">
           <div><label class="bc-label" for="cfg-doan">Số đoàn</label><input class="bc-input" id="cfg-doan" type="number" min="1" max="6" value="2"></div>
           <div><label class="bc-label" for="cfg-tpd">Team / đoàn</label><input class="bc-input" id="cfg-tpd" type="number" min="1" max="10" value="5"></div>
@@ -226,7 +237,7 @@
       </div>
 
       <div class="bc-modal__sect">
-        <h4>6 · Mật khẩu leader</h4>
+        <h4>7 · Mật khẩu leader</h4>
         <div class="bc-field">
           <label class="bc-label" for="cfg-pass">Mật khẩu mới</label>
           <input class="bc-input" id="cfg-pass" type="text" placeholder="để trống nếu không đổi" autocomplete="off">
@@ -256,19 +267,27 @@
       <div class="mem-head" id="mem-head"></div>
 
       <div class="bc-field">
-        <label class="bc-label" for="mem-task">Nhiệm vụ trong bang chiến</label>
+        <div class="bc-field__head">
+          <label class="bc-label" for="mem-task">Nhiệm vụ trong bang chiến</label>
+          <button class="bc-btn bc-btn--sm bc-btn--danger" id="mem-task-clear" type="button">Xoá nhiệm vụ</button>
+        </div>
         <textarea class="bc-textarea" id="mem-task" placeholder="VD: Ôm cờ chính, bám sát tank, không rời đội quá 20m…"></textarea>
-        <div class="task-presets" id="mem-presets"></div>
+        <div class="chip-row" id="mem-presets"></div>
+        <div class="bc-pool__row" style="margin-top:9px">
+          <input class="bc-input" id="mem-task-new" placeholder="THÊM NHIỆM VỤ MẪU MỚI…" autocomplete="off">
+          <button class="bc-btn bc-btn--sm" id="mem-task-add" type="button">+ Thêm</button>
+        </div>
+        <p class="bc-hint">Bấm chip để <b>thêm hoặc gỡ</b> khỏi ô nhiệm vụ. Bấm ✕ để xoá hẳn chip đó khỏi danh sách mẫu.</p>
       </div>
 
       <div class="bc-field">
         <label class="bc-label">Kỹ năng mang theo trong trận</label>
-        <div class="skill-pick" id="mem-skills"></div>
+        <div class="chip-row" id="mem-skills"></div>
         <div class="bc-pool__row" style="margin-top:9px">
           <input class="bc-input" id="mem-skill-new" placeholder="THÊM KỸ NĂNG MỚI…" autocomplete="off">
           <button class="bc-btn bc-btn--sm" id="mem-skill-add" type="button">+ Thêm</button>
         </div>
-        <p class="bc-hint">Bấm để bật/tắt. Kỹ năng thêm ở đây vào luôn danh sách chung, dùng lại được cho người khác.</p>
+        <p class="bc-hint">Bấm chip để <b>bật/tắt</b> cho người này. Bấm ✕ để xoá hẳn kỹ năng khỏi danh sách chung.</p>
       </div>
 
       <div class="bc-field">
@@ -286,7 +305,7 @@
 
   <div class="bc-toast" id="toast"></div>
 
-  <script src="js/bangchien.js?v=2"></script>
+  <script src="js/bangchien.js?v=3"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js'); });

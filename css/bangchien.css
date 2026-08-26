@@ -344,43 +344,42 @@ input::placeholder, textarea::placeholder { color: rgba(178,166,205,0.55); }
 .color-row__c { width: 44px; height: 30px; padding: 0; border: 1px solid rgba(180,76,255,0.3); border-radius: 9px; background: transparent; cursor: pointer; }
 .color-row__hex { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(178,166,205,0.7); width: 68px; }
 
-.task-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.task-preset {
-  cursor: pointer; padding: 6px 11px; border-radius: 999px;
-  border: 1px solid rgba(0,229,255,0.3); background: rgba(0,229,255,0.06); color: #8fe9ff;
-  font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
-}
-.task-preset:hover { border-color: #00e5ff; background: rgba(0,229,255,0.18); }
-
-/* ── Kỹ năng mang theo ────────────────────────────────────────────────── */
-.skill-pick { display: flex; flex-wrap: wrap; gap: 6px; }
-.skill-pick:empty::before {
-  content: 'Chưa có kỹ năng nào — thêm ở ô dưới hoặc trong Cấu hình → mục 4';
+/* ── Chip nhiệm vụ / kỹ năng ──────────────────────────────────────────────
+   Mỗi chip có 2 vùng bấm: phần chữ để BẬT/TẮT cho người đang mở, nút ✕ để
+   XOÁ hẳn khỏi danh sách mẫu. Dùng chung cho cả modal thành viên lẫn Cấu hình. */
+.chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip-row:empty::before {
+  content: 'Danh sách trống — thêm ở ô bên dưới';
   font-family: 'Be Vietnam Pro', sans-serif; font-size: 12px; color: rgba(178,166,205,0.6);
 }
-.skill-chip {
-  cursor: pointer; padding: 6px 12px; border-radius: 999px;
-  border: 1px solid rgba(255,209,102,0.35); background: rgba(255,209,102,0.06); color: rgba(255,217,160,0.85);
-  font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase;
-  transition: background 0.2s, border-color 0.2s, color 0.2s;
+.chip {
+  --cc: 255,209,102;
+  display: inline-flex; align-items: center; overflow: hidden; border-radius: 999px;
+  border: 1px solid rgba(var(--cc), 0.35); background: rgba(var(--cc), 0.07);
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.25s;
 }
-.skill-chip:hover { border-color: #ffd166; color: #ffd166; }
-.skill-chip.on { border-color: #ffd166; background: rgba(255,209,102,0.24); color: #ffe7b3; box-shadow: 0 0 20px -8px rgba(255,209,102,0.9); }
+.chip--task { --cc: 0,229,255; }
+.chip:hover { border-color: rgb(var(--cc)); }
+.chip.on { border-color: rgb(var(--cc)); background: rgba(var(--cc), 0.24); box-shadow: 0 0 20px -8px rgba(var(--cc), 0.9); }
+.chip__t {
+  cursor: pointer; border: 0; background: transparent; padding: 7px 4px 7px 13px;
+  color: rgba(var(--cc), 0.92); font-family: 'JetBrains Mono', monospace;
+  font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap;
+}
+.chip.on .chip__t { color: #fff; }
+.chip__x {
+  cursor: pointer; border: 0; background: transparent; color: rgba(255,143,160,0.7);
+  padding: 7px 11px 7px 6px; font-size: 12px; line-height: 1;
+}
+.chip__x:hover { color: #ff4f6d; background: rgba(255,79,109,0.2); }
+/* Cảm ứng: nới vùng bấm nút xoá cho khỏi bấm nhầm */
+@media (hover: none) {
+  .chip__t { padding-top: 11px; padding-bottom: 11px; }
+  .chip__x { padding: 11px 14px 11px 8px; font-size: 13px; }
+}
 
-.skill-edit { display: flex; flex-wrap: wrap; gap: 6px; }
-.skill-edit:empty::before {
-  content: 'Danh sách trống'; font-family: 'Be Vietnam Pro', sans-serif; font-size: 12px; color: rgba(178,166,205,0.6);
-}
-.skill-edit__i {
-  display: inline-flex; align-items: center; gap: 7px; padding: 6px 8px 6px 13px; border-radius: 999px;
-  border: 1px solid rgba(255,209,102,0.3); background: rgba(255,209,102,0.07); color: #ffd9a0;
-  font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase;
-}
-.skill-edit__x {
-  cursor: pointer; width: 19px; height: 19px; border-radius: 50%; padding: 0; line-height: 1; font-size: 12px;
-  border: 1px solid rgba(255,79,109,0.35); background: transparent; color: #ff8fa0;
-}
-.skill-edit__x:hover { background: rgba(255,79,109,0.22); border-color: #ff4f6d; }
+.bc-field__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.bc-field__head .bc-label { margin-bottom: 6px; }
 
 .mem-head { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; border: 1px solid var(--pc, #b44cff); background: rgba(12,9,24,0.7); margin-bottom: 1.2rem; }
 .mem-head__n { font-size: 1.15rem; font-weight: 700; }

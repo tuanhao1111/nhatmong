@@ -149,9 +149,10 @@
       nDoan: 2, nTeam: 5, nSize: 6,
       doanNames: ['Đoàn 1', 'Đoàn 2'],
       teams: {}, tasks: {}, members: [], syncAt: 0,
-      bench: [],                      // key những người để dự bị
-      skills: {},                     // key -> [tên kỹ năng mang theo]
-      skillList: SKILLS_DEF.slice()   // danh sách kỹ năng leader tự quản
+      bench: [],                       // key những người để dự bị
+      skills: {},                      // key -> [tên kỹ năng mang theo]
+      skillList: SKILLS_DEF.slice(),   // danh sách kỹ năng leader tự quản
+      taskList: TASK_PRESETS.slice()   // danh sách nhiệm vụ mẫu leader tự quản
     };
     rebuildTeams(st);
     return st;
@@ -891,6 +892,7 @@
     $('#mem-head').innerHTML = '<div><div class="mem-head__n">' + esc(m.name) + '</div>' +
       '<div class="mem-head__m">' + esc([m.phai, fmtPower(m.power), m.note].filter(Boolean).join(' · ') || 'không có thông tin thêm') + '</div></div>';
     $('#mem-task').value = S.tasks[key] || '';
+    renderTaskPicker();
     renderSkillPicker();
     $('#mem-cap').checked = !!(loc && loc.team.cap === key);
     $('#mem-cap').disabled = !loc;
@@ -900,42 +902,143 @@
     setTimeout(function () { $('#mem-task').focus(); }, 30);
   }
 
+  /** HTML một chip: phần chữ bấm để bật/tắt, nút ✕ để xoá khỏi danh sách mẫu. */
+  function chipHTML(name, on, kind) {
+    return '<span class="chip' + (kind === 'task' ? ' chip--task' : '') + (on ? ' on' : '') +
+      '" data-name="' + esc(name) + '">' +
+      '<button type="button" class="chip__t">' + esc(name) + '</button>' +
+      '<button type="button" class="chip__x" title="Xoá khỏi danh sách">✕</button></span>';
+  }
+
   /** Chip kỹ năng trong modal thành viên — sáng lên nếu người này đang mang. */
   function renderSkillPicker() {
     var have = (editing && S.skills[editing]) || [];
     $('#mem-skills').innerHTML = S.skillList.map(function (s) {
-      return '<button type="button" class="skill-chip' + (have.indexOf(s) >= 0 ? ' on' : '') +
-        '" data-skill="' + esc(s) + '">' + esc(s) + '</button>';
+      return chipHTML(s, have.indexOf(s) >= 0, 'skill');
     }).join('');
   }
 
-  /** Danh sách kỹ năng trong Cấu hình — có nút ✕ để xoá hẳn. */
-  function renderSkillEditor() {
-    $('#cfg-skills').innerHTML = S.skillList.map(function (s) {
-      return '<span class="skill-edit__i">' + esc(s) +
-        '<button type="button" class="skill-edit__x" data-skill="' + esc(s) + '" title="Xoá kỹ năng">✕</button></span>';
+  /** Chip nhiệm vụ mẫu — sáng lên nếu đang có trong ô nhiệm vụ. */
+  function renderTaskPicker() {
+    var cur = tokens($('#mem-task').value).map(norm);
+    $('#mem-presets').innerHTML = S.taskList.map(function (t) {
+      return chipHTML(t, cur.indexOf(norm(t)) >= 0, 'task');
     }).join('');
   }
 
-  /** Thêm kỹ năng vào danh sách chung. Trả về tên đã chuẩn hoá, '' nếu trùng/rỗng. */
-  function addSkill(raw) {
+  function renderSkillEditor() { $('#cfg-skills').innerHTML = S.skillList.map(function (s) { return chipHTML(s, false, 'skill'); }).join(''); }
+  function renderTaskEditor() { $('#cfg-tasks').innerHTML = S.taskList.map(function (t) { return chipHTML(t, false, 'task'); }).join(''); }
+
+  /** Tách ô nhiệm vụ thành các phần ngăn bởi " · ". */
+  function tokens(text) {
+    return String(text || '').split('·').map(function (t) { return t.trim(); }).filter(Boolean);
+  }
+
+  /** Bấm chip nhiệm vụ: đang có thì gỡ ra, chưa có thì thêm vào. */
+  function toggleTaskToken(text, name) {
+    var list = tokens(text), i = -1;
+    for (var j = 0; j < list.length; j++) if (norm(list[j]) === norm(name)) { i = j; break; }
+    if (i >= 0) list.splice(i, 1); else list.push(name);
+    return list.join(' · ');
+  }
+
+  /** Thêm vào danh sách mẫu. Trả về tên đã chuẩn hoá, '' nếu rỗng. */
+  function addTo(list, raw) {
     var name = String(raw || '').trim().replace(/\s+/g, ' ');
     if (!name) return '';
-    var dup = S.skillList.filter(function (s) { return norm(s) === norm(name); })[0];
-    if (dup) return dup;
-    S.skillList.push(name);
+    var dup = list.filter(function (s) { return norm(s) === norm(name); })[0];
+    if (dup) return dup;                       // trùng thì dùng lại mục cũ
+    list.push(name);
     save();
     return name;
   }
 
-  /** Xoá kỹ năng khỏi danh sách chung và khỏi mọi thành viên đang mang nó. */
-  function removeSkill(name) {
-    S.skillList = S.skillList.filter(function (s) { return s !== name; });
-    Object.keys(S.skills).forEach(function (k) {
-      S.skills[k] = S.skills[k].filter(function (s) { return s !== name; });
-      if (!S.skills[k].length) delete S.skills[k];
+  function addSkill(raw) { return addTo(S.skillList, raw); }
+  function addTask(raw) { return addTo(S.taskList, raw); }
+
+  /** Đếm số người đang mang kỹ năng này. */
+  function skillUsers(name) {
+    return Object.keys(S.skills).filter(function (k) { return S.skills[k].indexOf(name) >= 0; });
+  }
+
+  /** Đếm số người có nhiệm vụ chứa phần này. */
+  function taskUsers(name) {
+    return Object.keys(S.tasks).filter(function (k) {
+      return tokens(S.tasks[k]).some(function (t) { return norm(t) === norm(name); });
     });
+  }
+
+  /** Xoá kỹ năng khỏi danh sách chung; stripAll=true thì gỡ khỏi mọi thành viên. */
+  function removeSkill(name, stripAll) {
+    S.skillList = S.skillList.filter(function (s) { return s !== name; });
+    if (stripAll) {
+      Object.keys(S.skills).forEach(function (k) {
+        S.skills[k] = S.skills[k].filter(function (s) { return s !== name; });
+        if (!S.skills[k].length) delete S.skills[k];
+      });
+    }
     save();
+  }
+
+  /** Xoá nhiệm vụ mẫu; stripAll=true thì gỡ phần đó khỏi nhiệm vụ mọi thành viên. */
+  function removeTask(name, stripAll) {
+    S.taskList = S.taskList.filter(function (t) { return t !== name; });
+    if (stripAll) {
+      Object.keys(S.tasks).forEach(function (k) {
+        var left = tokens(S.tasks[k]).filter(function (t) { return norm(t) !== norm(name); });
+        if (left.length) S.tasks[k] = left.join(' · '); else delete S.tasks[k];
+      });
+    }
+    save();
+  }
+
+  /**
+   * Xử lý chung cho mọi hàng chip: bấm chữ = bật/tắt, bấm ✕ = xoá khỏi danh sách.
+   * @param {string} kind 'skill' | 'task'
+   * @param {boolean} picker true nếu là hàng chip trong modal thành viên
+   */
+  function onChipRow(e, kind, picker) {
+    var chip = e.target.closest('.chip');
+    if (!chip) return;
+    var name = chip.dataset.name;
+
+    if (e.target.closest('.chip__x')) {
+      var users = kind === 'skill' ? skillUsers(name) : taskUsers(name);
+      var strip = true;
+      if (users.length) {
+        strip = confirm('“' + name + '” đang dùng ở ' + users.length + ' người.\n\n' +
+          'OK = xoá khỏi danh sách VÀ gỡ khỏi những người đó.\n' +
+          'Cancel = giữ nguyên, không xoá gì.');
+        if (!strip) return;
+      }
+      // Giữ lại những chip đang bật trong modal (chưa bấm Lưu) để không mất công chọn lại
+      var chosen = $$('#mem-skills .chip.on').map(function (c) { return c.dataset.name; });
+
+      if (kind === 'skill') removeSkill(name, strip); else removeTask(name, strip);
+
+      if (editing) {
+        if (kind === 'task') $('#mem-task').value = stripToken($('#mem-task').value, name, strip);
+        renderTaskPicker();
+        renderSkillPicker();
+        $$('#mem-skills .chip').forEach(function (c) {
+          if (chosen.indexOf(c.dataset.name) >= 0) c.classList.add('on');
+        });
+      }
+      renderSkillEditor(); renderTaskEditor();
+      renderAll();
+      toast('Đã xoá “' + name + '”');
+      return;
+    }
+
+    if (!picker) return;                       // ở Cấu hình chỉ dùng nút ✕
+    if (kind === 'skill') { chip.classList.toggle('on'); return; }
+    $('#mem-task').value = toggleTaskToken($('#mem-task').value, name);
+    renderTaskPicker();
+  }
+
+  function stripToken(text, name, doIt) {
+    if (!doIt) return text;
+    return tokens(text).filter(function (t) { return norm(t) !== norm(name); }).join(' · ');
   }
 
   function saveMember() {
@@ -943,7 +1046,7 @@
     var v = $('#mem-task').value.trim();
     if (v) S.tasks[editing] = v; else delete S.tasks[editing];
 
-    var sk = $$('#mem-skills .skill-chip.on').map(function (b) { return b.dataset.skill; });
+    var sk = $$('#mem-skills .chip.on').map(function (c) { return c.dataset.name; });
     if (sk.length) S.skills[editing] = sk; else delete S.skills[editing];
 
     var loc = findSlot(editing);
@@ -964,6 +1067,7 @@
     renderMapSelects();
     renderColorRows();
     renderSkillEditor();
+    renderTaskEditor();
     openModal('modal-cfg');
   }
 
@@ -1344,7 +1448,7 @@
         url: S.url, tab: S.tab, map: S.map, headers: S.headers,
         colors: S.colors, labels: S.labels, members: S.members,
         statusLabels: S.statusLabels, statusOff: S.statusOff, statusInit: S.statusInit,
-        skillList: S.skillList
+        skillList: S.skillList, taskList: S.taskList
       };
       S = defaultState();
       Object.keys(keep).forEach(function (k) { S[k] = keep[k]; });
@@ -1378,15 +1482,24 @@
     });
 
     // ── modal nhiệm vụ ──
-    $('#mem-presets').innerHTML = TASK_PRESETS.map(function (p) {
-      return '<button class="task-preset" type="button">' + esc(p) + '</button>';
-    }).join('');
-    $('#mem-presets').addEventListener('click', function (e) {
-      var b = e.target.closest('.task-preset');
-      if (!b) return;
-      var ta = $('#mem-task');
-      ta.value = ta.value.trim() ? ta.value.trim() + ' · ' + b.textContent : b.textContent;
-      ta.focus();
+    $('#mem-presets').addEventListener('click', function (e) { onChipRow(e, 'task', true); });
+    $('#mem-task').addEventListener('input', renderTaskPicker);
+    $('#mem-task-clear').addEventListener('click', function () {
+      $('#mem-task').value = '';
+      renderTaskPicker();
+      $('#mem-task').focus();
+    });
+    $('#mem-task-add').addEventListener('click', function () {
+      var inp = $('#mem-task-new');
+      var name = addTask(inp.value);
+      if (!name) { inp.focus(); return; }
+      inp.value = '';
+      $('#mem-task').value = toggleTaskToken($('#mem-task').value, name);   // thêm xong gán luôn
+      renderTaskPicker(); renderTaskEditor();
+      inp.focus();
+    });
+    $('#mem-task-new').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); $('#mem-task-add').click(); }
     });
     $('#mem-save').addEventListener('click', saveMember);
     $('#mem-remove').addEventListener('click', function () {
@@ -1398,21 +1511,18 @@
       closeModal('modal-mem'); editing = null;
     });
 
-    // chip kỹ năng: bật/tắt (chỉ ghi vào state khi bấm Lưu)
-    $('#mem-skills').addEventListener('click', function (e) {
-      var b = e.target.closest('.skill-chip');
-      if (b) b.classList.toggle('on');
-    });
+    // chip kỹ năng: bấm chữ = bật/tắt (chỉ ghi vào state khi Lưu), ✕ = xoá khỏi danh sách
+    $('#mem-skills').addEventListener('click', function (e) { onChipRow(e, 'skill', true); });
     $('#mem-skill-add').addEventListener('click', function () {
       var inp = $('#mem-skill-new');
-      var chosen = $$('#mem-skills .skill-chip.on').map(function (b) { return b.dataset.skill; });
+      var chosen = $$('#mem-skills .chip.on').map(function (c) { return c.dataset.name; });
       var name = addSkill(inp.value);
       if (!name) { inp.focus(); return; }
       inp.value = '';
       if (chosen.indexOf(name) < 0) chosen.push(name);      // thêm xong bật luôn cho người này
       renderSkillPicker();
-      $$('#mem-skills .skill-chip').forEach(function (b) {
-        if (chosen.indexOf(b.dataset.skill) >= 0) b.classList.add('on');
+      $$('#mem-skills .chip').forEach(function (c) {
+        if (chosen.indexOf(c.dataset.name) >= 0) c.classList.add('on');
       });
       renderSkillEditor();
       inp.focus();
@@ -1462,14 +1572,19 @@
     $('#cfg-skill-new').addEventListener('keydown', function (e) {
       if (e.key === 'Enter') { e.preventDefault(); $('#cfg-skill-add').click(); }
     });
-    $('#cfg-skills').addEventListener('click', function (e) {
-      var b = e.target.closest('.skill-edit__x');
-      if (!b) return;
-      var name = b.dataset.skill;
-      var dung = Object.keys(S.skills).filter(function (k) { return S.skills[k].indexOf(name) >= 0; }).length;
-      if (dung && !confirm('“' + name + '” đang được ' + dung + ' người mang. Xoá khỏi tất cả?')) return;
-      removeSkill(name);
-      renderSkillEditor(); renderAll();
+    $('#cfg-skills').addEventListener('click', function (e) { onChipRow(e, 'skill', false); });
+
+    // quản lý danh sách nhiệm vụ mẫu trong Cấu hình
+    $('#cfg-tasks').addEventListener('click', function (e) { onChipRow(e, 'task', false); });
+    $('#cfg-task-add').addEventListener('click', function () {
+      var inp = $('#cfg-task-new');
+      if (!addTask(inp.value)) { inp.focus(); return; }
+      inp.value = '';
+      renderTaskEditor();
+      inp.focus();
+    });
+    $('#cfg-task-new').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); $('#cfg-task-add').click(); }
     });
 
     $('#cfg-pass-set').addEventListener('click', function () {
