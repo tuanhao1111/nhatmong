@@ -39,6 +39,13 @@
   ];
   var PHAI_FALLBACK = '#8a7fb0';
 
+  // Danh sách kỹ năng MẪU — leader sửa lại cho khớp tên thật trong game
+  // (Cấu hình → mục 4). Cố tình để tên chung chung, không bịa tên chiêu.
+  var SKILLS_DEF = [
+    'Khiên chắn', 'Giải khống', 'Tăng tốc', 'Hồi máu nhóm', 'Choáng diện rộng',
+    'Miễn thương', 'Kéo nhóm', 'Phản đòn', 'Đẩy lùi', 'Ẩn thân'
+  ];
+
   var TASK_PRESETS = [
     'Chỉ huy', 'Ôm cờ', 'Hộ vệ ôm cờ', 'Cướp cờ', 'Giữ trụ', 'Phá trụ',
     'Trị liệu', 'Khống chế', 'Bắt lẻ', 'Mở trận / đỡ đòn', 'Trinh sát', 'Tiếp viện'
@@ -141,7 +148,10 @@
       colors: colors, labels: labels,
       nDoan: 2, nTeam: 5, nSize: 6,
       doanNames: ['Đoàn 1', 'Đoàn 2'],
-      teams: {}, tasks: {}, members: [], syncAt: 0
+      teams: {}, tasks: {}, members: [], syncAt: 0,
+      bench: [],                      // key những người để dự bị
+      skills: {},                     // key -> [tên kỹ năng mang theo]
+      skillList: SKILLS_DEF.slice()   // danh sách kỹ năng leader tự quản
     };
     rebuildTeams(st);
     return st;
@@ -391,6 +401,63 @@
 
   function colorOf(m) { return (m && S.colors[m.phaiN]) || PHAI_FALLBACK; }
 
+  /** "#ffd166" → "255,209,102" để pha nền rgba() cho cả box thẻ. */
+  function rgbOf(hex) {
+    var h = String(hex || '').replace('#', '');
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    var n = parseInt(h, 16);
+    if (isNaN(n) || h.length !== 6) return '138,127,176';
+    return ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255);
+  }
+
+  /**
+   * Màu chữ cho tên nhân vật: lấy màu phái rồi pha dần với trắng cho tới khi
+   * tương phản với nền thẻ (đã pha 30% màu phái) đạt >= 4.5:1 theo WCAG AA.
+   * Nhờ vậy phái màu tối như Toái Mộng / Huyết Hà vẫn đọc rõ, và màu leader tự
+   * chọn cũng luôn an toàn.
+   */
+  function textColorFor(hex) {
+    var rgb = rgbOf(hex).split(',').map(Number);
+    var base = [10, 7, 20];
+    var bg = [0, 1, 2].map(function (i) { return 0.30 * rgb[i] + 0.70 * base[i]; });
+    var fg = rgb.slice();
+    for (var i = 0; i < 24 && contrast(fg, bg) < 4.6; i++) {
+      fg = fg.map(function (v) { return v + (255 - v) * 0.10; });
+    }
+    return '#' + fg.map(function (v) { return ('0' + Math.round(v).toString(16)).slice(-2); }).join('');
+  }
+
+  function relLum(c) {
+    var a = c.map(function (v) {
+      v /= 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2];
+  }
+
+  function contrast(f, b) {
+    var l1 = relLum(f), l2 = relLum(b);
+    return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+  }
+
+  // ── Dự bị ────────────────────────────────────────────────────────────────
+  function onBench(key) { return S.bench.indexOf(key) >= 0; }
+
+  function benchAdd(key) {
+    var loc = findSlot(key);
+    if (loc) {
+      loc.team.slots[loc.s] = null;
+      if (loc.team.cap === key) loc.team.cap = null;
+    }
+    if (!onBench(key)) S.bench.push(key);
+    save(); renderAll();
+  }
+
+  function benchRemove(key) {
+    var i = S.bench.indexOf(key);
+    if (i >= 0) S.bench.splice(i, 1);
+  }
+
   /**
    * Lần đầu đọc được cột trạng thái thì tự chỉ bật "Bang Chiến" — Sheet còn có
    * "Học Việc"/"Out" vốn không ra trận. Sau đó leader tự bật/tắt thì tôn trọng.
@@ -432,6 +499,10 @@
       team.slots = team.slots.map(function (k) { return (k && (!hasMembers || valid[k])) ? k : null; });
       if (team.cap && team.slots.indexOf(team.cap) < 0) team.cap = null;
     });
+    // dự bị: bỏ người không còn trong Sheet và người đã được xếp vào bàn
+    S.bench = S.bench.filter(function (k) {
+      return k && (!hasMembers || valid[k]) && !findSlot(k);
+    });
   }
 
   function placedKeys() {
@@ -445,6 +516,7 @@
   function placeAt(key, d, t, s) {
     var id = tid(d, t), team = S.teams[id];
     if (!team) return;
+    benchRemove(key);                 // vào bàn xếp thì không còn là dự bị
     var from = findSlot(key);
     if (from && from.id === id && from.s === s) return;
     var occupant = team.slots[s];
@@ -471,17 +543,30 @@
     placeAt(key, d, t, s);
   }
 
+  /** Đưa một người về kho quân, dù đang ở trên bàn xếp hay ở khu dự bị. */
   function recall(key) {
     var loc = findSlot(key);
-    if (!loc) return;
-    loc.team.slots[loc.s] = null;
-    if (loc.team.cap === key) loc.team.cap = null;
+    if (loc) {
+      loc.team.slots[loc.s] = null;
+      if (loc.team.cap === key) loc.team.cap = null;
+    } else if (!onBench(key)) {
+      return;
+    }
+    benchRemove(key);
     save();
     renderAll();
   }
 
   // ── Render ───────────────────────────────────────────────────────────────
-  function renderAll() { renderLegend(); renderStatusChips(); renderPool(); renderBoard(); renderStats(); }
+  function renderAll() { renderLegend(); renderStatusChips(); renderPool(); renderBench(); renderBoard(); renderStats(); }
+
+  function renderBench() {
+    var list = S.bench.map(byKey).filter(Boolean);
+    $('#bench-count').textContent = list.length;
+    $('#bench-list').innerHTML = list.length
+      ? list.map(function (m) { return memCard(m, { inBench: true }); }).join('')
+      : '<div class="bc-bench__empty">Kéo người vào đây<br>để làm dự bị</div>';
+  }
 
   function memCard(m, opts) {
     opts = opts || {};
@@ -495,16 +580,22 @@
     if (m.power) meta.push('<span>' + esc(fmtPower(m.power)) + '</span>');
     if (m.note) meta.push('<span>' + esc(m.note) + '</span>');
 
+    var sk = S.skills[m.key] || [];
+
     return '<div class="mem' + (opts.inSlot ? ' mem--slot' : '') + (pick === m.key ? ' picked' : '') + '"' +
-      ' style="--pc:' + esc(c) + '" draggable="true" data-key="' + esc(m.key) + '">' +
+      ' style="--pc:' + esc(c) + ';--pc-a:' + rgbOf(c) + ';--pc-t:' + esc(textColorFor(c)) +
+      '" draggable="true" data-key="' + esc(m.key) + '">' +
       (isCap ? '<span class="mem__cap" title="Đội trưởng">★</span>' : '') +
       '<div class="mem__body">' +
         '<div class="mem__name">' + esc(m.name) + '</div>' +
         (meta.length ? '<div class="mem__meta">' + meta.join('') + '</div>' : '') +
         (task ? '<span class="mem__task">▸ ' + esc(task) + '</span>' : '') +
+        (sk.length ? '<span class="mem__skills">✦ ' + esc(sk.join(' · ')) + '</span>' : '') +
       '</div>' +
       '<div class="mem__acts">' +
-        '<button class="mem__x mem__x--edit" data-act="edit" title="Giao nhiệm vụ">✎</button>' +
+        '<button class="mem__x mem__x--edit" data-act="edit" title="Nhiệm vụ &amp; kỹ năng">✎</button>' +
+        (opts.inBench ? '<button class="mem__x" data-act="unbench" title="Trả về kho quân">✕</button>' : '') +
+        (opts.inSlot ? '<button class="mem__x mem__x--bench" data-act="bench" title="Cho xuống dự bị">⛨</button>' : '') +
         (opts.inSlot ? '<button class="mem__x" data-act="recall" title="Rút về kho quân">✕</button>' : '') +
       '</div>' +
       '</div>';
@@ -542,7 +633,7 @@
     var placed = placedKeys();
     var q = norm($('#pool-search').value);
     var list = S.members.filter(function (m) {
-      if (placed[m.key]) return false;
+      if (placed[m.key] || onBench(m.key)) return false;
       if (!eligible(m)) return false;
       if (filterPhai[m.phaiN]) return false;
       if (q && norm(m.name).indexOf(q) < 0 && norm(m.phai).indexOf(q) < 0) return false;
@@ -626,7 +717,8 @@
     $('#st-total').textContent = pool < S.members.length ? pool + '/' + S.members.length : S.members.length;
     $('#st-placed').textContent = placed;
     $('#st-cap').textContent = cap;
-    $('#st-free').textContent = Math.max(0, pool - placed);
+    $('#st-bench').textContent = S.bench.length;
+    $('#st-free').textContent = Math.max(0, pool - placed - S.bench.length);
     $('#st-task').textContent = Object.keys(S.tasks).filter(function (k) { return S.tasks[k]; }).length;
     $('#sub-shape').textContent = S.nDoan + ' đoàn × ' + S.nTeam + ' team × ' + S.nSize + ' người';
   }
@@ -645,6 +737,7 @@
     if (btn && key) {
       e.stopPropagation();
       if (btn.dataset.act === 'recall') { recall(key); return; }
+      if (btn.dataset.act === 'bench') { benchAdd(key); return; }
       if (btn.dataset.act === 'edit') { openMember(key); return; }
     }
     if (memEl) {
@@ -682,7 +775,22 @@
       if (btn.dataset.act === 'edit') { openMember(memEl.dataset.key); return; }
     }
     if (memEl) { setPick(memEl.dataset.key); return; }
-    if (pick && findSlot(pick)) { recall(pick); pick = null; renderAll(); }
+    if (pick && (findSlot(pick) || onBench(pick))) { recall(pick); pick = null; renderAll(); }
+  }
+
+  /** Khu dự bị: bấm thẻ = nhặt, ✎ = nhiệm vụ, ✕ = trả về kho quân,
+      bấm chỗ trống trong khu = thả người đang nhặt xuống dự bị. */
+  function onBenchClick(e) {
+    var btn = e.target.closest('[data-act]');
+    var memEl = e.target.closest('.mem');
+    if (btn && memEl) {
+      e.stopPropagation();
+      var k = memEl.dataset.key;
+      if (btn.dataset.act === 'edit') { openMember(k); return; }
+      if (btn.dataset.act === 'unbench') { benchRemove(k); save(); renderAll(); return; }
+    }
+    if (memEl) { setPick(memEl.dataset.key); return; }
+    if (pick) { benchAdd(pick); pick = null; renderAll(); }
   }
 
   function initDnD() {
@@ -699,7 +807,7 @@
       $$('.drop-on').forEach(function (el) { el.classList.remove('drop-on'); });
     });
     document.addEventListener('dragover', function (e) {
-      var zone = e.target.closest && (e.target.closest('.slot') || e.target.closest('.team') || e.target.closest('.bc-pool'));
+      var zone = e.target.closest && (e.target.closest('.slot') || e.target.closest('.team') || e.target.closest('.bc-bench') || e.target.closest('.bc-pool'));
       if (!zone) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
@@ -709,12 +817,13 @@
       }
     });
     document.addEventListener('drop', function (e) {
-      var zone = e.target.closest && (e.target.closest('.slot') || e.target.closest('.team') || e.target.closest('.bc-pool'));
+      var zone = e.target.closest && (e.target.closest('.slot') || e.target.closest('.team') || e.target.closest('.bc-bench') || e.target.closest('.bc-pool'));
       if (!zone) return;
       e.preventDefault();
       var key = e.dataTransfer.getData('text/plain');
       if (!key || !byKey(key)) return;
       if (zone.classList.contains('bc-pool')) recall(key);
+      else if (zone.classList.contains('bc-bench')) benchAdd(key);
       else if (zone.classList.contains('slot')) placeAt(key, +zone.dataset.d, +zone.dataset.t, +zone.dataset.s);
       else placeInTeam(key, +zone.dataset.d, +zone.dataset.t);
       $$('.drop-on').forEach(function (el) { el.classList.remove('drop-on'); });
@@ -728,7 +837,7 @@
    */
   function autoFill() {
     var placed = placedKeys();
-    var pool = S.members.filter(function (m) { return !placed[m.key] && eligible(m); })
+    var pool = S.members.filter(function (m) { return !placed[m.key] && !onBench(m.key) && eligible(m); })
       .sort(function (a, b) { return b.power - a.power; });
     if (!pool.length) { toast('Không còn ai ngoài kho quân', true); return; }
 
@@ -782,17 +891,61 @@
     $('#mem-head').innerHTML = '<div><div class="mem-head__n">' + esc(m.name) + '</div>' +
       '<div class="mem-head__m">' + esc([m.phai, fmtPower(m.power), m.note].filter(Boolean).join(' · ') || 'không có thông tin thêm') + '</div></div>';
     $('#mem-task').value = S.tasks[key] || '';
+    renderSkillPicker();
     $('#mem-cap').checked = !!(loc && loc.team.cap === key);
     $('#mem-cap').disabled = !loc;
     $('#mem-remove').hidden = !loc;
+    $('#mem-bench').hidden = onBench(key);
     openModal('modal-mem');
     setTimeout(function () { $('#mem-task').focus(); }, 30);
+  }
+
+  /** Chip kỹ năng trong modal thành viên — sáng lên nếu người này đang mang. */
+  function renderSkillPicker() {
+    var have = (editing && S.skills[editing]) || [];
+    $('#mem-skills').innerHTML = S.skillList.map(function (s) {
+      return '<button type="button" class="skill-chip' + (have.indexOf(s) >= 0 ? ' on' : '') +
+        '" data-skill="' + esc(s) + '">' + esc(s) + '</button>';
+    }).join('');
+  }
+
+  /** Danh sách kỹ năng trong Cấu hình — có nút ✕ để xoá hẳn. */
+  function renderSkillEditor() {
+    $('#cfg-skills').innerHTML = S.skillList.map(function (s) {
+      return '<span class="skill-edit__i">' + esc(s) +
+        '<button type="button" class="skill-edit__x" data-skill="' + esc(s) + '" title="Xoá kỹ năng">✕</button></span>';
+    }).join('');
+  }
+
+  /** Thêm kỹ năng vào danh sách chung. Trả về tên đã chuẩn hoá, '' nếu trùng/rỗng. */
+  function addSkill(raw) {
+    var name = String(raw || '').trim().replace(/\s+/g, ' ');
+    if (!name) return '';
+    var dup = S.skillList.filter(function (s) { return norm(s) === norm(name); })[0];
+    if (dup) return dup;
+    S.skillList.push(name);
+    save();
+    return name;
+  }
+
+  /** Xoá kỹ năng khỏi danh sách chung và khỏi mọi thành viên đang mang nó. */
+  function removeSkill(name) {
+    S.skillList = S.skillList.filter(function (s) { return s !== name; });
+    Object.keys(S.skills).forEach(function (k) {
+      S.skills[k] = S.skills[k].filter(function (s) { return s !== name; });
+      if (!S.skills[k].length) delete S.skills[k];
+    });
+    save();
   }
 
   function saveMember() {
     if (!editing) return;
     var v = $('#mem-task').value.trim();
     if (v) S.tasks[editing] = v; else delete S.tasks[editing];
+
+    var sk = $$('#mem-skills .skill-chip.on').map(function (b) { return b.dataset.skill; });
+    if (sk.length) S.skills[editing] = sk; else delete S.skills[editing];
+
     var loc = findSlot(editing);
     if (loc) loc.team.cap = $('#mem-cap').checked ? editing : (loc.team.cap === editing ? null : loc.team.cap);
     save(); renderAll(); closeModal('modal-mem');
@@ -810,6 +963,7 @@
     $('#cfg-test-msg').textContent = '';
     renderMapSelects();
     renderColorRows();
+    renderSkillEditor();
     openModal('modal-cfg');
   }
 
@@ -853,11 +1007,24 @@
           if (m.phai) bits.push(m.phai);
           if (m.power) bits.push(fmtPower(m.power));
           var task = S.tasks[k];
+          var sk = S.skills[k] || [];
           out.push('' + (i + 1) + '. ' + (team.cap === k ? '★ ' : '') + m.name +
-            (bits.length ? ' [' + bits.join(' · ') + ']' : '') + (task ? ' → ' + task : ''));
+            (bits.length ? ' [' + bits.join(' · ') + ']' : '') + (task ? ' → ' + task : '') +
+            (sk.length ? ' ✦ ' + sk.join(' · ') : ''));
         });
         out.push('');
       }
+    }
+    if (S.bench.length) {
+      out.push('__**DỰ BỊ**__ (' + S.bench.length + ')');
+      S.bench.forEach(function (k, i) {
+        var m = byKey(k);
+        if (!m) return;
+        var sk = S.skills[k] || [];
+        out.push('' + (i + 1) + '. ' + m.name + (m.phai ? ' [' + m.phai + ']' : '') +
+          (S.tasks[k] ? ' → ' + S.tasks[k] : '') + (sk.length ? ' ✦ ' + sk.join(' · ') : ''));
+      });
+      out.push('');
     }
     return out.join('\n');
   }
@@ -935,13 +1102,17 @@
 
   function exportPNG() {
     var SC = 2;                       // hệ số nét
-    var pad = 44, cardW = 372, gap = 16, rowH = 42;
+    var pad = 44, cardW = 372, gap = 16, rowH = 50;
     var cols = S.nTeam;
     var cardH = 86 + S.nSize * rowH + 14;
     var W = pad * 2 + cols * cardW + (cols - 1) * gap;
     var headH = 128;
     var doanH = 50 + cardH + 30;
-    var H = headH + S.nDoan * doanH + pad;
+    // khối dự bị ở cuối ảnh: xếp thành hàng, mỗi hàng `cols` người
+    var benchList = S.bench.map(byKey).filter(Boolean);
+    var benchRows = benchList.length ? Math.ceil(benchList.length / cols) : 0;
+    var benchH = benchList.length ? 50 + benchRows * rowH + 16 : 0;
+    var H = headH + S.nDoan * doanH + benchH + pad;
 
     var cv = document.createElement('canvas');
     cv.width = W * SC; cv.height = H * SC;
@@ -1012,33 +1183,60 @@
           if (!m) {
             F(12, 400, true);
             ctx.fillStyle = 'rgba(178,166,205,0.3)';
-            ctx.fillText('— trống —', x + 26, ry + 20);
+            ctx.fillText('— trống —', x + 26, ry + 22);
             continue;
           }
-          var col = colorOf(m);
-          ctx.fillStyle = col;
-          ctx.beginPath(); ctx.arc(x + 20, ry + 15, 4, 0, Math.PI * 2); ctx.fill();
-
-          F(15, 600);
-          ctx.fillStyle = '#ece7f7';
-          var nm = (team.cap === m.key ? '★ ' : '') + m.name;
-          ctx.fillText(clip(ctx, nm, cardW - 150), x + 32, ry + 20);
-
-          F(10.5, 400, true);
-          ctx.fillStyle = col;
-          ctx.textAlign = 'right';
-          ctx.fillText(clip(ctx, [m.phai, fmtPower(m.power)].filter(Boolean).join(' · '), 118), x + cardW - 14, ry + 20);
-          ctx.textAlign = 'left';
-
-          var task = S.tasks[m.key];
-          if (task) {
-            F(11.5, 400);
-            ctx.fillStyle = '#8affc1';
-            ctx.fillText(clip(ctx, '▸ ' + task, cardW - 46), x + 32, ry + 35);
-          }
+          memRow(ctx, m, x + 10, ry, cardW - 20, rowH, team.cap === m.key);
         }
       }
       y += cardH + 30;
+    }
+
+    // ── Dự bị ──
+    if (benchList.length) {
+      ctx.fillStyle = 'rgba(255,209,102,0.10)';
+      rrect(ctx, pad, y, W - pad * 2, 34, 10); ctx.fill();
+      F(19, 700);
+      ctx.fillStyle = '#ffd166';
+      ctx.fillText('DỰ BỊ (' + benchList.length + ')', pad + 14, y + 24);
+      y += 50;
+      benchList.forEach(function (m, i) {
+        var bx = pad + (i % cols) * (cardW + gap);
+        var by = y + Math.floor(i / cols) * rowH;
+        memRow(ctx, m, bx, by, cardW, rowH, false);
+      });
+    }
+
+    /** Một dòng thành viên: nền pha màu phái + tên mang màu phái. */
+    function memRow(c2, m, x, ry, w, h, isCap) {
+      var col = colorOf(m), rgb = rgbOf(col);
+      c2.fillStyle = 'rgba(' + rgb + ',0.20)';
+      rrect(c2, x, ry + 2, w, h - 6, 9); c2.fill();
+      c2.fillStyle = col;
+      rrect(c2, x, ry + 2, 4, h - 6, 2); c2.fill();
+
+      F(15, 700);
+      c2.fillStyle = textColorFor(col);
+      c2.fillText(clip(c2, (isCap ? '★ ' : '') + m.name, w - 130), x + 14, ry + 21);
+
+      F(10.5, 400, true);
+      c2.fillStyle = 'rgba(255,255,255,0.82)';
+      c2.textAlign = 'right';
+      c2.fillText(clip(c2, [m.phai, fmtPower(m.power)].filter(Boolean).join(' · '), 112), x + w - 10, ry + 21);
+      c2.textAlign = 'left';
+
+      var task = S.tasks[m.key];
+      if (task) {
+        F(11.5, 400);
+        c2.fillStyle = '#a8ffcd';
+        c2.fillText(clip(c2, '▸ ' + task, w - 24), x + 14, ry + 34);
+      }
+      var sk = S.skills[m.key] || [];
+      if (sk.length) {
+        F(10, 400, true);
+        c2.fillStyle = '#ffd9a0';
+        c2.fillText(clip(c2, '✦ ' + sk.join(' · '), w - 24), x + 14, ry + (task ? 45 : 35));
+      }
     }
 
     cv.toBlob(function (blob) {
@@ -1093,16 +1291,18 @@
     $('#pool').addEventListener('click', function (e) {
       if (e.target === e.currentTarget && pick) { recall(pick); pick = null; renderAll(); }
     });
+    $('#bench').addEventListener('click', onBenchClick);
     $('#board').addEventListener('click', onBoardClick);
 
     $('#pool-search').addEventListener('input', renderPool);
     $('#pool-sort').addEventListener('change', renderPool);
     $('#pool-recall').addEventListener('click', function () {
-      if (!confirm('Rút toàn bộ người khỏi bàn xếp?')) return;
+      if (!confirm('Rút toàn bộ người khỏi bàn xếp và khu dự bị về kho quân?')) return;
       Object.keys(S.teams).forEach(function (id) {
         S.teams[id].slots = S.teams[id].slots.map(function () { return null; });
         S.teams[id].cap = null;
       });
+      S.bench = [];
       save(); renderAll(); toast('Đã rút hết về kho quân');
     });
 
@@ -1137,11 +1337,18 @@
     $('#btn-cfg').addEventListener('click', openCfg);
     $('#btn-auto').addEventListener('click', autoFill);
     $('#btn-clear').addEventListener('click', function () {
-      if (!confirm('Xoá sạch đội hình (người, tên team, mục tiêu, nhiệm vụ)?')) return;
-      var url = S.url, tab = S.tab, map = S.map, headers = S.headers, colors = S.colors, labels = S.labels, members = S.members;
+      if (!confirm('Xoá sạch đội hình (người, dự bị, tên team, mục tiêu, nhiệm vụ, kỹ năng đã gán)?')) return;
+      // Giữ lại phần cấu hình: nguồn Sheet, map cột, màu phái, lọc trạng thái,
+      // danh sách kỹ năng — chỉ dọn đội hình.
+      var keep = {
+        url: S.url, tab: S.tab, map: S.map, headers: S.headers,
+        colors: S.colors, labels: S.labels, members: S.members,
+        statusLabels: S.statusLabels, statusOff: S.statusOff, statusInit: S.statusInit,
+        skillList: S.skillList
+      };
       S = defaultState();
-      S.url = url; S.tab = tab; S.map = map; S.headers = headers;
-      S.colors = colors; S.labels = labels; S.members = members; S.syncAt = Date.now();
+      Object.keys(keep).forEach(function (k) { S[k] = keep[k]; });
+      S.syncAt = Date.now();
       save(); renderAll(); toast('Đã dọn bàn');
     });
     $('#btn-copy').addEventListener('click', copyText);
@@ -1186,6 +1393,33 @@
       if (editing) recall(editing);
       closeModal('modal-mem'); editing = null;
     });
+    $('#mem-bench').addEventListener('click', function () {
+      if (editing) { saveMember(); benchAdd(editing); }
+      closeModal('modal-mem'); editing = null;
+    });
+
+    // chip kỹ năng: bật/tắt (chỉ ghi vào state khi bấm Lưu)
+    $('#mem-skills').addEventListener('click', function (e) {
+      var b = e.target.closest('.skill-chip');
+      if (b) b.classList.toggle('on');
+    });
+    $('#mem-skill-add').addEventListener('click', function () {
+      var inp = $('#mem-skill-new');
+      var chosen = $$('#mem-skills .skill-chip.on').map(function (b) { return b.dataset.skill; });
+      var name = addSkill(inp.value);
+      if (!name) { inp.focus(); return; }
+      inp.value = '';
+      if (chosen.indexOf(name) < 0) chosen.push(name);      // thêm xong bật luôn cho người này
+      renderSkillPicker();
+      $$('#mem-skills .skill-chip').forEach(function (b) {
+        if (chosen.indexOf(b.dataset.skill) >= 0) b.classList.add('on');
+      });
+      renderSkillEditor();
+      inp.focus();
+    });
+    $('#mem-skill-new').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); $('#mem-skill-add').click(); }
+    });
 
     // ── modal cấu hình ──
     $('#cfg-test').addEventListener('click', function () {
@@ -1215,6 +1449,27 @@
       row.querySelector('.color-row__n').style.color = inp.value;
       row.querySelector('.color-row__hex').textContent = inp.value;
       save(); renderAll();
+    });
+
+    // quản lý danh sách kỹ năng trong Cấu hình
+    $('#cfg-skill-add').addEventListener('click', function () {
+      var inp = $('#cfg-skill-new');
+      if (!addSkill(inp.value)) { inp.focus(); return; }
+      inp.value = '';
+      renderSkillEditor(); renderAll();
+      inp.focus();
+    });
+    $('#cfg-skill-new').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); $('#cfg-skill-add').click(); }
+    });
+    $('#cfg-skills').addEventListener('click', function (e) {
+      var b = e.target.closest('.skill-edit__x');
+      if (!b) return;
+      var name = b.dataset.skill;
+      var dung = Object.keys(S.skills).filter(function (k) { return S.skills[k].indexOf(name) >= 0; }).length;
+      if (dung && !confirm('“' + name + '” đang được ' + dung + ' người mang. Xoá khỏi tất cả?')) return;
+      removeSkill(name);
+      renderSkillEditor(); renderAll();
     });
 
     $('#cfg-pass-set').addEventListener('click', function () {

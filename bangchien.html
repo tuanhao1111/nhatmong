@@ -13,23 +13,21 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@400;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/bangchien.css?v=1">
+  <link rel="stylesheet" href="css/bangchien.css?v=2">
 </head>
 <body data-lang="vi">
 
-  <!-- 3D background (cyber-bg web component) -->
-  <div class="bg-mount"><cyber-bg variant="dream" logo="NHẤT MỘNG" speed="0.5"></cyber-bg></div>
+  <!-- Nền TĨNH: trang xếp team cần nhìn lâu nên không dùng nền 3D động như các
+       trang khác — chỉ lưới mờ + quầng sáng cố định, không có gì chuyển động. -->
+  <div class="bc-bg" aria-hidden="true"></div>
 
-  <!-- HUD -->
+  <!-- HUD (đã bỏ scanline + vệt quét động cho đỡ rối mắt) -->
   <div class="hud" aria-hidden="true">
     <div class="hud__frame"></div>
     <div class="hud__bar hud__bar--top"></div>
     <div class="hud__bar hud__bar--bottom"></div>
-    <div class="hud__scanlines"></div>
-    <div class="hud__sweep"></div>
     <div class="hud__label">[ MOD.04 · BANG CHIẾN ]</div>
   </div>
-  <div class="grain" aria-hidden="true"></div>
 
   <!-- ═══ CỔNG LEADER ═══ -->
   <div class="bc-gate" id="gate">
@@ -92,13 +90,15 @@
       <span><span class="bc-status__dot" id="st-dot"></span><span id="st-msg">Chưa nối Google Sheet</span></span>
       <span>Quân số: <b id="st-total">0</b></span>
       <span>Đã xếp: <b id="st-placed">0</b>/<b id="st-cap">60</b></span>
+      <span>Dự bị: <b id="st-bench">0</b></span>
       <span>Còn ngoài: <b id="st-free">0</b></span>
       <span>Có nhiệm vụ: <b id="st-task">0</b></span>
     </div>
 
     <div class="bc-layout">
 
-      <!-- ── Kho quân ── -->
+      <!-- ── Cột trái: kho quân + dự bị ── -->
+      <div class="bc-side">
       <aside class="bc-panel bc-pool" id="pool">
         <div class="bc-panel__head">
           <h2 class="bc-panel__title">Kho quân</h2>
@@ -122,6 +122,16 @@
           <div class="bc-pool__empty">Chưa có dữ liệu<br>Bấm “Cấu hình” → dán link Google Sheet</div>
         </div>
       </aside>
+
+      <!-- ── Dự bị ── -->
+      <aside class="bc-panel bc-bench" id="bench">
+        <div class="bc-panel__head">
+          <h2 class="bc-panel__title">⛨ Dự bị</h2>
+          <span class="team__count" id="bench-count">0</span>
+        </div>
+        <div class="bc-bench__list" id="bench-list"></div>
+      </aside>
+      </div>
 
       <!-- ── Bàn xếp ── -->
       <section class="bc-board" id="board"></section>
@@ -195,7 +205,18 @@
       </div>
 
       <div class="bc-modal__sect">
-        <h4>4 · Quy mô đội hình</h4>
+        <h4>4 · Danh sách kỹ năng</h4>
+        <div class="skill-edit" id="cfg-skills"></div>
+        <div class="bc-pool__row" style="margin-top:10px">
+          <input class="bc-input" id="cfg-skill-new" placeholder="TÊN KỸ NĂNG MỚI" autocomplete="off">
+          <button class="bc-btn bc-btn--sm" id="cfg-skill-add" type="button">+ Thêm</button>
+        </div>
+        <p class="bc-hint">Đây chỉ là <b>danh sách mẫu</b> — sửa lại cho khớp tên kỹ năng thật trong game.
+          Bấm ✕ để xoá, xoá xong sẽ gỡ kỹ năng đó khỏi mọi thành viên đang mang.</p>
+      </div>
+
+      <div class="bc-modal__sect">
+        <h4>5 · Quy mô đội hình</h4>
         <div class="map-grid">
           <div><label class="bc-label" for="cfg-doan">Số đoàn</label><input class="bc-input" id="cfg-doan" type="number" min="1" max="6" value="2"></div>
           <div><label class="bc-label" for="cfg-tpd">Team / đoàn</label><input class="bc-input" id="cfg-tpd" type="number" min="1" max="10" value="5"></div>
@@ -205,7 +226,7 @@
       </div>
 
       <div class="bc-modal__sect">
-        <h4>5 · Mật khẩu leader</h4>
+        <h4>6 · Mật khẩu leader</h4>
         <div class="bc-field">
           <label class="bc-label" for="cfg-pass">Mật khẩu mới</label>
           <input class="bc-input" id="cfg-pass" type="text" placeholder="để trống nếu không đổi" autocomplete="off">
@@ -241,10 +262,21 @@
       </div>
 
       <div class="bc-field">
+        <label class="bc-label">Kỹ năng mang theo trong trận</label>
+        <div class="skill-pick" id="mem-skills"></div>
+        <div class="bc-pool__row" style="margin-top:9px">
+          <input class="bc-input" id="mem-skill-new" placeholder="THÊM KỸ NĂNG MỚI…" autocomplete="off">
+          <button class="bc-btn bc-btn--sm" id="mem-skill-add" type="button">+ Thêm</button>
+        </div>
+        <p class="bc-hint">Bấm để bật/tắt. Kỹ năng thêm ở đây vào luôn danh sách chung, dùng lại được cho người khác.</p>
+      </div>
+
+      <div class="bc-field">
         <label class="bc-label"><input type="checkbox" id="mem-cap"> Đặt làm đội trưởng team này</label>
       </div>
 
       <div class="bc-modal__foot">
+        <button class="bc-btn bc-btn--danger" id="mem-bench">Cho xuống dự bị</button>
         <button class="bc-btn bc-btn--danger" id="mem-remove">Rút khỏi team</button>
         <button class="bc-btn" data-close="modal-mem">Huỷ</button>
         <button class="bc-btn bc-btn--solid" id="mem-save">Lưu</button>
@@ -254,8 +286,7 @@
 
   <div class="bc-toast" id="toast"></div>
 
-  <script src="js/cyber-bg.js"></script>
-  <script src="js/bangchien.js?v=1"></script>
+  <script src="js/bangchien.js?v=2"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js'); });
