@@ -134,6 +134,7 @@
   var pick = null;      // key đang "nhặt" bằng chuột/ngón tay
   var filterPhai = {};  // normPhai -> true nghĩa là đang ẨN
   var editing = null;   // key đang mở modal nhiệm vụ
+  var readOnly = false; // true khi mở bằng link chia sẻ (#v=…)
 
   function defaultState() {
     var colors = {}, labels = {};
@@ -152,7 +153,8 @@
       bench: [],                       // key những người để dự bị
       skills: {},                      // key -> [tên kỹ năng mang theo]
       skillList: SKILLS_DEF.slice(),   // danh sách kỹ năng leader tự quản
-      taskList: TASK_PRESETS.slice()   // danh sách nhiệm vụ mẫu leader tự quản
+      taskList: TASK_PRESETS.slice(),  // danh sách nhiệm vụ mẫu leader tự quản
+      requirePhai: ['to van']          // phái mà mỗi team buộc phải có (trị liệu)
     };
     rebuildTeams(st);
     return st;
@@ -183,6 +185,9 @@
   }
 
   function save() {
+    // Chế độ chỉ xem dùng chung biến S — tuyệt đối không được ghi đè đội hình
+    // thật của leader khi chính leader mở link chia sẻ trên máy mình.
+    if (readOnly) return;
     try { localStorage.setItem(K_STATE, JSON.stringify(S)); }
     catch (e) { toast('Không lưu được (bộ nhớ trình duyệt đầy)', true); }
   }
@@ -559,7 +564,10 @@
   }
 
   // ── Render ───────────────────────────────────────────────────────────────
-  function renderAll() { renderLegend(); renderStatusChips(); renderPool(); renderBench(); renderBoard(); renderStats(); }
+  function renderAll() {
+    renderLegend(); renderStatusChips(); renderPool(); renderBench(); renderBoard(); renderStats();
+    if (!readOnly) updateCheckBadge();
+  }
 
   function renderBench() {
     var list = S.bench.map(byKey).filter(Boolean);
@@ -877,6 +885,142 @@
     toast('Đã xếp ' + n + ' người vào ô trống');
   }
 
+  // ── Kiểm tra đội hình ────────────────────────────────────────────────────
+  /** "A, B, C và 3 người nữa" — cho dòng kết quả khỏi dài lê thê. */
+  function shortList(names) {
+    if (names.length <= 3) return names.join(', ');
+    return names.slice(0, 3).join(', ') + ' và ' + (names.length - 3) + ' người nữa';
+  }
+
+  /**
+   * Quét toàn bộ đội hình, trả về danh sách vấn đề.
+   * lv: 'err' (chắc chắn phải sửa) · 'warn' (nên xem lại) · 'info' (còn thiếu sót nhỏ)
+   */
+  function checkRoster() {
+    var out = [];
+    var need = S.requirePhai || [];
+    var perDoan = [];
+
+    for (var d = 0; d < S.nDoan; d++) {
+      var doanFilled = 0;
+      for (var t = 0; t < S.nTeam; t++) {
+        var team = S.teams[tid(d, t)];
+        var ms = team.slots.map(function (k) { return k ? byKey(k) : null; }).filter(Boolean);
+        doanFilled += ms.length;
+        var where = S.doanNames[d] + ' · ' + team.name;
+
+        var empty = S.nSize - ms.length;
+        if (empty) out.push({ lv: 'err', d: d, t: t, msg: where + ' — còn ' + empty + ' ô trống' });
+        if (ms.length && !team.cap) out.push({ lv: 'warn', d: d, t: t, msg: where + ' — chưa đặt đội trưởng' });
+
+        var cnt = {};
+        ms.forEach(function (m) { if (m.phaiN) cnt[m.phaiN] = (cnt[m.phaiN] || 0) + 1; });
+        Object.keys(cnt).forEach(function (n) {
+          if (cnt[n] >= 3) out.push({ lv: 'warn', d: d, t: t, msg: where + ' — ' + cnt[n] + ' người cùng phái ' + (S.labels[n] || n) });
+        });
+        need.forEach(function (n) {
+          if (ms.length && !cnt[n]) out.push({ lv: 'warn', d: d, t: t, msg: where + ' — chưa có ' + (S.labels[n] || n) });
+        });
+
+        // Gom "chưa có nhiệm vụ / kỹ năng" thành một dòng mỗi team — liệt kê
+        // từng người sẽ ra cả trăm dòng, không ai đọc nổi.
+        var noTask = [], noSkill = [];
+        ms.forEach(function (m) {
+          if (!eligible(m)) {
+            out.push({ lv: 'warn', d: d, t: t, key: m.key, msg: where + ' — “' + m.name + '” thuộc nhóm ' + (m.status || 'đang bị lọc') + ', không nằm trong kho quân' });
+          }
+          if (!S.tasks[m.key]) noTask.push(m.name);
+          if (!(S.skills[m.key] || []).length) noSkill.push(m.name);
+        });
+        if (noTask.length) {
+          out.push({ lv: 'info', d: d, t: t, msg: where + ' — ' + noTask.length + '/' + ms.length + ' người chưa có nhiệm vụ: ' + shortList(noTask) });
+        }
+        if (noSkill.length) {
+          out.push({ lv: 'info', d: d, t: t, msg: where + ' — ' + noSkill.length + '/' + ms.length + ' người chưa gán kỹ năng: ' + shortList(noSkill) });
+        }
+      }
+      perDoan.push(doanFilled);
+    }
+
+    // Lệch quân số giữa các đoàn
+    if (perDoan.length > 1) {
+      var mx = Math.max.apply(null, perDoan), mn = Math.min.apply(null, perDoan);
+      if (mx - mn >= 2) {
+        out.push({ lv: 'warn', msg: 'Quân số lệch giữa các đoàn: ' + perDoan.join(' / ') + ' người' });
+      }
+    }
+
+    // Lệch lực chiến (chỉ khi Sheet có cột lực chiến)
+    if (S.map.power >= 0) {
+      var pw = [];
+      for (d = 0; d < S.nDoan; d++) for (t = 0; t < S.nTeam; t++) {
+        var sum = 0;
+        S.teams[tid(d, t)].slots.forEach(function (k) { var m = k && byKey(k); if (m) sum += m.power; });
+        pw.push({ d: d, t: t, v: sum, name: S.doanNames[d] + ' · ' + S.teams[tid(d, t)].name });
+      }
+      var vals = pw.map(function (x) { return x.v; }).filter(function (v) { return v > 0; });
+      if (vals.length > 1) {
+        var hi = pw.slice().sort(function (a, b) { return b.v - a.v; })[0];
+        var lo = pw.slice().filter(function (x) { return x.v > 0; }).sort(function (a, b) { return a.v - b.v; })[0];
+        if (hi.v > lo.v * 1.25) {
+          out.push({ lv: 'warn', d: hi.d, t: hi.t, msg: 'Lực chiến lệch: ' + hi.name + ' (' + fmtPower(hi.v) + ') mạnh hơn ' + lo.name + ' (' + fmtPower(lo.v) + ') trên 25%' });
+        }
+      }
+    }
+
+    var rank = { err: 0, warn: 1, info: 2 };
+    out.sort(function (a, b) { return rank[a.lv] - rank[b.lv]; });
+    return out;
+  }
+
+  /** Số lỗi + cảnh báo, hiện ngay trên nút Kiểm tra. */
+  function updateCheckBadge() {
+    if (!S.members.length) { $('#btn-check-n').textContent = ''; return; }
+    var n = checkRoster().filter(function (i) { return i.lv !== 'info'; }).length;
+    $('#btn-check-n').textContent = n ? '(' + n + ')' : '';
+  }
+
+  function renderCheckNeed() {
+    var keys = Object.keys(S.labels).filter(Boolean);
+    $('#check-need').innerHTML = keys.map(function (n) {
+      return '<span class="chip' + (S.requirePhai.indexOf(n) >= 0 ? ' on' : '') + '" data-name="' + esc(n) + '">' +
+        '<button type="button" class="chip__t">' + esc(S.labels[n]) + '</button></span>';
+    }).join('');
+  }
+
+  function renderCheck() {
+    var list = checkRoster();
+    var c = { err: 0, warn: 0, info: 0 };
+    list.forEach(function (i) { c[i.lv]++; });
+    $('#check-sum').textContent = list.length
+      ? c.err + ' lỗi · ' + c.warn + ' cảnh báo · ' + c.info + ' thiếu sót nhỏ'
+      : 'Đội hình sạch, không có vấn đề gì';
+
+    var icon = { err: '✕', warn: '!', info: 'i' };
+    $('#check-list').innerHTML = list.map(function (i, idx) {
+      return '<button type="button" class="check-item check-item--' + i.lv + '" data-i="' + idx + '">' +
+        '<span class="check-item__i">' + icon[i.lv] + '</span><span>' + esc(i.msg) + '</span></button>';
+    }).join('');
+    renderCheck._list = list;
+  }
+
+  function openCheck() {
+    if (!S.members.length) { toast('Chưa có dữ liệu để kiểm tra', true); return; }
+    renderCheckNeed();
+    renderCheck();
+    openModal('modal-check');
+  }
+
+  /** Đóng modal, cuộn tới team liên quan và nháy sáng nó. */
+  function jumpToTeam(d, t) {
+    closeModal('modal-check');
+    var el = $('.team[data-d="' + d + '"][data-t="' + t + '"]');
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('flash');
+    setTimeout(function () { el.classList.remove('flash'); }, 2200);
+  }
+
   // ── Modal ────────────────────────────────────────────────────────────────
   function openModal(id) { $('#' + id).hidden = false; }
   function closeModal(id) { $('#' + id).hidden = true; }
@@ -1155,6 +1299,171 @@
     document.body.removeChild(ta);
   }
 
+  // ── Link chia sẻ đội hình ────────────────────────────────────────────────
+  // Toàn bộ đội hình được nén rồi nhét vào phần #… của URL, nên không cần
+  // server: ai mở link cũng dựng lại được đúng bảng, ở chế độ chỉ xem.
+
+  function b64url(u8) {
+    var s = '';
+    for (var i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]);
+    return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  function unb64url(str) {
+    str = String(str).replace(/-/g, '+').replace(/_/g, '/');
+    while (str.length % 4) str += '=';
+    var bin = atob(str), u8 = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    return u8;
+  }
+
+  /**
+   * Gói đội hình thành cấu trúc gọn nhất có thể: môn phái và kỹ năng được đưa
+   * vào bảng tra, thành viên chỉ giữ chỉ số → link ngắn hơn nhiều.
+   */
+  function sharePayload() {
+    var phaiIdx = {}, phaiTab = [], skillIdx = {}, skillTab = [];
+    function pi(m) {
+      if (!m.phai) return -1;
+      if (phaiIdx[m.phaiN] === undefined) { phaiIdx[m.phaiN] = phaiTab.length; phaiTab.push([m.phai, colorOf(m)]); }
+      return phaiIdx[m.phaiN];
+    }
+    function si(s) {
+      if (skillIdx[s] === undefined) { skillIdx[s] = skillTab.length; skillTab.push(s); }
+      return skillIdx[s];
+    }
+    function pack(key) {
+      var m = byKey(key);
+      if (!m) return null;
+      return [m.name, pi(m), S.tasks[key] || '', (S.skills[key] || []).map(si)];
+    }
+
+    var teams = [];
+    for (var d = 0; d < S.nDoan; d++) {
+      for (var t = 0; t < S.nTeam; t++) {
+        var team = S.teams[tid(d, t)];
+        teams.push([
+          team.name, team.note || '', team.slots.indexOf(team.cap),
+          team.slots.map(function (k) { return k ? pack(k) : null; })
+        ]);
+      }
+    }
+    return {
+      v: 1, s: [S.nDoan, S.nTeam, S.nSize], n: S.doanNames.slice(),
+      p: phaiTab, k: skillTab, t: teams,
+      b: S.bench.map(pack).filter(Boolean), d: Date.now()
+    };
+  }
+
+  /** JSON → gzip (nếu trình duyệt hỗ trợ) → base64url. Tiền tố z/j cho biết có nén hay không. */
+  function encodeShare(obj) {
+    var bytes = new TextEncoder().encode(JSON.stringify(obj));
+    if (typeof CompressionStream !== 'function') return Promise.resolve('j' + b64url(bytes));
+    var stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream('gzip'));
+    return new Response(stream).arrayBuffer().then(function (buf) {
+      return 'z' + b64url(new Uint8Array(buf));
+    });
+  }
+
+  function decodeShare(str) {
+    // Bọc try/catch: atob và JSON.parse ném lỗi ĐỒNG BỘ, nếu không bọc thì
+    // link sai ký tự sẽ văng ra ngoài chuỗi Promise và chết lặng.
+    try {
+      var tag = String(str).charAt(0), u8 = unb64url(String(str).slice(1));
+      if (tag === 'j') return Promise.resolve(JSON.parse(new TextDecoder().decode(u8)));
+      if (tag !== 'z') return Promise.reject(new Error('Link không đúng định dạng'));
+      if (typeof DecompressionStream !== 'function') return Promise.reject(new Error('Trình duyệt quá cũ, không giải nén được'));
+      var stream = new Blob([u8]).stream().pipeThrough(new DecompressionStream('gzip'));
+      return new Response(stream).text().then(JSON.parse);
+    } catch (e) {
+      return Promise.reject(e);
+    }
+  }
+
+  function shareLink() {
+    var placed = Object.keys(placedKeys()).length;
+    if (!placed && !S.bench.length) { toast('Chưa xếp ai vào bàn', true); return; }
+    encodeShare(sharePayload()).then(function (enc) {
+      var url = location.origin + location.pathname + '#v=' + enc;
+      var done = function () {
+        toast('Đã copy link (' + Math.round(url.length / 1024 * 10) / 10 + ' KB) — ai mở cũng xem được, không sửa được');
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(done, function () { fallbackCopy(url); done(); });
+      } else { fallbackCopy(url); done(); }
+    }, function (err) {
+      toast('Không tạo được link: ' + (err && err.message || err), true);
+    });
+  }
+
+  /** Dựng lại state từ gói chia sẻ để dùng chung mọi hàm render sẵn có. */
+  function sharedToState(p) {
+    var st = defaultState();
+    st.nDoan = p.s[0]; st.nTeam = p.s[1]; st.nSize = p.s[2];
+    st.doanNames = p.n.slice();
+    rebuildTeams(st);
+    st.colors = {}; st.labels = {};
+    (p.p || []).forEach(function (pair) {
+      var n = norm(pair[0]);
+      st.labels[n] = pair[0];
+      st.colors[n] = pair[1];
+    });
+
+    var seen = {};
+    function add(rec) {
+      if (!rec) return null;
+      var name = rec[0], key = norm(name), i = 2;
+      while (seen[key]) key = norm(name) + '#' + (i++);
+      seen[key] = true;
+      var phai = rec[1] >= 0 && p.p[rec[1]] ? p.p[rec[1]][0] : '';
+      st.members.push({
+        key: key, name: name, phai: phai, phaiN: norm(phai),
+        status: '', statusN: '', power: 0, powerRaw: '', note: ''
+      });
+      if (rec[2]) st.tasks[key] = rec[2];
+      var sk = (rec[3] || []).map(function (x) { return p.k[x]; }).filter(Boolean);
+      if (sk.length) st.skills[key] = sk;
+      return key;
+    }
+
+    (p.t || []).forEach(function (rec, idx) {
+      var d = Math.floor(idx / st.nTeam), t = idx % st.nTeam;
+      var team = st.teams[tid(d, t)];
+      if (!team) return;
+      team.name = rec[0]; team.note = rec[1];
+      team.slots = rec[3].map(add);
+      team.cap = (rec[2] >= 0 && team.slots[rec[2]]) ? team.slots[rec[2]] : null;
+    });
+    (p.b || []).forEach(function (rec) {
+      var k = add(rec);
+      if (k) st.bench.push(k);
+    });
+    return st;
+  }
+
+  /** Mở trang ở chế độ chỉ xem từ link chia sẻ — bỏ qua cổng mật khẩu. */
+  function openShared(enc) {
+    decodeShare(enc).then(function (p) {
+      if (!p || p.v !== 1 || !p.s) throw new Error('Dữ liệu link không hợp lệ');
+      S = sharedToState(p);
+      readOnly = true;
+      document.body.classList.add('ro');
+      $('#gate').hidden = true;
+      $('#nav').hidden = false;
+      $('#page').hidden = false;
+      $('#robar').hidden = false;
+      $('#robar-time').textContent = 'Chốt lúc ' + timeStr(p.d || Date.now());
+      document.title = 'Đội hình Bang Chiến — Nhất Mộng';
+      renderAll();
+    }, function (err) {
+      // Lỗi thật từ gzip/base64 rất khó hiểu với người dùng → nói bằng tiếng người
+      var raw = String(err && err.message || err);
+      var msg = /không hợp lệ|quá cũ|định dạng/i.test(raw) ? raw : 'link bị cắt ngắn hoặc dán thiếu';
+      $('#gate-err').textContent = 'Link đội hình hỏng — ' + msg + '. Xin bang chủ gửi lại.';
+      $('#gate-pass').focus();
+    });
+  }
+
   function download(blob, filename) {
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
@@ -1360,6 +1669,16 @@
   }
 
   function initGate() {
+    // Dán một link chia sẻ khác vào thanh địa chỉ chỉ đổi phần #… nên trình
+    // duyệt không tải lại trang — phải tự nạp lại để dựng đúng đội hình mới.
+    window.addEventListener('hashchange', function () {
+      if (readOnly || (location.hash || '').indexOf('#v=') === 0) location.reload();
+    });
+
+    // Link chia sẻ đội hình: mở thẳng chế độ chỉ xem, không hỏi mật khẩu
+    var h = location.hash || '';
+    if (h.indexOf('#v=') === 0) { openShared(h.slice(3)); return; }
+
     if (localStorage.getItem(K_UNLOCK) === currentHash()) { unlock(); return; }
     $('#gate-form').addEventListener('submit', function (e) {
       e.preventDefault();
@@ -1455,6 +1774,28 @@
       S.syncAt = Date.now();
       save(); renderAll(); toast('Đã dọn bàn');
     });
+    $('#btn-check').addEventListener('click', openCheck);
+    $('#btn-share').addEventListener('click', shareLink);
+
+    // chip "phái bắt buộc" trong modal kiểm tra
+    $('#check-need').addEventListener('click', function (e) {
+      var chip = e.target.closest('.chip');
+      if (!chip) return;
+      var n = chip.dataset.name, i = S.requirePhai.indexOf(n);
+      if (i >= 0) S.requirePhai.splice(i, 1); else S.requirePhai.push(n);
+      save();
+      renderCheckNeed(); renderCheck(); updateCheckBadge();
+    });
+
+    // bấm một dòng kết quả → nhảy tới team đó
+    $('#check-list').addEventListener('click', function (e) {
+      var b = e.target.closest('.check-item');
+      if (!b) return;
+      var item = (renderCheck._list || [])[+b.dataset.i];
+      if (item && item.d !== undefined) jumpToTeam(item.d, item.t);
+      else closeModal('modal-check');
+    });
+
     $('#btn-copy').addEventListener('click', copyText);
     $('#btn-png').addEventListener('click', exportPNG);
     $('#btn-export').addEventListener('click', exportJSON);

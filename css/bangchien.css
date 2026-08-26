@@ -385,6 +385,57 @@ input::placeholder, textarea::placeholder { color: rgba(178,166,205,0.55); }
 .mem-head__n { font-size: 1.15rem; font-weight: 700; }
 .mem-head__m { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: 0.14em; color: rgba(178,166,205,0.85); text-transform: uppercase; margin-top: 3px; }
 
+/* ── Kiểm tra đội hình ────────────────────────────────────────────────── */
+.bc-btn > b { font-weight: 500; color: #ff8fa0; }
+.bc-btn > b:empty { display: none; }
+
+.check-list { display: flex; flex-direction: column; gap: 6px; max-height: 46vh; overflow-y: auto; padding-right: 4px; }
+.check-list:empty::before {
+  content: '✓ Không phát hiện vấn đề nào';
+  font-family: 'Be Vietnam Pro', sans-serif; font-size: 13px; color: #7dffb0;
+}
+.check-item {
+  --lv: 255,143,160;
+  cursor: pointer; text-align: left; width: 100%;
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 9px 12px; border-radius: 11px;
+  border: 1px solid rgba(var(--lv), 0.32); background: rgba(var(--lv), 0.07); color: #ece7f7;
+  font-family: 'Be Vietnam Pro', sans-serif; font-size: 12.5px; line-height: 1.45;
+  transition: background 0.18s, border-color 0.18s;
+}
+.check-item:hover { border-color: rgb(var(--lv)); background: rgba(var(--lv), 0.16); }
+.check-item--warn { --lv: 255,209,102; }
+.check-item--info { --lv: 0,229,255; }
+.check-item__i { flex-shrink: 0; color: rgb(var(--lv)); font-size: 13px; line-height: 1.3; }
+
+/* Nháy sáng team khi bấm vào một dòng kết quả */
+.team.flash { border-color: #ffd166 !important; box-shadow: 0 0 0 2px rgba(255,209,102,0.5), 0 0 46px -10px rgba(255,209,102,0.95) !important; }
+
+/* ── Chế độ chỉ xem (mở bằng link chia sẻ) ───────────────────────────── */
+.bc-robar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 1.4rem;
+  padding: 10px 16px; border-radius: 14px;
+  border: 1px solid rgba(255,209,102,0.35); background: rgba(255,209,102,0.08);
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.14em;
+  color: #ffd9a0; text-transform: uppercase;
+}
+.bc-robar__tag { border: 1px solid #ffd166; border-radius: 999px; padding: 3px 10px; color: #ffd166; }
+.bc-robar__hint { color: rgba(178,166,205,0.8); letter-spacing: 0.08em; text-transform: none; font-family: 'Be Vietnam Pro', sans-serif; font-size: 12px; }
+
+body.ro .bc-toolbar,
+body.ro .bc-status,
+body.ro .bc-pool { display: none !important; }
+body.ro .bc-layout { grid-template-columns: 1fr; }
+body.ro .bc-side { position: static; max-height: none; }
+body.ro .bc-bench { max-width: 100%; }
+body.ro .mem { cursor: default; }
+body.ro .mem:hover { transform: none; }
+body.ro .mem__acts { display: none !important; }
+body.ro .slot { cursor: default; }
+body.ro .slot:hover { border-color: rgba(180,76,255,0.28); color: rgba(178,166,205,0.4); background: transparent; }
+body.ro .team__name, body.ro .doan__name, body.ro .team__note { pointer-events: none; border-bottom-color: transparent; }
+body.ro .bc-bench__list:empty ~ *, body.ro .bc-bench:has(.bc-bench__empty) { display: none; }
+
 /* ── Toast ────────────────────────────────────────────────────────────── */
 .bc-toast {
   position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 20px); z-index: 240;
