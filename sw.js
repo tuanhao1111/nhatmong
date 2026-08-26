@@ -5,15 +5,18 @@
    - Cross-origin (API phim, CDN, video): KHÔNG can thiệp — đi mạng như thường
    Đổi VERSION mỗi khi muốn ép mọi máy tải lại bản mới.
    ========================================================================== */
-const VERSION = 'nm-v7';
+const VERSION = 'nm-v8';
 const SHELL = [
   './',
   'index.html',
   'phim.html',
   'gacha.html',
+  'bangchien.html',
   '404.html',
   'css/phim.css?v=5',
+  'css/bangchien.css?v=1',
   'js/phim.js',
+  'js/bangchien.js?v=1',
   'js/support.js',
   'js/cyber-bg.js',
   'js/mong-gate.js',

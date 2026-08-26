@@ -1,0 +1,330 @@
+/* =============================================================================
+   BANG CHIẾN · Xếp team — theme cyber khớp index/phim/gacha
+   Trang chỉ dành cho leader: đồng bộ thành viên từ Google Sheet, kéo-thả xếp
+   2 đoàn × 5 team × 6 người, gán nhiệm vụ từng người, đổi tên team.
+   ========================================================================== */
+
+/* ── Base (giống phim.css) ────────────────────────────────────────────── */
+* { box-sizing: border-box; }
+html { background: #070510; scrollbar-width: thin; scrollbar-color: #b44cff #0c0918; }
+body {
+  margin: 0; background: #070510; color: #ece7f7;
+  font-family: 'Chakra Petch', 'Be Vietnam Pro', sans-serif;
+  overflow-x: hidden;
+}
+a { color: #ece7f7; text-decoration: none; }
+a:hover { color: #00e5ff; }
+button { -webkit-tap-highlight-color: transparent; font-family: inherit; }
+::selection { background: #b44cff; color: #070510; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: #0c0918; }
+::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #00e5ff, #b44cff); border-radius: 8px; box-shadow: 0 0 8px rgba(180,76,255,0.8); }
+input::placeholder, textarea::placeholder { color: rgba(178,166,205,0.55); }
+[hidden] { display: none !important; }
+
+/* ── Background / HUD / grain ─────────────────────────────────────────── */
+.bg-mount { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+.hud { pointer-events: none; }
+.hud__frame { position: fixed; inset: 10px; border: 1px solid rgba(180,76,255,0.22); border-radius: 22px; z-index: 120; }
+.hud__bar { position: fixed; left: 50%; transform: translateX(-50%); width: 120px; height: 3px; border-radius: 3px; z-index: 121; opacity: 0.7; }
+.hud__bar--top { top: 10px; background: linear-gradient(90deg, #00e5ff, #b44cff); }
+.hud__bar--bottom { bottom: 10px; background: linear-gradient(90deg, #b44cff, #00e5ff); }
+.hud__scanlines { position: fixed; inset: 0; z-index: 110; background: repeating-linear-gradient(0deg, transparent 0 3px, rgba(0,0,0,0.22) 3px 4px); opacity: 0.5; mix-blend-mode: overlay; }
+.hud__sweep { position: fixed; left: 0; right: 0; height: 22vh; z-index: 110; background: linear-gradient(180deg, transparent, rgba(180,76,255,0.05), transparent); animation: scanSweep 9s linear infinite; }
+.hud__label { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 120; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.3em; color: rgba(178,166,205,0.75); text-transform: uppercase; }
+@keyframes scanSweep { 0% { top: -30%; } 100% { top: 130%; } }
+.grain {
+  position: fixed; inset: 0; z-index: 105; pointer-events: none; opacity: 0.05;
+  background-image: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22140%22 height=%22140%22%3E%3Cfilter id=%22n%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%222%22/%3E%3C/filter%3E%3Crect width=%22140%22 height=%22140%22 filter=%22url(%23n)%22/%3E%3C/svg%3E');
+}
+
+/* ── Nav ──────────────────────────────────────────────────────────────── */
+.cnav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 1.4rem clamp(1.5rem, 5vw, 4rem);
+  background: linear-gradient(180deg, rgba(7,5,16,0.85), transparent);
+}
+.cnav__brand { font-weight: 700; font-size: 1.15rem; letter-spacing: 0.06em; text-shadow: 0 0 20px rgba(180,76,255,0.4); white-space: nowrap; }
+.cnav__brand span { color: #b44cff; }
+.cnav__brand em { font-style: normal; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: #00e5ff; vertical-align: super; margin-left: 4px; }
+.cnav__links { display: flex; flex-wrap: wrap; align-items: center; gap: clamp(0.7rem, 3vw, 2.4rem); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; }
+.cnav__links a { color: rgba(236,231,247,0.85); padding: 6px 4px; }
+.cnav__links a:hover { color: #00e5ff; }
+.cnav__links .active { color: #00e5ff; border-bottom: 1px solid #00e5ff; padding: 6px 4px; }
+
+/* ── Cổng leader ──────────────────────────────────────────────────────── */
+.bc-gate {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: center; padding: 1.5rem;
+  background: radial-gradient(1200px 700px at 50% 45%, #100a22, #070510 75%);
+}
+.bc-gate__box {
+  width: min(430px, 100%); padding: clamp(1.6rem, 4vw, 2.4rem);
+  border: 1px solid rgba(180,76,255,0.4); border-radius: 22px;
+  background: linear-gradient(165deg, rgba(26,16,46,0.9), rgba(12,9,24,0.92) 60%);
+  box-shadow: 0 30px 80px -30px rgba(0,0,0,0.9), 0 0 60px -30px rgba(180,76,255,0.7);
+  text-align: center;
+}
+.bc-gate__seal {
+  width: 62px; height: 62px; margin: 0 auto 1.1rem; border-radius: 50%;
+  border: 1px solid rgba(0,229,255,0.5); display: grid; place-items: center;
+  font-size: 26px; animation: sealPulse 3s ease-in-out infinite;
+}
+@keyframes sealPulse {
+  0%, 100% { box-shadow: inset 0 0 30px rgba(0,229,255,0.15), 0 0 30px -10px rgba(0,229,255,0.6); }
+  50% { box-shadow: inset 0 0 40px rgba(180,76,255,0.25), 0 0 45px -10px rgba(180,76,255,0.8); }
+}
+.bc-gate__title { margin: 0 0 0.4rem; font-size: 1.5rem; letter-spacing: 0.06em; text-transform: uppercase; }
+.bc-gate__sub { margin: 0 0 1.5rem; color: #b2a6cd; font-size: 0.92rem; font-family: 'Be Vietnam Pro', sans-serif; }
+.bc-gate__row { display: flex; gap: 8px; }
+.bc-gate__err { margin: 0.9rem 0 0; min-height: 1.1em; color: #ff6b81; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; }
+.bc-gate__back { display: inline-block; margin-top: 1.2rem; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.2em; color: rgba(178,166,205,0.7); text-transform: uppercase; }
+
+/* ── Layout trang ─────────────────────────────────────────────────────── */
+.bc-page { position: relative; z-index: 10; padding: clamp(6.5rem, 13vh, 8.5rem) clamp(1rem, 4vw, 3.5rem) 5rem; }
+.page-head { position: relative; margin-bottom: clamp(1.8rem, 4vh, 2.6rem); }
+.page-head__ghost {
+  position: absolute; right: -1vw; top: -7vh; font-weight: 700;
+  font-size: clamp(7rem, 18vw, 15rem); line-height: 1; color: transparent;
+  -webkit-text-stroke: 1.5px rgba(0,229,255,0.12); pointer-events: none; user-select: none;
+}
+.eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.3em; color: #00e5ff; text-transform: uppercase; display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
+.eyebrow i { width: 30px; height: 1px; background: #00e5ff; display: inline-block; }
+.page-title { margin: 0; font-weight: 700; font-size: clamp(2.4rem, 7vw, 5.4rem); line-height: 1; text-transform: uppercase; }
+.page-title b { font-weight: 700; color: transparent; -webkit-text-stroke: 2px #00e5ff; text-shadow: 0 0 40px rgba(0,229,255,0.3); font-style: italic; }
+.page-sub-text { margin: 1rem 0 0; color: #b2a6cd; max-width: 62ch; font-size: 1rem; font-family: 'Be Vietnam Pro', sans-serif; }
+
+/* ── Nút / input dùng chung ───────────────────────────────────────────── */
+.bc-btn {
+  cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 16px; border-radius: 999px;
+  border: 1px solid rgba(180,76,255,0.4); background: rgba(10,7,20,0.6); color: #b2a6cd;
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+  transition: border-color 0.25s, background 0.25s, color 0.25s, box-shadow 0.3s;
+  white-space: nowrap;
+}
+.bc-btn:hover { border-color: #b44cff; color: #d9b6ff; box-shadow: 0 0 26px -10px rgba(180,76,255,0.8); }
+.bc-btn--cyan { border-color: rgba(0,229,255,0.45); color: #8fe9ff; }
+.bc-btn--cyan:hover { border-color: #00e5ff; color: #00e5ff; box-shadow: 0 0 26px -10px rgba(0,229,255,0.8); }
+.bc-btn--solid { background: rgba(180,76,255,0.18); border-color: #b44cff; color: #d9b6ff; }
+.bc-btn--danger { border-color: rgba(255,79,109,0.45); color: #ff8fa0; }
+.bc-btn--danger:hover { border-color: #ff4f6d; color: #ff4f6d; box-shadow: 0 0 26px -10px rgba(255,79,109,0.8); }
+.bc-btn--sm { padding: 6px 12px; font-size: 9px; letter-spacing: 0.14em; }
+.bc-btn[disabled] { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+
+.bc-input, .bc-select, .bc-textarea {
+  width: 100%; padding: 10px 14px; border-radius: 14px; outline: none;
+  border: 1px solid rgba(0,229,255,0.3); background: rgba(10,7,20,0.7); color: #ece7f7;
+  font-family: 'JetBrains Mono', monospace; font-size: 12px;
+}
+.bc-input:focus, .bc-select:focus, .bc-textarea:focus { border-color: #00e5ff; box-shadow: 0 0 22px -10px rgba(0,229,255,0.8); }
+.bc-textarea { resize: vertical; min-height: 74px; line-height: 1.5; font-family: 'Be Vietnam Pro', sans-serif; font-size: 13px; }
+.bc-select option { background: #0c0918; }
+.bc-label { display: block; margin-bottom: 6px; font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.2em; color: rgba(178,166,205,0.75); text-transform: uppercase; }
+.bc-field { margin-bottom: 1rem; }
+.bc-hint { margin: 6px 0 0; color: rgba(178,166,205,0.65); font-size: 12px; font-family: 'Be Vietnam Pro', sans-serif; line-height: 1.55; }
+.bc-hint code { color: #8fe9ff; font-family: 'JetBrains Mono', monospace; font-size: 11px; word-break: break-all; }
+
+/* ── Thanh công cụ + trạng thái ───────────────────────────────────────── */
+.bc-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; margin-bottom: 1rem; }
+.bc-toolbar__sep { width: 1px; height: 22px; background: rgba(180,76,255,0.3); margin: 0 4px; }
+.bc-status {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-bottom: 1.6rem;
+  padding: 10px 16px; border-radius: 14px;
+  border: 1px solid rgba(180,76,255,0.22); background: rgba(12,9,24,0.55);
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.14em; color: rgba(178,166,205,0.8); text-transform: uppercase;
+}
+.bc-status b { color: #00e5ff; font-weight: 500; }
+.bc-status__dot { width: 7px; height: 7px; border-radius: 50%; background: #b44cff; display: inline-block; margin-right: 7px; animation: blinkDot 1.6s infinite; }
+.bc-status__dot--ok { background: #3ddc84; }
+.bc-status__dot--err { background: #ff4f6d; }
+@keyframes blinkDot { 0%, 100% { opacity: 1; } 50% { opacity: 0.15; } }
+
+/* ── Bố cục 2 cột: kho quân · bàn xếp ─────────────────────────────────── */
+.bc-layout { display: grid; grid-template-columns: minmax(0, 320px) minmax(0, 1fr); gap: clamp(1rem, 2vw, 1.8rem); align-items: start; }
+@media (max-width: 1100px) { .bc-layout { grid-template-columns: 1fr; } }
+
+.bc-panel {
+  border: 1px solid rgba(180,76,255,0.3); border-radius: 20px;
+  background: linear-gradient(165deg, rgba(26,16,46,0.6), rgba(12,9,24,0.65) 60%);
+  padding: clamp(0.9rem, 1.6vw, 1.3rem);
+}
+.bc-panel__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 0.9rem; }
+.bc-panel__title { margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.24em; color: #00e5ff; text-transform: uppercase; }
+
+/* Kho quân (pool) */
+.bc-pool { position: sticky; top: 6.5rem; max-height: calc(100vh - 8rem); display: flex; flex-direction: column; }
+@media (max-width: 1100px) { .bc-pool { position: static; max-height: none; } }
+.bc-pool__tools { display: flex; flex-direction: column; gap: 8px; margin-bottom: 0.8rem; }
+.bc-pool__row { display: flex; gap: 8px; }
+.bc-pool__list { overflow-y: auto; display: flex; flex-direction: column; gap: 7px; padding-right: 4px; flex: 1; min-height: 90px; }
+.bc-pool__empty { padding: 1.6rem 0.6rem; text-align: center; color: rgba(178,166,205,0.6); font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; line-height: 1.9; }
+.bc-pool.drop-on { outline: 1px dashed #00e5ff; outline-offset: 4px; border-radius: 20px; }
+
+/* Thẻ thành viên */
+.mem {
+  --pc: #8a7fb0;
+  position: relative; cursor: grab; user-select: none;
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 10px 8px 12px; border-radius: 12px;
+  border: 1px solid rgba(180,76,255,0.24);
+  background: linear-gradient(100deg, rgba(180,76,255,0.05), rgba(12,9,24,0.7) 62%);
+  transition: border-color 0.2s, box-shadow 0.25s, transform 0.2s;
+}
+.mem::before { content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 3px; background: var(--pc); box-shadow: 0 0 10px var(--pc); }
+.mem:hover { border-color: var(--pc); box-shadow: 0 0 26px -12px var(--pc); transform: translateX(2px); }
+.mem.dragging { opacity: 0.4; }
+.mem.picked { border-color: #00e5ff; box-shadow: 0 0 0 1px #00e5ff, 0 0 30px -8px #00e5ff; transform: translateX(3px); }
+.mem__body { flex: 1; min-width: 0; }
+.mem__name { font-size: 0.95rem; font-weight: 600; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mem__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 8px; margin-top: 3px; font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.1em; color: rgba(178,166,205,0.75); }
+.mem__phai { color: var(--pc); text-transform: uppercase; letter-spacing: 0.14em; }
+.mem__task { display: block; margin-top: 4px; font-family: 'Be Vietnam Pro', sans-serif; font-size: 11px; color: #8affc1; line-height: 1.35; }
+.mem__cap { color: #ffd166; font-size: 11px; flex-shrink: 0; }
+
+/* Nút ✎ / ✕: trên máy có chuột thì nấp đi, rê vào mới hiện → nhường chỗ cho tên.
+   Trên thiết bị cảm ứng (không có hover) luôn hiện vì không rê chuột được. */
+.mem__acts { display: flex; gap: 4px; flex-shrink: 0; }
+@media (hover: hover) {
+  .mem__acts {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    opacity: 0; pointer-events: none; padding: 3px; border-radius: 999px;
+    background: rgba(12,9,24,0.94); box-shadow: 0 0 14px rgba(0,0,0,0.6);
+    transition: opacity 0.18s;
+  }
+  .mem:hover .mem__acts, .mem:focus-within .mem__acts { opacity: 1; pointer-events: auto; }
+}
+.mem__x {
+  cursor: pointer; flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
+  border: 1px solid rgba(255,79,109,0.35); background: transparent; color: #ff8fa0;
+  font-size: 13px; line-height: 1; display: grid; place-items: center; padding: 0;
+}
+.mem__x:hover { background: rgba(255,79,109,0.2); border-color: #ff4f6d; }
+.mem__x--edit { border-color: rgba(0,229,255,0.35); color: #8fe9ff; }
+.mem__x--edit:hover { background: rgba(0,229,255,0.2); border-color: #00e5ff; }
+.mem--slot { cursor: pointer; }
+
+/* Bàn xếp: đoàn → team → slot */
+.bc-board { display: flex; flex-direction: column; gap: clamp(1rem, 2vw, 1.6rem); }
+.doan { border: 1px solid rgba(0,229,255,0.28); border-radius: 22px; padding: clamp(0.9rem, 1.6vw, 1.3rem); background: linear-gradient(165deg, rgba(10,24,40,0.45), rgba(12,9,24,0.6) 60%); }
+.doan__head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 1rem; }
+.doan__idx { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.24em; color: rgba(178,166,205,0.7); text-transform: uppercase; }
+.doan__name {
+  flex: 1; min-width: 160px; border: 0; border-bottom: 1px dashed rgba(0,229,255,0.35);
+  background: transparent; color: #00e5ff; outline: none; padding: 4px 2px;
+  font-family: 'Chakra Petch', sans-serif; font-size: 1.25rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+}
+.doan__name:focus { border-bottom-color: #00e5ff; background: rgba(0,229,255,0.06); }
+.doan__stat { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.16em; color: rgba(178,166,205,0.75); text-transform: uppercase; }
+/* 240px: màn ≥1900px xếp trọn 5 team/đoàn trên một hàng; màn nhỏ hơn tự xuống
+   dòng thay vì bóp thẻ đến mức tên nhân vật bị cắt. */
+.doan__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+
+.team {
+  border: 1px solid rgba(180,76,255,0.28); border-radius: 16px; padding: 10px;
+  background: rgba(12,9,24,0.6); display: flex; flex-direction: column; gap: 8px;
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+.team.drop-on { border-color: #00e5ff; box-shadow: 0 0 34px -12px rgba(0,229,255,0.9); }
+.team.full { border-color: rgba(61,220,132,0.4); }
+.team__head { display: flex; align-items: center; gap: 8px; }
+.team__name {
+  flex: 1; min-width: 0; border: 0; border-bottom: 1px dashed rgba(180,76,255,0.4);
+  background: transparent; color: #ece7f7; outline: none; padding: 3px 2px;
+  font-family: 'Chakra Petch', sans-serif; font-size: 0.98rem; font-weight: 700; letter-spacing: 0.04em;
+}
+.team__name:focus { border-bottom-color: #b44cff; background: rgba(180,76,255,0.08); }
+.team__count { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.1em; color: rgba(178,166,205,0.7); flex-shrink: 0; }
+.team.full .team__count { color: #3ddc84; }
+.team__note {
+  width: 100%; border: 0; border-radius: 8px; background: rgba(0,229,255,0.06); color: #8fe9ff;
+  padding: 5px 8px; outline: none; font-family: 'Be Vietnam Pro', sans-serif; font-size: 11.5px;
+}
+.team__note:focus { background: rgba(0,229,255,0.12); }
+.team__slots { display: flex; flex-direction: column; gap: 6px; }
+.team__foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.1em; color: rgba(178,166,205,0.6); }
+
+.slot {
+  min-height: 42px; border-radius: 12px; border: 1px dashed rgba(180,76,255,0.28);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.18em;
+  color: rgba(178,166,205,0.4); text-transform: uppercase; cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+.slot:hover { border-color: #00e5ff; color: #00e5ff; background: rgba(0,229,255,0.05); }
+.slot.drop-on { border-color: #00e5ff; border-style: solid; background: rgba(0,229,255,0.12); }
+.slot--filled { border: 0; padding: 0; display: block; cursor: default; min-height: 0; }
+
+/* Bảng phái (chú giải + đổi màu) */
+.bc-legend { display: flex; flex-wrap: wrap; gap: 7px; }
+.phai-chip {
+  cursor: pointer; position: relative; display: inline-flex; align-items: center; gap: 7px;
+  padding: 6px 12px; border-radius: 999px; border: 1px solid currentColor; background: rgba(255,255,255,0.04);
+  font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  transition: box-shadow 0.25s, opacity 0.2s;
+}
+.phai-chip:hover { box-shadow: 0 0 22px -8px currentColor; }
+.phai-chip.off { opacity: 0.3; }
+.phai-chip__n { color: rgba(236,231,247,0.92); }
+.phai-chip__c { font-variant-numeric: tabular-nums; }
+.phai-chip__color { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; border: 0; padding: 0; }
+
+/* ── Modal ────────────────────────────────────────────────────────────── */
+.bc-modal { position: fixed; inset: 0; z-index: 210; display: flex; align-items: center; justify-content: center; padding: 1.2rem; background: rgba(4,3,10,0.82); backdrop-filter: blur(6px); }
+.bc-modal__box {
+  width: min(640px, 100%); max-height: 88vh; overflow-y: auto;
+  border: 1px solid rgba(180,76,255,0.45); border-radius: 22px;
+  background: linear-gradient(165deg, rgba(26,16,46,0.96), rgba(12,9,24,0.97) 60%);
+  box-shadow: 0 30px 90px -30px rgba(0,0,0,0.95), 0 0 60px -30px rgba(180,76,255,0.6);
+  padding: clamp(1.2rem, 3vw, 1.9rem);
+}
+.bc-modal__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 1.2rem; }
+.bc-modal__title { margin: 0; font-size: 1.2rem; letter-spacing: 0.05em; text-transform: uppercase; }
+.bc-modal__sub { margin: 4px 0 0; color: #b2a6cd; font-size: 0.85rem; font-family: 'Be Vietnam Pro', sans-serif; }
+.bc-modal__x { cursor: pointer; flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(180,76,255,0.4); background: transparent; color: #d9b6ff; font-size: 18px; line-height: 1; }
+.bc-modal__x:hover { background: rgba(180,76,255,0.2); }
+.bc-modal__foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 1.4rem; }
+.bc-modal__sect { margin: 1.6rem 0 0; padding-top: 1.2rem; border-top: 1px solid rgba(180,76,255,0.2); }
+.bc-modal__sect:first-of-type { margin-top: 0; padding-top: 0; border-top: 0; }
+.bc-modal__sect > h4 { margin: 0 0 0.9rem; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.24em; color: #00e5ff; text-transform: uppercase; }
+
+.map-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 560px) { .map-grid { grid-template-columns: 1fr; } }
+
+.color-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid rgba(180,76,255,0.12); }
+.color-row:last-child { border-bottom: 0; }
+.color-row__n { flex: 1; font-size: 0.95rem; }
+.color-row__c { width: 44px; height: 30px; padding: 0; border: 1px solid rgba(180,76,255,0.3); border-radius: 9px; background: transparent; cursor: pointer; }
+.color-row__hex { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(178,166,205,0.7); width: 68px; }
+
+.task-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.task-preset {
+  cursor: pointer; padding: 6px 11px; border-radius: 999px;
+  border: 1px solid rgba(0,229,255,0.3); background: rgba(0,229,255,0.06); color: #8fe9ff;
+  font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+}
+.task-preset:hover { border-color: #00e5ff; background: rgba(0,229,255,0.18); }
+
+.mem-head { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; border: 1px solid var(--pc, #b44cff); background: rgba(12,9,24,0.7); margin-bottom: 1.2rem; }
+.mem-head__n { font-size: 1.15rem; font-weight: 700; }
+.mem-head__m { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: 0.14em; color: rgba(178,166,205,0.85); text-transform: uppercase; margin-top: 3px; }
+
+/* ── Toast ────────────────────────────────────────────────────────────── */
+.bc-toast {
+  position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 20px); z-index: 240;
+  padding: 11px 20px; border-radius: 999px; pointer-events: none; opacity: 0;
+  border: 1px solid rgba(0,229,255,0.5); background: rgba(10,7,20,0.95);
+  color: #8fe9ff; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+  box-shadow: 0 0 40px -12px rgba(0,229,255,0.8); transition: opacity 0.3s, transform 0.3s; max-width: 90vw; text-align: center;
+}
+.bc-toast.show { opacity: 1; transform: translate(-50%, 0); }
+.bc-toast.err { border-color: rgba(255,79,109,0.6); color: #ff8fa0; box-shadow: 0 0 40px -12px rgba(255,79,109,0.8); }
+
+/* ── In / xuất ảnh ────────────────────────────────────────────────────── */
+@media print {
+  .hud, .grain, .bg-mount, .cnav, .bc-toolbar, .bc-pool, .bc-gate { display: none !important; }
+  body, html { background: #fff; color: #111; }
+  .bc-layout { grid-template-columns: 1fr; }
+  .team, .doan, .bc-panel { break-inside: avoid; }
+}
