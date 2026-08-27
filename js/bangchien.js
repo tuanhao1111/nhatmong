@@ -1936,21 +1936,27 @@
     return text + '…';
   }
 
+  /**
+   * Xuất ảnh PNG đội hình.
+   * Ưu tiên hiển thị: khu DỰ BỊ · các TEAM · KỸ NĂNG · NHIỆM VỤ của từng người.
+   * Cố tình bỏ những thứ không mang thông tin: dòng "MODULE 04", đếm "4/6" khi
+   * team đã đủ, tên môn phái (đã có dải màu chú thích ở đầu ảnh).
+   */
   function exportPNG() {
-    var SC = 1.8;                     // hệ số nét (đủ sắc mà file không quá nặng)
-    var pad = 44, cardW = 430, gap = 16, rowH = 92;
+    var SC = 1.8;                       // hệ số nét (đủ sắc mà file không quá nặng)
+    var pad = 48, cardW = 470, gap = 16, rowH = 110;
     var cols = S.nTeam;
-    var cardH = 92 + S.nSize * rowH + 14;
+    var cardH = 96 + S.nSize * rowH + 16;
     var W = pad * 2 + cols * cardW + (cols - 1) * gap;
-    // Chú thích màu vẽ ở y = pad+112, cao 30 → kết thúc ở 186. headH phải lớn
-    // hơn con số đó, nếu không thanh tên đoàn sẽ đè lên chú thích.
-    var headH = 202;
-    var doanH = 50 + cardH + 30;
-    // khối dự bị ở cuối ảnh: xếp thành hàng, mỗi hàng `cols` người
+
     var benchList = S.bench.map(byKey).filter(Boolean);
     var benchRows = benchList.length ? Math.ceil(benchList.length / cols) : 0;
-    var benchH = benchList.length ? 50 + benchRows * rowH + 16 : 0;
-    var H = headH + S.nDoan * doanH + benchH + pad;
+    var benchH = benchList.length ? 56 + benchRows * rowH + 24 : 0;
+
+    // Chú thích màu kết thúc ở pad+104+32; headH phải lớn hơn để không bị đè
+    var headH = pad + 104 + 32 + 22;
+    var doanH = 54 + cardH + 32;
+    var H = headH + benchH + S.nDoan * doanH + pad;
 
     var cv = document.createElement('canvas');
     cv.width = W * SC; cv.height = H * SC;
@@ -1960,7 +1966,7 @@
       ctx.font = (weight || 400) + ' ' + size + 'px ' + (mono ? '"JetBrains Mono", monospace' : '"Chakra Petch", "Segoe UI", sans-serif');
     };
 
-    // nền
+    // ── Nền ──
     ctx.fillStyle = '#070510';
     ctx.fillRect(0, 0, W, H);
     ctx.strokeStyle = 'rgba(180,76,255,0.07)';
@@ -1968,160 +1974,187 @@
     for (var gx = 0; gx < W; gx += 48) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke(); }
     for (var gy = 0; gy < H; gy += 48) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke(); }
 
-    // tiêu đề
-    F(11, 500, true);
-    ctx.fillStyle = '#00e5ff';
-    ctx.fillText('MODULE 04 // ĐIỀU BINH BANG CHIẾN', pad, pad + 12);
-    F(46, 700);
+    // ── Tiêu đề ──
+    var placed = Object.keys(placedKeys()).length;
+    var nTask = 0, nSkill = 0;
+    S.members.forEach(function (m) {
+      if (!findSlot(m.key) && !onBench(m.key)) return;
+      if (S.tasks[m.key]) nTask++;
+      if ((S.skills[m.key] || []).length) nSkill++;
+    });
+
+    F(50, 700);
     ctx.fillStyle = '#ece7f7';
-    ctx.fillText('ĐỘI HÌNH BANG CHIẾN · ' + dayLabel().toUpperCase(), pad, pad + 60);
-    F(13, 400, true);
-    ctx.fillStyle = 'rgba(178,166,205,0.8)';
-    ctx.fillText('NHẤT MỘNG · ' + timeStr(Date.now()) + ' · ' +
-      Object.keys(placedKeys()).length + '/' + (S.nDoan * S.nTeam * S.nSize) + ' suất', pad, pad + 86);
+    ctx.fillText('ĐỘI HÌNH BANG CHIẾN · ' + dayLabel().toUpperCase(), pad, pad + 46);
+
+    F(15, 500, true);
+    ctx.fillStyle = 'rgba(178,166,205,0.85)';
+    ctx.fillText('NHẤT MỘNG · ' + timeStr(Date.now()) + ' · ' + placed + '/' + (S.nDoan * S.nTeam * S.nSize) +
+      ' suất · ' + benchList.length + ' dự bị · ' + nTask + ' có nhiệm vụ · ' + nSkill + ' có kỹ năng',
+      pad, pad + 78);
 
     // ── Chú thích màu phái ──
-    // Ảnh không in tên phái nữa nên bắt buộc phải có dải này để đọc được màu.
-    var lx = pad, ly = pad + 112;
+    // Ảnh không in tên phái nên bắt buộc phải có dải này mới đọc được màu.
+    var lx = pad, ly = pad + 104;
     var used = {};
     S.members.forEach(function (m) { if (m.phaiN && findSlot(m.key)) used[m.phaiN] = true; });
     S.bench.forEach(function (k) { var m = byKey(k); if (m && m.phaiN) used[m.phaiN] = true; });
     Object.keys(used).forEach(function (n) {
       var col = S.colors[n] || PHAI_FALLBACK, label = S.labels[n] || n;
-      F(14, 600);
+      F(15, 600);
       var wLab = ctx.measureText(label).width;
       ctx.fillStyle = 'rgba(' + rgbOf(col) + ',0.18)';
-      rrect(ctx, lx, ly, wLab + 38, 30, 15); ctx.fill();
+      rrect(ctx, lx, ly, wLab + 40, 32, 16); ctx.fill();
       ctx.fillStyle = col;
-      ctx.beginPath(); ctx.arc(lx + 16, ly + 15, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(lx + 17, ly + 16, 7, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = textColorFor(col);
-      ctx.fillText(label, lx + 29, ly + 20);
-      lx += wLab + 48;
+      ctx.fillText(label, lx + 31, ly + 21);
+      lx += wLab + 50;
     });
 
     var y = headH;
-    for (var d = 0; d < S.nDoan; d++) {
-      // thanh tên đoàn
-      ctx.fillStyle = 'rgba(0,229,255,0.10)';
-      rrect(ctx, pad, y, W - pad * 2, 34, 10); ctx.fill();
-      F(19, 700);
-      ctx.fillStyle = '#00e5ff';
-      ctx.fillText(S.doanNames[d].toUpperCase(), pad + 14, y + 24);
-      y += 50;
 
-      for (var t = 0; t < S.nTeam; t++) {
-        var team = S.teams[tid(d, t)];
-        var x = pad + t * (cardW + gap);
-
-        ctx.fillStyle = 'rgba(20,13,38,0.9)';
-        rrect(ctx, x, y, cardW, cardH, 14); ctx.fill();
-        ctx.strokeStyle = 'rgba(180,76,255,0.35)';
-        rrect(ctx, x, y, cardW, cardH, 14); ctx.stroke();
-
-        F(24, 700);
-        ctx.fillStyle = '#ece7f7';
-        ctx.fillText(clip(ctx, team.name, cardW - 96), x + 16, y + 34);
-        F(13, 500, true);
-        ctx.fillStyle = 'rgba(178,166,205,0.8)';
-        ctx.textAlign = 'right';
-        ctx.fillText(team.slots.filter(Boolean).length + '/' + S.nSize, x + cardW - 16, y + 34);
-        ctx.textAlign = 'left';
-
-        if (team.note) {
-          F(14, 400);
-          ctx.fillStyle = '#8fe9ff';
-          ctx.fillText(clip(ctx, team.note, cardW - 32), x + 16, y + 58);
-        }
-
-        ctx.strokeStyle = 'rgba(180,76,255,0.18)';
-        ctx.beginPath(); ctx.moveTo(x + 14, y + 70); ctx.lineTo(x + cardW - 14, y + 70); ctx.stroke();
-
-        for (var s = 0; s < S.nSize; s++) {
-          var ry = y + 80 + s * rowH;
-          var m = team.slots[s] && byKey(team.slots[s]);
-          if (!m) {
-            F(12, 400, true);
-            ctx.fillStyle = 'rgba(178,166,205,0.3)';
-            ctx.fillText('— trống —', x + 26, ry + 28);
-            continue;
-          }
-          memRow(ctx, m, x + 10, ry, cardW - 20, rowH, team.cap === m.key);
-        }
-      }
-      y += cardH + 30;
-    }
-
-    // ── Dự bị ──
+    // ── DỰ BỊ (đặt ngay dưới tiêu đề để ai dự bị nhìn phát thấy ngay) ──
     if (benchList.length) {
-      ctx.fillStyle = 'rgba(255,209,102,0.10)';
-      rrect(ctx, pad, y, W - pad * 2, 34, 10); ctx.fill();
-      F(19, 700);
+      var bh = 56 + benchRows * rowH + 12;
+      ctx.fillStyle = 'rgba(255,209,102,0.06)';
+      rrect(ctx, pad - 10, y - 8, W - pad * 2 + 20, bh + 12, 16); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,209,102,0.32)';
+      rrect(ctx, pad - 10, y - 8, W - pad * 2 + 20, bh + 12, 16); ctx.stroke();
+
+      ctx.fillStyle = 'rgba(255,209,102,0.14)';
+      rrect(ctx, pad, y, W - pad * 2, 38, 10); ctx.fill();
+      F(22, 700);
       ctx.fillStyle = '#ffd166';
-      ctx.fillText('DỰ BỊ (' + benchList.length + ')', pad + 14, y + 24);
-      y += 50;
+      ctx.fillText('⛨ DỰ BỊ — ' + benchList.length + ' NGƯỜI', pad + 16, y + 27);
+      y += 56;
+
       benchList.forEach(function (m, i) {
         var bx = pad + (i % cols) * (cardW + gap);
         var by = y + Math.floor(i / cols) * rowH;
         memRow(ctx, m, bx, by, cardW, rowH, false);
       });
+      y += benchRows * rowH + 24;
     }
 
-    /** Một dòng thành viên: nền pha màu phái + tên mang màu phái. */
+    // ── Các đoàn / team ──
+    for (var d = 0; d < S.nDoan; d++) {
+      var filled = 0;
+      for (var t0 = 0; t0 < S.nTeam; t0++) filled += S.teams[tid(d, t0)].slots.filter(Boolean).length;
+
+      ctx.fillStyle = 'rgba(0,229,255,0.10)';
+      rrect(ctx, pad, y, W - pad * 2, 38, 10); ctx.fill();
+      F(22, 700);
+      ctx.fillStyle = '#00e5ff';
+      ctx.fillText(S.doanNames[d].toUpperCase(), pad + 16, y + 27);
+      F(14, 500, true);
+      ctx.fillStyle = 'rgba(178,166,205,0.8)';
+      ctx.textAlign = 'right';
+      ctx.fillText(filled + '/' + (S.nTeam * S.nSize) + ' người', W - pad - 16, y + 26);
+      ctx.textAlign = 'left';
+      y += 54;
+
+      for (var t = 0; t < S.nTeam; t++) {
+        var team = S.teams[tid(d, t)];
+        var x = pad + t * (cardW + gap);
+        var thieu = S.nSize - team.slots.filter(Boolean).length;
+
+        ctx.fillStyle = 'rgba(20,13,38,0.92)';
+        rrect(ctx, x, y, cardW, cardH, 16); ctx.fill();
+        ctx.strokeStyle = thieu ? 'rgba(255,79,109,0.4)' : 'rgba(180,76,255,0.35)';
+        rrect(ctx, x, y, cardW, cardH, 16); ctx.stroke();
+
+        F(27, 700);
+        ctx.fillStyle = '#ece7f7';
+        ctx.fillText(clip(ctx, team.name, cardW - (thieu ? 120 : 36)), x + 18, y + 38);
+
+        // Chỉ báo khi CÒN THIẾU — team đủ người thì "6/6" là thông tin thừa
+        if (thieu) {
+          F(14, 500, true);
+          ctx.fillStyle = '#ff8fa0';
+          ctx.textAlign = 'right';
+          ctx.fillText('thiếu ' + thieu, x + cardW - 18, y + 37);
+          ctx.textAlign = 'left';
+        }
+
+        var divY = y + 54;
+        if (team.note) {
+          F(16, 500);
+          ctx.fillStyle = '#8fe9ff';
+          ctx.fillText(clip(ctx, team.note, cardW - 36), x + 18, y + 64);
+          divY = y + 78;
+        }
+        ctx.strokeStyle = 'rgba(180,76,255,0.18)';
+        ctx.beginPath(); ctx.moveTo(x + 16, divY); ctx.lineTo(x + cardW - 16, divY); ctx.stroke();
+
+        for (var s = 0; s < S.nSize; s++) {
+          var ry = y + 86 + s * rowH;
+          var m = team.slots[s] && byKey(team.slots[s]);
+          if (!m) {
+            F(14, 400, true);
+            ctx.fillStyle = 'rgba(178,166,205,0.28)';
+            ctx.fillText('— còn trống —', x + 28, ry + 32);
+            continue;
+          }
+          memRow(ctx, m, x + 12, ry, cardW - 24, rowH, team.cap === m.key);
+        }
+      }
+      y += cardH + 32;
+    }
+
     /**
-     * Một dòng thành viên trong ảnh. Ưu tiên: tên to → nhiệm vụ → kỹ năng.
-     * Không in tên phái (màu đã nói đủ, giống trên web).
+     * Một dòng thành viên: tên to mang màu phái, rồi hai khối NHIỆM VỤ và
+     * KỸ NĂNG có nhãn rõ ràng để người xem biết ngay mình phải làm gì.
      */
     function memRow(c2, m, x, ry, w, h, isCap) {
       var col = colorOf(m), rgb = rgbOf(col);
 
       c2.fillStyle = 'rgba(' + rgb + ',0.20)';
-      rrect(c2, x, ry + 2, w, h - 6, 10); c2.fill();
+      rrect(c2, x, ry + 2, w, h - 8, 12); c2.fill();
       c2.strokeStyle = 'rgba(' + rgb + ',0.55)';
       c2.lineWidth = 1;
-      rrect(c2, x, ry + 2, w, h - 6, 10); c2.stroke();
+      rrect(c2, x, ry + 2, w, h - 8, 12); c2.stroke();
       c2.fillStyle = col;
-      rrect(c2, x, ry + 2, 6, h - 6, 3); c2.fill();
+      rrect(c2, x, ry + 2, 7, h - 8, 3); c2.fill();
 
-      // Tên — to và đậm, phần quan trọng nhất
-      F(20, 700);
+      F(23, 700);
       c2.fillStyle = textColorFor(col);
-      c2.fillText(clip(c2, (isCap ? '★ ' : '') + m.name, w - (m.power ? 96 : 26)), x + 18, ry + 27);
+      c2.fillText(clip(c2, (isCap ? '★ ' : '') + m.name, w - (m.power ? 110 : 32)), x + 20, ry + 32);
 
       if (m.power) {
-        F(12, 500, true);
-        c2.fillStyle = 'rgba(255,255,255,0.7)';
+        F(14, 500, true);
+        c2.fillStyle = 'rgba(255,255,255,0.72)';
         c2.textAlign = 'right';
-        c2.fillText(fmtPower(m.power), x + w - 12, ry + 27);
+        c2.fillText(fmtPower(m.power), x + w - 14, ry + 32);
         c2.textAlign = 'left';
       }
 
-      var y2 = ry + 34;
-      var task = S.tasks[m.key];
-      if (task) {
-        F(14, 600);
-        c2.fillStyle = 'rgba(61,220,132,0.18)';
-        rrect(c2, x + 16, y2, w - 30, 22, 6); c2.fill();
-        c2.fillStyle = '#3ddc84';
-        rrect(c2, x + 16, y2, 3, 22, 2); c2.fill();
-        c2.fillStyle = '#c6ffe0';
-        c2.fillText(clip(c2, task, w - 46), x + 26, y2 + 16);
-        y2 += 26;
-      }
-      var sk = S.skills[m.key] || [];
-      if (sk.length) {
-        F(13, 600);
-        c2.fillStyle = 'rgba(255,209,102,0.18)';
-        rrect(c2, x + 16, y2, w - 30, 21, 6); c2.fill();
-        c2.fillStyle = '#ffd166';
-        rrect(c2, x + 16, y2, 3, 21, 2); c2.fill();
-        c2.fillStyle = '#ffe7bd';
-        c2.fillText(clip(c2, sk.join(' · '), w - 46), x + 26, y2 + 15);
-      }
+      var y2 = ry + 40;
+      y2 = tag(c2, 'NV', S.tasks[m.key], '61,220,132', '#3ddc84', '#d3ffe8', x, y2, w, 28, 16);
+      y2 = tag(c2, 'KN', (S.skills[m.key] || []).join(' · '), '255,209,102', '#ffd166', '#ffeecb', x, y2, w, 26, 15);
+    }
+
+    /** Khối nhãn "NV: …" hoặc "KN: …". Trả về toạ độ y cho khối kế tiếp. */
+    function tag(c2, label, text, rgb, strong, fg, x, y2, w, hh, fs) {
+      if (!text) return y2;
+      c2.fillStyle = 'rgba(' + rgb + ',0.20)';
+      rrect(c2, x + 18, y2, w - 34, hh, 7); c2.fill();
+      c2.fillStyle = strong;
+      rrect(c2, x + 18, y2, 4, hh, 2); c2.fill();
+
+      F(12, 700, true);
+      c2.fillStyle = strong;
+      c2.fillText(label, x + 30, y2 + hh / 2 + 4);
+
+      F(fs, 600);
+      c2.fillStyle = fg;
+      c2.fillText(clip(c2, text, w - 92), x + 58, y2 + hh / 2 + 5);
+      return y2 + hh + 5;
     }
 
     cv.toBlob(function (blob) {
-      download(blob, 'doi-hinh-bang-chien.png');
-      toast('Đã xuất ảnh PNG');
+      download(blob, 'doi-hinh-bang-chien-' + S.day + '.png');
+      toast('Đã xuất ảnh PNG · ' + dayLabel());
     }, 'image/png');
   }
 
