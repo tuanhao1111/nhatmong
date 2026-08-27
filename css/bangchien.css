@@ -154,6 +154,43 @@ input::placeholder, textarea::placeholder { color: rgba(178,166,205,0.55); }
 .bc-status__dot--err { background: #ff4f6d; }
 @keyframes blinkDot { 0%, 100% { opacity: 1; } 50% { opacity: 0.15; } }
 
+/* ── Chọn ngày bang chiến ─────────────────────────────────────────────── */
+.bc-days {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 1rem;
+  padding: 11px 16px; border-radius: 14px;
+  border: 1px solid rgba(0,229,255,0.28); background: rgba(0,229,255,0.05);
+}
+.bc-days__lbl {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.22em;
+  color: #00e5ff; text-transform: uppercase; flex-shrink: 0;
+}
+.bc-days__chips { margin-top: 0; flex: 1; }
+.bc-days__copy { width: auto; min-width: 190px; flex-shrink: 0; }
+/* Ngày đang xếp: chip sáng hẳn lên */
+.chip--day { --cc: 0,229,255; }
+.chip--day.on { box-shadow: 0 0 0 1px rgb(var(--cc)), 0 0 22px -8px rgb(var(--cc)); }
+.chip--day .chip__t { padding-right: 13px; }
+.chip__n {
+  font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.06em;
+  color: rgba(255,255,255,0.55); padding: 0 11px 0 0;
+}
+.chip.on .chip__n { color: rgba(255,255,255,0.9); }
+
+/* Màn hẹp: rút "Thứ 2 · 14 off · 14 xếp" thành "T2 14/14" cho 7 chip đỡ chiếm
+   nguyên màn hình. Chi tiết đầy đủ vẫn nằm ở thuộc tính title. */
+.d-short { display: none; }
+@media (max-width: 620px) {
+  .d-full { display: none; }
+  .d-short { display: inline; }
+  .bc-days { padding: 9px 11px; gap: 8px; }
+  .bc-days__copy { min-width: 0; width: 100%; }
+  .chip--day .chip__t { padding: 7px 3px 7px 11px; }
+  .chip--day .chip__n { padding-right: 10px; }
+}
+
+.day-map { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 9px; margin-top: 6px; }
+.day-map__i > .bc-label { margin-bottom: 4px; }
+
 /* ── Bố cục 2 cột: kho quân · bàn xếp ─────────────────────────────────── */
 .bc-layout { display: grid; grid-template-columns: minmax(0, 320px) minmax(0, 1fr); gap: clamp(1rem, 2vw, 1.8rem); align-items: start; }
 @media (max-width: 1100px) { .bc-layout { grid-template-columns: 1fr; } }
@@ -436,6 +473,7 @@ input::placeholder, textarea::placeholder { color: rgba(178,166,205,0.55); }
 
 body.ro .bc-toolbar,
 body.ro .bc-status,
+body.ro .bc-days,
 body.ro .bc-pool { display: none !important; }
 body.ro .bc-layout { grid-template-columns: 1fr; }
 body.ro .bc-side { position: static; max-height: none; }

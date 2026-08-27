@@ -22,6 +22,27 @@
   // bằng hash mới mà ô "Đổi mật khẩu" in ra.
   var PASS_HASH = '2e9025e443ee094bc14317024ca40848a57e896be668b60b36ac5618620d66c0';
 
+  // Các ngày trong tuần có thể có trận bang chiến. Mỗi ngày giữ MỘT đội hình
+  // riêng (bàn xếp + dự bị + nhiệm vụ + kỹ năng), không đè lên nhau.
+  var DAYS = [
+    ['t2', 'Thứ 2'], ['t3', 'Thứ 3'], ['t4', 'Thứ 4'], ['t5', 'Thứ 5'],
+    ['t6', 'Thứ 6'], ['t7', 'Thứ 7'], ['cn', 'Chủ nhật']
+  ];
+
+  // Từ khoá dò cột của từng ngày trong sheet điểm danh (đã bỏ dấu, viết thường)
+  var DAY_HINTS = {
+    t2: ['thu 2', 't2', 'thu hai', 'monday', 'mon', '2'],
+    t3: ['thu 3', 't3', 'thu ba', 'tuesday', 'tue', '3'],
+    t4: ['thu 4', 't4', 'thu tu', 'wednesday', 'wed', '4'],
+    t5: ['thu 5', 't5', 'thu nam', 'thursday', 'thu', '5'],
+    t6: ['thu 6', 't6', 'thu sau', 'friday', 'fri', '6'],
+    t7: ['thu 7', 't7', 'thu bay', 'saturday', 'sat', '7'],
+    cn: ['chu nhat', 'cn', 'sunday', 'sun']
+  };
+
+  // Ô bị coi là KHÔNG off. Còn lại hễ có chữ là tính có off (x, v, 1, có, TRUE…)
+  var ATT_NO = ['', '0', '-', '--', 'no', 'false', 'khong', 'k', 'n', 'vang', 'off'];
+
   // Google Sheet danh sách thành viên bang (đổi được trong Cấu hình → mục 1)
   var DEFAULT_URL = 'https://docs.google.com/spreadsheets/d/1o1yobj8zfKSyDi7f_XMjfzyDp0LDZzRdbGJwKiPNVK0/edit';
   // Lần đồng bộ đầu tiên chỉ lấy người có trạng thái này vào kho quân
@@ -161,9 +182,15 @@
 
       // Sheet điểm danh off bang chiến (ai không có tên → xuống dự bị)
       attUrl: '', attTab: '', attCol: -1, attHeaders: [],
-      attend: {},                      // normName -> true (có off)
+      attCols: {},                     // 't2' -> chỉ số cột trong sheet off
+      attend: {},                      // normName -> { t2:true, t5:true… }
       attSyncAt: 0, attMissing: [],    // tên trong sheet off nhưng không khớp ai
-      shorten: true                    // rút gọn link chia sẻ qua clck.ru
+      shorten: true,                   // rút gọn link chia sẻ qua clck.ru
+
+      // Mỗi ngày một đội hình riêng. S.teams/bench/tasks/skills/doanNames là
+      // bản đang mở; stashDay() cất nó vào S.days trước khi lưu hoặc đổi ngày.
+      day: 't2',
+      days: {}
     };
     rebuildTeams(st);
     return st;
@@ -193,10 +220,74 @@
     st.teams = next;
   }
 
+  function dayLabel(k) {
+    for (var i = 0; i < DAYS.length; i++) if (DAYS[i][0] === (k || S.day)) return DAYS[i][1];
+    return '';
+  }
+
+  /** Cất đội hình đang mở vào ngăn của ngày hiện tại. */
+  function stashDay() {
+    S.days[S.day] = {
+      teams: S.teams, bench: S.bench, tasks: S.tasks,
+      skills: S.skills, doanNames: S.doanNames
+    };
+  }
+
+  /** Lấy đội hình của một ngày ra làm bản đang mở. */
+  function switchDay(d) {
+    if (d === S.day) return;
+    stashDay();
+    S.day = d;
+    var saved = S.days[d];
+    if (saved) {
+      S.teams = saved.teams || {};
+      S.bench = saved.bench || [];
+      S.tasks = saved.tasks || {};
+      S.skills = saved.skills || {};
+      S.doanNames = saved.doanNames || [];
+    } else {
+      S.teams = {}; S.bench = []; S.tasks = {}; S.skills = {}; S.doanNames = [];
+    }
+    rebuildTeams(S);
+    cleanTeams();
+    applyAttendance();
+    save();
+    renderAll();
+    toast('Đang xếp đội hình ' + dayLabel());
+  }
+
+  /** Chép nguyên đội hình của một ngày khác sang ngày đang mở. */
+  function copyDayFrom(from) {
+    var src = S.days[from];
+    if (!src) { toast('Ngày đó chưa có đội hình', true); return; }
+    if (!confirm('Chép đội hình ' + dayLabel(from) + ' đè lên ' + dayLabel() + '?')) return;
+
+    var clone = JSON.parse(JSON.stringify({
+      teams: src.teams, bench: src.bench, tasks: src.tasks,
+      skills: src.skills, doanNames: src.doanNames
+    }));
+    S.teams = clone.teams; S.bench = clone.bench; S.tasks = clone.tasks;
+    S.skills = clone.skills; S.doanNames = clone.doanNames;
+
+    rebuildTeams(S);
+    cleanTeams();
+    // Người không off đúng ngày này thì đẩy xuống dự bị ngay
+    var truoc = Object.keys(placedKeys()).length;
+    applyAttendance();
+    var sau = Object.keys(placedKeys()).length;
+    save();
+    renderAll();
+
+    var roi = truoc - sau;
+    toast('Đã chép từ ' + dayLabel(from) + ' — giữ ' + sau + ' người' +
+      (roi ? ', ' + roi + ' người không off ' + dayLabel() + ' đã xuống dự bị' : ''), roi > 0);
+  }
+
   function save() {
     // Chế độ chỉ xem dùng chung biến S — tuyệt đối không được ghi đè đội hình
     // thật của leader khi chính leader mở link chia sẻ trên máy mình.
     if (readOnly) return;
+    stashDay();
     try { localStorage.setItem(K_STATE, JSON.stringify(S)); }
     catch (e) { toast('Không lưu được (bộ nhớ trình duyệt đầy)', true); }
   }
@@ -213,6 +304,16 @@
         if (!S.colors[n]) S.colors[n] = p[1];
         if (!S.labels[n]) S.labels[n] = p[0];
       });
+      // Dữ liệu cũ (trước khi có nhiều ngày) chưa có S.days — đội hình đang lưu
+      // sẽ tự thành đội hình của ngày mặc định khi stashDay() chạy lần đầu.
+      var cur = S.days && S.days[S.day];
+      if (cur) {
+        S.teams = cur.teams || S.teams;
+        S.bench = cur.bench || S.bench;
+        S.tasks = cur.tasks || S.tasks;
+        S.skills = cur.skills || S.skills;
+        S.doanNames = cur.doanNames || S.doanNames;
+      }
       rebuildTeams(S);
       cleanTeams();
     } catch (e) { /* dữ liệu hỏng → dùng mặc định */ }
@@ -417,6 +518,7 @@
         if (remap || S.attCol < 0 || S.attCol >= S.attHeaders.length) {
           S.attCol = guessMap(S.attHeaders).name;
         }
+        if (remap || !Object.keys(S.attCols).length) S.attCols = guessDayCols(S.attHeaders, S.attCol);
 
         // Tên trong Sheet chính, để đối chiếu
         var known = {};
@@ -424,10 +526,18 @@
 
         var att = {}, missing = [];
         for (var r = hr + 1; r < rows.length; r++) {
-          var name = String(rows[r][S.attCol] || '').trim();
+          var row = rows[r];
+          var name = String(row[S.attCol] || '').trim();
           if (!name) continue;
           var n = norm(name);
-          att[n] = true;
+
+          var byDay = att[n] || (att[n] = {});
+          DAYS.forEach(function (d) {
+            var col = S.attCols[d[0]];
+            if (col === undefined || col < 0) return;
+            if (attCellYes(row[col])) byDay[d[0]] = true;
+          });
+
           if (!known[n]) missing.push(name);
         }
         S.attend = att;
@@ -437,10 +547,64 @@
       });
   }
 
-  /** Có tên trong sheet off không? Chưa nối sheet thì coi như ai cũng off. */
+  /** Dò cột của từng thứ theo tiêu đề; bỏ qua cột tên đã dùng. */
+  function guessDayCols(headers, nameCol) {
+    var out = {}, used = {};
+    if (nameCol >= 0) used[nameCol] = true;
+    DAYS.forEach(function (d) {
+      var hints = DAY_HINTS[d[0]], best = -1, bestScore = 0;
+      headers.forEach(function (h, i) {
+        if (used[i]) return;
+        var n = norm(h);
+        if (!n) return;
+        var pos = hints.indexOf(n), score = 0;
+        if (pos >= 0) score = 100 - pos;
+        else {
+          for (var k = 0; k < hints.length; k++) {
+            if (hints[k].length >= 3 && n.indexOf(hints[k]) >= 0) { score = 50 - k; break; }
+          }
+        }
+        if (score > bestScore) { bestScore = score; best = i; }
+      });
+      if (best >= 0) { out[d[0]] = best; used[best] = true; }
+      else out[d[0]] = -1;
+    });
+    return out;
+  }
+
+  /** Ô trong sheet off có nghĩa là "có tham gia" không? */
+  function attCellYes(v) {
+    return ATT_NO.indexOf(norm(v)) < 0;
+  }
+
+  /** Chỉ đọc được cột nào? Nếu sheet không có cột thứ nào thì coi như dùng chung. */
+  function hasDayCols() {
+    return DAYS.some(function (d) { return S.attCols[d[0]] >= 0; });
+  }
+
+  /**
+   * Có off vào NGÀY ĐANG XẾP không?
+   * - Chưa nối sheet → ai cũng coi như có off.
+   * - Sheet chỉ có danh sách tên, không chia thứ → có tên là đủ.
+   */
   function attended(m) {
-    if (!S.attSyncAt || !Object.keys(S.attend).length) return true;
-    return !!S.attend[norm(m.name)];
+    if (!S.attSyncAt) return true;
+    var rec = S.attend[norm(m.name)];
+    if (!hasDayCols()) return !!rec;
+    return !!(rec && rec[S.day]);
+  }
+
+  /** Đếm số người có off một ngày. */
+  function offCount(day) {
+    if (!S.attSyncAt) return null;
+    var n = 0;
+    S.members.forEach(function (m) {
+      if (!eligible(m)) return;
+      var rec = S.attend[norm(m.name)];
+      if (!hasDayCols()) { if (rec) n++; return; }
+      if (rec && rec[day]) n++;
+    });
+    return n;
   }
 
   /** Đưa mọi người không off xuống dự bị, rút họ khỏi bàn xếp nếu đang đứng đó. */
@@ -657,8 +821,42 @@
 
   // ── Render ───────────────────────────────────────────────────────────────
   function renderAll() {
+    renderDays();
     renderLegend(); renderStatusChips(); renderPool(); renderBench(); renderBoard(); renderStats();
     if (!readOnly) updateCheckBadge();
+  }
+
+  /** Hàng chip chọn ngày + ô chép đội hình từ ngày khác. */
+  function renderDays() {
+    var box = $('#day-chips');
+    if (!box) return;
+    box.innerHTML = DAYS.map(function (d) {
+      var on = d[0] === S.day;
+      var n = offCount(d[0]);
+      var xep = (S.days[d[0]] && d[0] !== S.day)
+        ? Object.keys(S.days[d[0]].teams || {}).reduce(function (a, id) {
+            return a + (S.days[d[0]].teams[id].slots || []).filter(Boolean).length; }, 0)
+        : (d[0] === S.day ? Object.keys(placedKeys()).length : 0);
+      // Nhãn dài cho màn rộng, nhãn ngắn cho điện thoại (CSS chọn cái nào hiện)
+      var ngan = d[0] === 'cn' ? 'CN' : d[0].toUpperCase();
+      var full = n === null ? xep + ' xếp' : n + ' off · ' + xep + ' xếp';
+      return '<span class="chip chip--day' + (on ? ' on' : '') + '" data-day="' + d[0] + '"' +
+        ' title="' + esc(d[1] + ' — ' + full) + '">' +
+        '<button type="button" class="chip__t">' +
+          '<span class="d-full">' + esc(d[1]) + '</span><span class="d-short">' + ngan + '</span>' +
+        '</button>' +
+        '<span class="chip__n">' +
+          '<span class="d-full">' + full + '</span>' +
+          '<span class="d-short">' + (n === null ? xep : n + '/' + xep) + '</span>' +
+        '</span></span>';
+    }).join('');
+
+    var sel = $('#day-copy');
+    sel.innerHTML = '<option value="">⧉ Chép đội hình từ…</option>' + DAYS.filter(function (d) {
+      return d[0] !== S.day && S.days[d[0]];
+    }).map(function (d) {
+      return '<option value="' + d[0] + '">Chép từ ' + esc(d[1]) + '</option>';
+    }).join('');
   }
 
   function renderBench() {
@@ -1074,7 +1272,7 @@
             out.push({ lv: 'warn', d: d, t: t, key: m.key, msg: where + ' — “' + m.name + '” thuộc nhóm ' + (m.status || 'đang bị lọc') + ', không nằm trong kho quân' });
           }
           if (!attended(m)) {
-            out.push({ lv: 'err', d: d, t: t, key: m.key, msg: where + ' — “' + m.name + '” KHÔNG off bang chiến mà vẫn đang trong đội hình' });
+            out.push({ lv: 'err', d: d, t: t, key: m.key, msg: where + ' — “' + m.name + '” KHÔNG off ' + dayLabel() + ' mà vẫn đang trong đội hình' });
           }
           if (!S.tasks[m.key]) noTask.push(m.name);
           if (!(S.skills[m.key] || []).length) noSkill.push(m.name);
@@ -1383,12 +1581,26 @@
   }
 
   function renderAttSelect() {
-    var sel = $('#map-att');
-    sel.innerHTML = '<option value="-1">— chưa tải —</option>' + S.attHeaders.map(function (h, i) {
+    var opts = S.attHeaders.map(function (h, i) {
       return '<option value="' + i + '">' + esc(h) + '</option>';
     }).join('');
+
+    var sel = $('#map-att');
+    sel.innerHTML = '<option value="-1">— chưa tải —</option>' + opts;
     sel.value = String(S.attCol);
     sel.disabled = !S.attHeaders.length;
+
+    $('#cfg-day-cols').innerHTML = DAYS.map(function (d) {
+      var v = S.attCols[d[0]];
+      return '<div class="day-map__i">' +
+        '<label class="bc-label">' + esc(d[1]) + '</label>' +
+        '<select class="bc-select day-col" data-day="' + d[0] + '"' + (S.attHeaders.length ? '' : ' disabled') + '>' +
+        '<option value="-1">— không có —</option>' + opts + '</select></div>';
+    }).join('');
+    DAYS.forEach(function (d) {
+      var el = $('.day-col[data-day="' + d[0] + '"]');
+      if (el) el.value = String(S.attCols[d[0]] === undefined ? -1 : S.attCols[d[0]]);
+    });
   }
 
   /** Ô nhập số người bắt buộc cho từng phái. */
@@ -1420,7 +1632,8 @@
 
   // ── Xuất dữ liệu ─────────────────────────────────────────────────────────
   function discordText() {
-    var out = ['**⚔ ĐỘI HÌNH BANG CHIẾN — NHẤT MỘNG**', '_Cập nhật: ' + timeStr(Date.now()) + '_', ''];
+    var out = ['**⚔ ĐỘI HÌNH BANG CHIẾN — ' + dayLabel().toUpperCase() + '**',
+      '_Nhất Mộng · cập nhật ' + timeStr(Date.now()) + '_', ''];
     for (var d = 0; d < S.nDoan; d++) {
       out.push('__**' + S.doanNames[d].toUpperCase() + '**__');
       for (var t = 0; t < S.nTeam; t++) {
@@ -1530,7 +1743,7 @@
     return {
       v: 1, s: [S.nDoan, S.nTeam, S.nSize], n: S.doanNames.slice(),
       p: phaiTab, k: skillTab, t: teams,
-      b: S.bench.map(pack).filter(Boolean), d: Date.now()
+      b: S.bench.map(pack).filter(Boolean), d: Date.now(), w: dayLabel()
     };
   }
 
@@ -1662,8 +1875,8 @@
       $('#nav').hidden = false;
       $('#page').hidden = false;
       $('#robar').hidden = false;
-      $('#robar-time').textContent = 'Chốt lúc ' + timeStr(p.d || Date.now());
-      document.title = 'Đội hình Bang Chiến — Nhất Mộng';
+      $('#robar-time').textContent = (p.w ? 'Trận ' + p.w + ' · ' : '') + 'chốt lúc ' + timeStr(p.d || Date.now());
+      document.title = 'Đội hình Bang Chiến' + (p.w ? ' ' + p.w : '') + ' — Nhất Mộng';
       renderAll();
     }, function (err) {
       // Lỗi thật từ gzip/base64 rất khó hiểu với người dùng → nói bằng tiếng người
@@ -1761,7 +1974,7 @@
     ctx.fillText('MODULE 04 // ĐIỀU BINH BANG CHIẾN', pad, pad + 12);
     F(46, 700);
     ctx.fillStyle = '#ece7f7';
-    ctx.fillText('ĐỘI HÌNH BANG CHIẾN', pad, pad + 60);
+    ctx.fillText('ĐỘI HÌNH BANG CHIẾN · ' + dayLabel().toUpperCase(), pad, pad + 60);
     F(13, 400, true);
     ctx.fillStyle = 'rgba(178,166,205,0.8)';
     ctx.fillText('NHẤT MỘNG · ' + timeStr(Date.now()) + ' · ' +
@@ -2028,6 +2241,16 @@
       S.syncAt = Date.now();
       save(); renderAll(); toast('Đã dọn bàn');
     });
+    // chọn ngày bang chiến
+    $('#day-chips').addEventListener('click', function (e) {
+      var chip = e.target.closest('.chip--day');
+      if (chip) switchDay(chip.dataset.day);
+    });
+    $('#day-copy').addEventListener('change', function () {
+      if (this.value) copyDayFrom(this.value);
+      this.value = '';
+    });
+
     $('#btn-check').addEventListener('click', openCheck);
     $('#btn-share').addEventListener('click', shareLink);
 
@@ -2183,27 +2406,41 @@
     });
 
     // ── sheet điểm danh off bang chiến ──
-    $('#cfg-att-test').addEventListener('click', function () {
+    /** @param {boolean} remap - true thì đoán lại cột; false giữ nguyên lựa chọn tay. */
+    function reloadAttend(remap) {
       S.attUrl = $('#cfg-att-url').value.trim();
       S.attTab = $('#cfg-att-tab').value.trim();
       if (!S.attUrl) { $('#cfg-att-msg').textContent = 'Chưa dán link sheet điểm danh.'; return; }
       $('#cfg-att-msg').textContent = 'Đang tải…';
-      syncAttend(true).then(function (r) {
+      syncAttend(remap).then(function (r) {
         renderAttSelect(); renderAll();
+        var perDay = hasDayCols()
+          ? '<br>Số người off từng ngày: ' + DAYS.filter(function (d) { return S.attCols[d[0]] >= 0; })
+              .map(function (d) { return d[1] + ' <b>' + offCount(d[0]) + '</b>'; }).join(' · ')
+          : '<br><b style="color:#ffd166">Sheet không có cột chia theo thứ</b> — ai có tên là được xếp mọi ngày.';
         var extra = S.attMissing.length
           ? '<br><b style="color:#ffd166">' + S.attMissing.length + ' tên trong sheet off không khớp ai trong Sheet chính:</b> ' + esc(shortList(S.attMissing))
           : '';
         $('#cfg-att-msg').innerHTML = 'Đọc được <b>' + Object.keys(S.attend).length + '</b> tên · ' +
-          '<b>' + r.off + '</b> người có off, <b>' + r.khong + '</b> người không off (đã cho xuống dự bị' +
-          (r.chuyen ? ', trong đó ' + r.chuyen + ' người bị rút khỏi bàn xếp' : '') + ')' + extra;
+          dayLabel() + ': <b>' + r.off + '</b> off, <b>' + r.khong + '</b> không off (đã cho xuống dự bị' +
+          (r.chuyen ? ', trong đó ' + r.chuyen + ' người bị rút khỏi bàn xếp' : '') + ')' + perDay + extra;
       }, function (err) {
         $('#cfg-att-msg').textContent = 'Lỗi: ' + (err && err.message || err);
       });
-    });
+    }
+
+    $('#cfg-att-test').addEventListener('click', function () { reloadAttend(true); });
     $('#map-att').addEventListener('change', function () {
       S.attCol = +this.value;
       save();
-      if (S.attUrl) $('#cfg-att-test').click();
+      if (S.attUrl) reloadAttend(false);
+    });
+    $('#cfg-day-cols').addEventListener('change', function (e) {
+      var sel = e.target.closest('.day-col');
+      if (!sel) return;
+      S.attCols[sel.dataset.day] = +sel.value;
+      save();
+      if (S.attUrl) reloadAttend(false);   // giữ nguyên cột vừa chọn tay
     });
 
     // ── công thức team ──
