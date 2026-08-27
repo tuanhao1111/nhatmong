@@ -223,8 +223,20 @@ input::placeholder, textarea::placeholder { color: rgba(178,166,205,0.55); }
 .mem__name { font-size: 0.95rem; font-weight: 700; line-height: 1.25; color: var(--pc-t); text-shadow: 0 1px 6px rgba(0,0,0,0.75); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mem__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 8px; margin-top: 3px; font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.1em; color: rgba(236,231,247,0.72); }
 .mem__phai { color: rgba(255,255,255,0.92); text-transform: uppercase; letter-spacing: 0.14em; }
-.mem__task { display: block; margin-top: 4px; font-family: 'Be Vietnam Pro', sans-serif; font-size: 11px; color: #a8ffcd; line-height: 1.35; }
-.mem__skills { display: block; margin-top: 3px; font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.06em; color: #ffd9a0; line-height: 1.45; }
+/* Nhiệm vụ & kỹ năng là thứ người chơi cần đọc nhất trong trận → cho to hẳn,
+   có nền riêng để tách khỏi tên và tách khỏi nhau. */
+.mem__task, .mem__skills {
+  display: block; margin-top: 5px; padding: 4px 8px; border-radius: 7px;
+  line-height: 1.4; word-break: break-word;
+}
+.mem__task {
+  font-family: 'Be Vietnam Pro', sans-serif; font-size: 13.5px; font-weight: 600;
+  color: #b6ffd8; background: rgba(61,220,132,0.14); border-left: 3px solid #3ddc84;
+}
+.mem__skills {
+  font-family: 'Be Vietnam Pro', sans-serif; font-size: 12.5px; font-weight: 600;
+  color: #ffdfae; background: rgba(255,209,102,0.14); border-left: 3px solid #ffd166;
+}
 .mem__cap { color: #ffd166; font-size: 11px; flex-shrink: 0; }
 
 /* Nút ✎ / ✕: trên máy có chuột thì nấp đi, rê vào mới hiện → nhường chỗ cho tên.

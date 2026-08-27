@@ -154,7 +154,16 @@
       skills: {},                      // key -> [tên kỹ năng mang theo]
       skillList: SKILLS_DEF.slice(),   // danh sách kỹ năng leader tự quản
       taskList: TASK_PRESETS.slice(),  // danh sách nhiệm vụ mẫu leader tự quản
-      requirePhai: ['to van']          // phái mà mỗi team buộc phải có (trị liệu)
+      requirePhai: ['to van'],         // phái mà mỗi team buộc phải có (trị liệu)
+
+      // Công thức mỗi team khi bấm "Xếp tự động": phái -> số người bắt buộc
+      formula: { 'thiet y': 1, 'to van': 2 },
+
+      // Sheet điểm danh off bang chiến (ai không có tên → xuống dự bị)
+      attUrl: '', attTab: '', attCol: -1, attHeaders: [],
+      attend: {},                      // normName -> true (có off)
+      attSyncAt: 0, attMissing: [],    // tên trong sheet off nhưng không khớp ai
+      shorten: true                    // rút gọn link chia sẻ qua clck.ru
     };
     rebuildTeams(st);
     return st;
@@ -358,6 +367,18 @@
         save();
         renderAll();
         setStatus('Đã đồng bộ ' + list.length + ' thành viên · ' + timeStr(S.syncAt), 'ok');
+
+        // Có nối sheet điểm danh thì đọc luôn, để danh sách off luôn khớp
+        if (S.attUrl) {
+          return syncAttend(false).then(function (r) {
+            renderAll();
+            setStatus('Đồng bộ ' + list.length + ' thành viên · ' + r.off + ' người off bang chiến · ' + timeStr(S.syncAt), 'ok');
+            return list;
+          }, function () {
+            setStatus('Đồng bộ ' + list.length + ' thành viên — nhưng KHÔNG đọc được sheet điểm danh', 'err');
+            return list;
+          });
+        }
         return list;
       })
       .catch(function (err) {
@@ -369,6 +390,77 @@
         toast(msg, true);
         throw err;
       });
+  }
+
+  // ── Sheet điểm danh off bang chiến ───────────────────────────────────────
+  /**
+   * Đọc sheet đăng ký off, đánh dấu ai có mặt. Người KHÔNG có tên trong sheet
+   * này sẽ tự động bị đưa xuống dự bị và không được "Xếp tự động" đụng tới.
+   * @param {boolean} remap - đoán lại cột tên
+   */
+  function syncAttend(remap) {
+    var url = csvUrl(S.attUrl, S.attTab);
+    if (!url) return Promise.reject(new Error('Chưa có link sheet điểm danh'));
+
+    return fetch(url + '&_=' + Date.now(), { credentials: 'omit' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.text();
+      })
+      .then(function (text) {
+        if (/^\s*</.test(text)) throw new Error('Sheet điểm danh chưa mở quyền xem công khai');
+        var rows = parseCSV(text).filter(function (r) { return r.some(function (c) { return String(c).trim() !== ''; }); });
+        if (!rows.length) throw new Error('Sheet điểm danh rỗng');
+
+        var hr = findHeaderRow(rows);
+        S.attHeaders = rows[hr].map(function (h, i) { return String(h).trim() || ('Cột ' + (i + 1)); });
+        if (remap || S.attCol < 0 || S.attCol >= S.attHeaders.length) {
+          S.attCol = guessMap(S.attHeaders).name;
+        }
+
+        // Tên trong Sheet chính, để đối chiếu
+        var known = {};
+        S.members.forEach(function (m) { known[norm(m.name)] = true; });
+
+        var att = {}, missing = [];
+        for (var r = hr + 1; r < rows.length; r++) {
+          var name = String(rows[r][S.attCol] || '').trim();
+          if (!name) continue;
+          var n = norm(name);
+          att[n] = true;
+          if (!known[n]) missing.push(name);
+        }
+        S.attend = att;
+        S.attMissing = missing;
+        S.attSyncAt = Date.now();
+        return applyAttendance();
+      });
+  }
+
+  /** Có tên trong sheet off không? Chưa nối sheet thì coi như ai cũng off. */
+  function attended(m) {
+    if (!S.attSyncAt || !Object.keys(S.attend).length) return true;
+    return !!S.attend[norm(m.name)];
+  }
+
+  /** Đưa mọi người không off xuống dự bị, rút họ khỏi bàn xếp nếu đang đứng đó. */
+  function applyAttendance() {
+    if (!S.attSyncAt) return { off: 0, khong: 0, chuyen: 0 };
+    var off = 0, khong = 0, chuyen = 0;
+    S.members.forEach(function (m) {
+      if (!eligible(m)) return;
+      if (attended(m)) { off++; return; }
+      khong++;
+      var loc = findSlot(m.key);
+      if (loc) {
+        loc.team.slots[loc.s] = null;
+        if (loc.team.cap === m.key) loc.team.cap = null;
+        chuyen++;
+      }
+      if (!onBench(m.key)) S.bench.push(m.key);
+    });
+    save();
+    return { off: off, khong: khong, chuyen: chuyen };
   }
 
   /** "12.5M" / "1,234,567" / "12tr" → số. */
@@ -583,7 +675,9 @@
     var task = S.tasks[m.key] || '';
     var isCap = opts.cap === m.key;
     var meta = [];
-    if (m.phai) meta.push('<span class="mem__phai">' + esc(m.phai) + '</span>');
+    // Trên bàn xếp và khu dự bị KHÔNG in tên phái nữa — màu thẻ đã nói đủ.
+    // Chỉ kho quân mới cần chữ, vì lúc chọn người hay tìm theo tên phái.
+    if (m.phai && !opts.inSlot && !opts.inBench) meta.push('<span class="mem__phai">' + esc(m.phai) + '</span>');
     // Chỉ hiện trạng thái khi đang bật nhiều nhóm, kẻo lặp lại "Bang Chiến" 60 lần
     if (m.status && multiStatus()) meta.push('<span>' + esc(m.status) + '</span>');
     if (m.power) meta.push('<span>' + esc(fmtPower(m.power)) + '</span>');
@@ -705,18 +799,8 @@
       '</div>' +
       '<input class="team__note" data-d="' + d + '" data-t="' + t + '" value="' + esc(team.note) + '" maxlength="120" placeholder="Mục tiêu / nhiệm vụ của team…">' +
       '<div class="team__slots">' + slots + '</div>' +
-      '<div class="team__foot"><span>' + (power ? 'Tổng LC ' + fmtPower(power) : '') + '</span>' +
-      '<span>' + phaiMix(team) + '</span></div>' +
+      (power ? '<div class="team__foot"><span>Tổng LC ' + fmtPower(power) + '</span></div>' : '') +
       '</div>';
-  }
-
-  function phaiMix(team) {
-    var c = {};
-    team.slots.forEach(function (k) {
-      var m = k && byKey(k);
-      if (m && m.phai) c[m.phai] = (c[m.phai] || 0) + 1;
-    });
-    return Object.keys(c).map(function (p) { return esc(p) + '×' + c[p]; }).join(' · ');
   }
 
   function renderStats() {
@@ -844,13 +928,15 @@
    * Lấp các ô trống bằng người còn ngoài kho: rải đều lực chiến (snake draft)
    * và ưu tiên người thuộc phái đang ít trong team đó.
    */
-  function autoFill() {
-    var placed = placedKeys();
-    var pool = S.members.filter(function (m) { return !placed[m.key] && !onBench(m.key) && eligible(m); })
-      .sort(function (a, b) { return b.power - a.power; });
-    if (!pool.length) { toast('Không còn ai ngoài kho quân', true); return; }
+  /** Đếm số người theo phái đang có trong một team. */
+  function phaiCount(team) {
+    var c = {};
+    team.slots.forEach(function (k) { var m = k && byKey(k); if (m) c[m.phaiN] = (c[m.phaiN] || 0) + 1; });
+    return c;
+  }
 
-    // Danh sách ô trống theo thứ tự rắn bò để lực chiến rải đều giữa các team
+  /** Thứ tự duyệt ô trống kiểu rắn bò, để lực chiến rải đều giữa các team. */
+  function slotOrder() {
     var order = [];
     for (var s = 0; s < S.nSize; s++) {
       var teams = [];
@@ -860,18 +946,57 @@
       if (s % 2 && s !== S.nSize - 1) teams.reverse();
       teams.forEach(function (dt) { order.push({ d: dt[0], t: dt[1], s: s }); });
     }
+    return order;
+  }
 
-    var n = 0;
+  /**
+   * Xếp tự động hai vòng:
+   *   Vòng 1 — lấp cho đủ CÔNG THỨC của từng team (mặc định 1 Thiết Y + 2 Tố Vấn).
+   *   Vòng 2 — lấp nốt ô còn lại, ưu tiên người thuộc phái đang ít trong team.
+   * Chỉ dùng người có off bang chiến và không nằm trong khu dự bị.
+   */
+  function autoFill() {
+    var placed = placedKeys();
+    var pool = S.members.filter(function (m) {
+      return !placed[m.key] && !onBench(m.key) && eligible(m) && attended(m);
+    }).sort(function (a, b) { return b.power - a.power; });
+
+    if (!pool.length) { toast('Không còn ai để xếp (đã lọc theo off bang chiến)', true); return; }
+
+    var order = slotOrder();
+    var n = 0, thieu = {};
+
+    function take(pred) {
+      for (var i = 0; i < pool.length; i++) if (pred(pool[i])) return pool.splice(i, 1)[0];
+      return null;
+    }
+
+    // ── Vòng 1: công thức ──
+    var need = S.formula || {};
+    Object.keys(need).forEach(function (pn) {
+      var want = need[pn] | 0;
+      if (want <= 0) return;
+      for (var d = 0; d < S.nDoan; d++) {
+        for (var t = 0; t < S.nTeam; t++) {
+          var team = S.teams[tid(d, t)];
+          var have = phaiCount(team)[pn] || 0;
+          while (have < want) {
+            var s = team.slots.indexOf(null);
+            if (s < 0) break;
+            var m = take(function (x) { return x.phaiN === pn; });
+            if (!m) { thieu[pn] = (thieu[pn] || 0) + (want - have); have = want; break; }
+            team.slots[s] = m.key; have++; n++;
+          }
+        }
+      }
+    });
+
+    // ── Vòng 2: lấp nốt ──
     order.forEach(function (o) {
       if (!pool.length) return;
       var team = S.teams[tid(o.d, o.t)];
       if (team.slots[o.s]) return;
-
-      // đếm phái đang có trong team
-      var have = {};
-      team.slots.forEach(function (k) { var m = k && byKey(k); if (m) have[m.phaiN] = (have[m.phaiN] || 0) + 1; });
-
-      // trong 6 ứng viên mạnh nhất, chọn người thuộc phái ít nhất trong team
+      var have = phaiCount(team);
       var bestI = 0, bestC = Infinity;
       for (var i = 0; i < Math.min(6, pool.length); i++) {
         var c = have[pool[i].phaiN] || 0;
@@ -881,8 +1006,17 @@
       n++;
     });
 
+    // Người không off mà còn lang thang ở kho quân thì dồn hết xuống dự bị,
+    // đúng quy tắc "không off = dự bị".
+    applyAttendance();
     cleanTeams(); save(); renderAll();
-    toast('Đã xếp ' + n + ' người vào ô trống');
+
+    var msg = 'Đã xếp ' + n + ' người';
+    var ds = Object.keys(thieu);
+    if (ds.length) {
+      msg += ' — thiếu ' + ds.map(function (p) { return thieu[p] + ' ' + (S.labels[p] || p); }).join(', ');
+    }
+    toast(msg, ds.length > 0);
   }
 
   // ── Kiểm tra đội hình ────────────────────────────────────────────────────
@@ -922,12 +1056,25 @@
           if (ms.length && !cnt[n]) out.push({ lv: 'warn', d: d, t: t, msg: where + ' — chưa có ' + (S.labels[n] || n) });
         });
 
+        // Sai công thức team (mặc định 1 Thiết Y + 2 Tố Vấn)
+        Object.keys(S.formula || {}).forEach(function (pn) {
+          var want = S.formula[pn] | 0;
+          if (want <= 0 || !ms.length) return;
+          var co = cnt[pn] || 0;
+          if (co < want) {
+            out.push({ lv: 'warn', d: d, t: t, msg: where + ' — sai công thức: cần ' + want + ' ' + (S.labels[pn] || pn) + ', đang có ' + co });
+          }
+        });
+
         // Gom "chưa có nhiệm vụ / kỹ năng" thành một dòng mỗi team — liệt kê
         // từng người sẽ ra cả trăm dòng, không ai đọc nổi.
         var noTask = [], noSkill = [];
         ms.forEach(function (m) {
           if (!eligible(m)) {
             out.push({ lv: 'warn', d: d, t: t, key: m.key, msg: where + ' — “' + m.name + '” thuộc nhóm ' + (m.status || 'đang bị lọc') + ', không nằm trong kho quân' });
+          }
+          if (!attended(m)) {
+            out.push({ lv: 'err', d: d, t: t, key: m.key, msg: where + ' — “' + m.name + '” KHÔNG off bang chiến mà vẫn đang trong đội hình' });
           }
           if (!S.tasks[m.key]) noTask.push(m.name);
           if (!(S.skills[m.key] || []).length) noSkill.push(m.name);
@@ -1209,9 +1356,17 @@
     $('#cfg-pass-msg').textContent = '';
     $('#cfg-test-msg').textContent = '';
     renderMapSelects();
+    $('#cfg-att-url').value = S.attUrl;
+    $('#cfg-att-tab').value = S.attTab;
+    $('#cfg-shorten').checked = !!S.shorten;
+    $('#cfg-att-msg').innerHTML = S.attSyncAt
+      ? 'Lần đọc gần nhất: <b>' + Object.keys(S.attend).length + '</b> người có off · ' + timeStr(S.attSyncAt)
+      : 'Ai <b>không</b> có tên trong sheet này sẽ tự động bị đưa xuống <b>Dự bị</b> và “Xếp tự động” sẽ bỏ qua họ.';
+    renderAttSelect();
     renderColorRows();
     renderSkillEditor();
     renderTaskEditor();
+    renderFormula();
     openModal('modal-cfg');
   }
 
@@ -1225,6 +1380,30 @@
       sel.value = String(S.map[f]);
       sel.disabled = !S.headers.length;
     });
+  }
+
+  function renderAttSelect() {
+    var sel = $('#map-att');
+    sel.innerHTML = '<option value="-1">— chưa tải —</option>' + S.attHeaders.map(function (h, i) {
+      return '<option value="' + i + '">' + esc(h) + '</option>';
+    }).join('');
+    sel.value = String(S.attCol);
+    sel.disabled = !S.attHeaders.length;
+  }
+
+  /** Ô nhập số người bắt buộc cho từng phái. */
+  function renderFormula() {
+    var keys = Object.keys(S.labels).filter(Boolean);
+    var tong = keys.reduce(function (a, n) { return a + (S.formula[n] | 0); }, 0);
+    $('#cfg-formula').innerHTML = keys.map(function (n) {
+      return '<div class="color-row">' +
+        '<span class="color-row__n" style="color:' + esc(S.colors[n] || PHAI_FALLBACK) + '">' + esc(S.labels[n]) + '</span>' +
+        '<input class="bc-input formula__n" type="number" min="0" max="' + S.nSize + '" value="' + (S.formula[n] | 0) +
+        '" data-phai="' + esc(n) + '" style="width:76px">' +
+        '</div>';
+    }).join('') +
+      '<p class="bc-hint" style="margin-top:8px">Tổng đang bắt buộc: <b>' + tong + '</b>/' + S.nSize + ' suất mỗi team' +
+      (tong > S.nSize ? ' — <b style="color:#ff8fa0">vượt quá sức chứa</b>' : '') + '</p>';
   }
 
   function renderColorRows() {
@@ -1380,17 +1559,48 @@
     }
   }
 
+  /**
+   * Rút gọn link qua clck.ru.
+   * Đã thử is.gd và v.gd — cả hai chặn CORS nên gọi từ trình duyệt không được;
+   * TinyURL thì link tạo bằng API ẩn danh nay rơi vào trang "preview/deprecated"
+   * chứ không chuyển hướng nữa. clck.ru là dịch vụ duy nhất vừa gọi được vừa
+   * giữ nguyên phần #… (đã kiểm chứng với link 1806 ký tự).
+   */
+  function shortenUrl(url) {
+    return fetch('https://clck.ru/--?url=' + encodeURIComponent(url))
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.text();
+      })
+      .then(function (s) {
+        s = String(s).trim();
+        if (!/^https?:\/\//.test(s)) throw new Error(s.slice(0, 60) || 'phản hồi lạ');
+        return s;
+      });
+  }
+
   function shareLink() {
     var placed = Object.keys(placedKeys()).length;
     if (!placed && !S.bench.length) { toast('Chưa xếp ai vào bàn', true); return; }
+
     encodeShare(sharePayload()).then(function (enc) {
       var url = location.origin + location.pathname + '#v=' + enc;
-      var done = function () {
-        toast('Đã copy link (' + Math.round(url.length / 1024 * 10) / 10 + ' KB) — ai mở cũng xem được, không sửa được');
-      };
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(url).then(done, function () { fallbackCopy(url); done(); });
-      } else { fallbackCopy(url); done(); }
+
+      function put(link, note) {
+        var done = function () { toast(note); };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(link).then(done, function () { fallbackCopy(link); done(); });
+        } else { fallbackCopy(link); done(); }
+      }
+
+      if (!S.shorten) { put(url, 'Đã copy link đầy đủ (' + url.length + ' ký tự)'); return; }
+
+      toast('Đang rút gọn link…');
+      shortenUrl(url).then(function (short) {
+        put(short, 'Đã copy link rút gọn: ' + short.replace(/^https?:\/\//, ''));
+      }, function (err) {
+        put(url, 'Rút gọn thất bại (' + (err && err.message || err) + ') — đã copy link đầy đủ');
+      });
     }, function (err) {
       toast('Không tạo được link: ' + (err && err.message || err), true);
     });
@@ -1514,12 +1724,14 @@
   }
 
   function exportPNG() {
-    var SC = 2;                       // hệ số nét
-    var pad = 44, cardW = 372, gap = 16, rowH = 50;
+    var SC = 1.8;                     // hệ số nét (đủ sắc mà file không quá nặng)
+    var pad = 44, cardW = 430, gap = 16, rowH = 92;
     var cols = S.nTeam;
-    var cardH = 86 + S.nSize * rowH + 14;
+    var cardH = 92 + S.nSize * rowH + 14;
     var W = pad * 2 + cols * cardW + (cols - 1) * gap;
-    var headH = 128;
+    // Chú thích màu vẽ ở y = pad+112, cao 30 → kết thúc ở 186. headH phải lớn
+    // hơn con số đó, nếu không thanh tên đoàn sẽ đè lên chú thích.
+    var headH = 202;
     var doanH = 50 + cardH + 30;
     // khối dự bị ở cuối ảnh: xếp thành hàng, mỗi hàng `cols` người
     var benchList = S.bench.map(byKey).filter(Boolean);
@@ -1555,6 +1767,25 @@
     ctx.fillText('NHẤT MỘNG · ' + timeStr(Date.now()) + ' · ' +
       Object.keys(placedKeys()).length + '/' + (S.nDoan * S.nTeam * S.nSize) + ' suất', pad, pad + 86);
 
+    // ── Chú thích màu phái ──
+    // Ảnh không in tên phái nữa nên bắt buộc phải có dải này để đọc được màu.
+    var lx = pad, ly = pad + 112;
+    var used = {};
+    S.members.forEach(function (m) { if (m.phaiN && findSlot(m.key)) used[m.phaiN] = true; });
+    S.bench.forEach(function (k) { var m = byKey(k); if (m && m.phaiN) used[m.phaiN] = true; });
+    Object.keys(used).forEach(function (n) {
+      var col = S.colors[n] || PHAI_FALLBACK, label = S.labels[n] || n;
+      F(14, 600);
+      var wLab = ctx.measureText(label).width;
+      ctx.fillStyle = 'rgba(' + rgbOf(col) + ',0.18)';
+      rrect(ctx, lx, ly, wLab + 38, 30, 15); ctx.fill();
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.arc(lx + 16, ly + 15, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = textColorFor(col);
+      ctx.fillText(label, lx + 29, ly + 20);
+      lx += wLab + 48;
+    });
+
     var y = headH;
     for (var d = 0; d < S.nDoan; d++) {
       // thanh tên đoàn
@@ -1574,29 +1805,31 @@
         ctx.strokeStyle = 'rgba(180,76,255,0.35)';
         rrect(ctx, x, y, cardW, cardH, 14); ctx.stroke();
 
-        F(17, 700);
+        F(24, 700);
         ctx.fillStyle = '#ece7f7';
-        ctx.fillText(clip(ctx, team.name, cardW - 90), x + 14, y + 28);
-        F(11, 400, true);
-        ctx.fillStyle = 'rgba(178,166,205,0.75)';
+        ctx.fillText(clip(ctx, team.name, cardW - 96), x + 16, y + 34);
+        F(13, 500, true);
+        ctx.fillStyle = 'rgba(178,166,205,0.8)';
         ctx.textAlign = 'right';
-        ctx.fillText(team.slots.filter(Boolean).length + '/' + S.nSize, x + cardW - 14, y + 28);
+        ctx.fillText(team.slots.filter(Boolean).length + '/' + S.nSize, x + cardW - 16, y + 34);
         ctx.textAlign = 'left';
 
-        F(12, 400);
-        ctx.fillStyle = '#8fe9ff';
-        ctx.fillText(clip(ctx, team.note || '—', cardW - 28), x + 14, y + 50);
+        if (team.note) {
+          F(14, 400);
+          ctx.fillStyle = '#8fe9ff';
+          ctx.fillText(clip(ctx, team.note, cardW - 32), x + 16, y + 58);
+        }
 
         ctx.strokeStyle = 'rgba(180,76,255,0.18)';
-        ctx.beginPath(); ctx.moveTo(x + 12, y + 62); ctx.lineTo(x + cardW - 12, y + 62); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x + 14, y + 70); ctx.lineTo(x + cardW - 14, y + 70); ctx.stroke();
 
         for (var s = 0; s < S.nSize; s++) {
-          var ry = y + 74 + s * rowH;
+          var ry = y + 80 + s * rowH;
           var m = team.slots[s] && byKey(team.slots[s]);
           if (!m) {
             F(12, 400, true);
             ctx.fillStyle = 'rgba(178,166,205,0.3)';
-            ctx.fillText('— trống —', x + 26, ry + 22);
+            ctx.fillText('— trống —', x + 26, ry + 28);
             continue;
           }
           memRow(ctx, m, x + 10, ry, cardW - 20, rowH, team.cap === m.key);
@@ -1621,34 +1854,55 @@
     }
 
     /** Một dòng thành viên: nền pha màu phái + tên mang màu phái. */
+    /**
+     * Một dòng thành viên trong ảnh. Ưu tiên: tên to → nhiệm vụ → kỹ năng.
+     * Không in tên phái (màu đã nói đủ, giống trên web).
+     */
     function memRow(c2, m, x, ry, w, h, isCap) {
       var col = colorOf(m), rgb = rgbOf(col);
+
       c2.fillStyle = 'rgba(' + rgb + ',0.20)';
-      rrect(c2, x, ry + 2, w, h - 6, 9); c2.fill();
+      rrect(c2, x, ry + 2, w, h - 6, 10); c2.fill();
+      c2.strokeStyle = 'rgba(' + rgb + ',0.55)';
+      c2.lineWidth = 1;
+      rrect(c2, x, ry + 2, w, h - 6, 10); c2.stroke();
       c2.fillStyle = col;
-      rrect(c2, x, ry + 2, 4, h - 6, 2); c2.fill();
+      rrect(c2, x, ry + 2, 6, h - 6, 3); c2.fill();
 
-      F(15, 700);
+      // Tên — to và đậm, phần quan trọng nhất
+      F(20, 700);
       c2.fillStyle = textColorFor(col);
-      c2.fillText(clip(c2, (isCap ? '★ ' : '') + m.name, w - 130), x + 14, ry + 21);
+      c2.fillText(clip(c2, (isCap ? '★ ' : '') + m.name, w - (m.power ? 96 : 26)), x + 18, ry + 27);
 
-      F(10.5, 400, true);
-      c2.fillStyle = 'rgba(255,255,255,0.82)';
-      c2.textAlign = 'right';
-      c2.fillText(clip(c2, [m.phai, fmtPower(m.power)].filter(Boolean).join(' · '), 112), x + w - 10, ry + 21);
-      c2.textAlign = 'left';
+      if (m.power) {
+        F(12, 500, true);
+        c2.fillStyle = 'rgba(255,255,255,0.7)';
+        c2.textAlign = 'right';
+        c2.fillText(fmtPower(m.power), x + w - 12, ry + 27);
+        c2.textAlign = 'left';
+      }
 
+      var y2 = ry + 34;
       var task = S.tasks[m.key];
       if (task) {
-        F(11.5, 400);
-        c2.fillStyle = '#a8ffcd';
-        c2.fillText(clip(c2, '▸ ' + task, w - 24), x + 14, ry + 34);
+        F(14, 600);
+        c2.fillStyle = 'rgba(61,220,132,0.18)';
+        rrect(c2, x + 16, y2, w - 30, 22, 6); c2.fill();
+        c2.fillStyle = '#3ddc84';
+        rrect(c2, x + 16, y2, 3, 22, 2); c2.fill();
+        c2.fillStyle = '#c6ffe0';
+        c2.fillText(clip(c2, task, w - 46), x + 26, y2 + 16);
+        y2 += 26;
       }
       var sk = S.skills[m.key] || [];
       if (sk.length) {
-        F(10, 400, true);
-        c2.fillStyle = '#ffd9a0';
-        c2.fillText(clip(c2, '✦ ' + sk.join(' · '), w - 24), x + 14, ry + (task ? 45 : 35));
+        F(13, 600);
+        c2.fillStyle = 'rgba(255,209,102,0.18)';
+        rrect(c2, x + 16, y2, w - 30, 21, 6); c2.fill();
+        c2.fillStyle = '#ffd166';
+        rrect(c2, x + 16, y2, 3, 21, 2); c2.fill();
+        c2.fillStyle = '#ffe7bd';
+        c2.fillText(clip(c2, sk.join(' · '), w - 46), x + 26, y2 + 15);
       }
     }
 
@@ -1928,6 +2182,42 @@
       if (e.key === 'Enter') { e.preventDefault(); $('#cfg-task-add').click(); }
     });
 
+    // ── sheet điểm danh off bang chiến ──
+    $('#cfg-att-test').addEventListener('click', function () {
+      S.attUrl = $('#cfg-att-url').value.trim();
+      S.attTab = $('#cfg-att-tab').value.trim();
+      if (!S.attUrl) { $('#cfg-att-msg').textContent = 'Chưa dán link sheet điểm danh.'; return; }
+      $('#cfg-att-msg').textContent = 'Đang tải…';
+      syncAttend(true).then(function (r) {
+        renderAttSelect(); renderAll();
+        var extra = S.attMissing.length
+          ? '<br><b style="color:#ffd166">' + S.attMissing.length + ' tên trong sheet off không khớp ai trong Sheet chính:</b> ' + esc(shortList(S.attMissing))
+          : '';
+        $('#cfg-att-msg').innerHTML = 'Đọc được <b>' + Object.keys(S.attend).length + '</b> tên · ' +
+          '<b>' + r.off + '</b> người có off, <b>' + r.khong + '</b> người không off (đã cho xuống dự bị' +
+          (r.chuyen ? ', trong đó ' + r.chuyen + ' người bị rút khỏi bàn xếp' : '') + ')' + extra;
+      }, function (err) {
+        $('#cfg-att-msg').textContent = 'Lỗi: ' + (err && err.message || err);
+      });
+    });
+    $('#map-att').addEventListener('change', function () {
+      S.attCol = +this.value;
+      save();
+      if (S.attUrl) $('#cfg-att-test').click();
+    });
+
+    // ── công thức team ──
+    $('#cfg-formula').addEventListener('input', function (e) {
+      var inp = e.target.closest('.formula__n');
+      if (!inp) return;
+      var v = Math.max(0, Math.min(S.nSize, +inp.value || 0));
+      if (v) S.formula[inp.dataset.phai] = v; else delete S.formula[inp.dataset.phai];
+      save();
+      renderFormula(); updateCheckBadge();
+    });
+
+    $('#cfg-shorten').addEventListener('change', function () { S.shorten = this.checked; save(); });
+
     $('#cfg-pass-set').addEventListener('click', function () {
       var v = $('#cfg-pass').value;
       if (!v) { $('#cfg-pass-msg').textContent = 'Nhập mật khẩu mới trước đã.'; return; }
@@ -1943,6 +2233,10 @@
     $('#cfg-save').addEventListener('click', function () {
       S.url = $('#cfg-url').value.trim();
       S.tab = $('#cfg-tab').value.trim();
+      S.attUrl = $('#cfg-att-url').value.trim();
+      S.attTab = $('#cfg-att-tab').value.trim();
+      S.shorten = $('#cfg-shorten').checked;
+      if (!S.attUrl) { S.attend = {}; S.attSyncAt = 0; S.attMissing = []; }
       var nd = Math.max(1, Math.min(6, +$('#cfg-doan').value || 2));
       var nt = Math.max(1, Math.min(10, +$('#cfg-tpd').value || 5));
       var ns = Math.max(1, Math.min(12, +$('#cfg-size').value || 6));

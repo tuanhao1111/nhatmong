@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@400;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/bangchien.css?v=4">
+  <link rel="stylesheet" href="css/bangchien.css?v=5">
 </head>
 <body data-lang="vi">
 
@@ -179,6 +179,27 @@
       </div>
 
       <div class="bc-modal__sect">
+        <h4>1b · Sheet điểm danh off Bang Chiến</h4>
+        <div class="bc-field">
+          <label class="bc-label" for="cfg-att-url">Link Sheet đăng ký off (để trống = không lọc)</label>
+          <input class="bc-input" id="cfg-att-url" placeholder="https://docs.google.com/spreadsheets/d/…">
+        </div>
+        <div class="map-grid">
+          <div>
+            <label class="bc-label" for="cfg-att-tab">Tên tab (tuỳ chọn)</label>
+            <input class="bc-input" id="cfg-att-tab" placeholder="VD: Off bang chiến">
+          </div>
+          <div>
+            <label class="bc-label" for="map-att">Cột tên nhân vật</label>
+            <select class="bc-select" id="map-att"></select>
+          </div>
+        </div>
+        <button class="bc-btn bc-btn--cyan" id="cfg-att-test" style="margin-top:10px">⟳ Tải thử</button>
+        <p class="bc-hint" id="cfg-att-msg">Ai <b>không</b> có tên trong sheet này sẽ tự động bị đưa xuống <b>Dự bị</b>
+          và “Xếp tự động” sẽ bỏ qua họ.</p>
+      </div>
+
+      <div class="bc-modal__sect">
         <h4>2 · Cột dữ liệu</h4>
         <p class="bc-hint" style="margin-bottom:0.9rem">Web tự đoán theo tên tiêu đề. Nếu đoán sai, chọn lại tay.</p>
         <div class="map-grid">
@@ -243,6 +264,24 @@
           <div><label class="bc-label" for="cfg-size">Người / team</label><input class="bc-input" id="cfg-size" type="number" min="1" max="12" value="6"></div>
         </div>
         <p class="bc-hint">Mặc định 2 × 5 × 6 = 60 suất. Đổi số sẽ giữ nguyên những người đã xếp trong phạm vi còn lại.</p>
+      </div>
+
+      <div class="bc-modal__sect">
+        <h4>6b · Công thức mỗi team</h4>
+        <div id="cfg-formula"></div>
+        <p class="bc-hint">Số người tối thiểu của từng phái trong một team — “Xếp tự động” sẽ ưu tiên lấp đủ
+          công thức này trước, phần còn lại mới rải đều. Mặc định <b>1 Thiết Y + 2 Tố Vấn</b>.
+          Đặt 0 nghĩa là không bắt buộc.</p>
+      </div>
+
+      <div class="bc-modal__sect">
+        <h4>6c · Link chia sẻ</h4>
+        <label class="bc-label" style="text-transform:none;letter-spacing:0.02em;font-size:13px;font-family:'Be Vietnam Pro',sans-serif">
+          <input type="checkbox" id="cfg-shorten"> Rút gọn link qua <b>clck.ru</b>
+        </label>
+        <p class="bc-hint">Bật thì link còn khoảng 22 ký tự thay vì ~1800. Đổi lại, đường link đội hình
+          được gửi sang máy chủ clck.ru (dịch vụ của Yandex) để tạo mã rút gọn. Tắt đi thì mọi thứ
+          hoàn toàn nằm trong link của bạn, không qua bên thứ ba nào.</p>
       </div>
 
       <div class="bc-modal__sect">
@@ -343,7 +382,7 @@
 
   <div class="bc-toast" id="toast"></div>
 
-  <script src="js/bangchien.js?v=4"></script>
+  <script src="js/bangchien.js?v=5"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js'); });
